@@ -4,7 +4,7 @@ CREATE TYPE user_role AS ENUM ('bidder', 'seller', 'admin');
 
 CREATE TYPE product_state AS ENUM ('incoming', 'bidding', 'sold');
 
-CREATE TYPE trade_state AS ENUM ('pending', 'failed', 'success');
+CREATE TYPE state AS ENUM ('pending', 'failed', 'success');
 
 CREATE TYPE message_type AS ENUM ('text', 'image');
 
@@ -12,37 +12,39 @@ CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(30) NOT NULL,
     address VARCHAR(100) NOT NULL,
-    email VARCHAR(50) UNIQUE,
+    email VARCHAR(50) UNIQUE NOT NULL,
     hashed_password VARCHAR(100) NOT NULL,
-    birthdate DATE,
+    birthdate DATE NOT NULL,
     role user_role DEFAULT 'bidder',
     rating REAL DEFAULT 0
 );
 
 CREATE TABLE sessions (
-    user INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    user INTEGER NOT NULL,
     expired_at DATE NOT NULL,
-    refresh_token VARCHAR(100) UNIQUE
+    refresh_token VARCHAR(100) UNIQUE NOT NULL
 );
 
 CREATE TABLE requests (
-    bidder INTEGER PRIMARY KEY,
-    created_at DATE,
-    accepted BOOLEAN
+    id SERIAL PRIMARY KEY,
+    bidder INTEGER NOT NULL,
+    created_at DATE NOT NULL,
+    state state NOT NULL DEFAULT 'pending'
 );
 
 CREATE TABLE favorites (
-    product INTEGER,
-    user INTEGER
+    product INTEGER NOT NULL,
+    user INTEGER NOT NULL,
     PRIMARY KEY (product, user)
 );
 
 CREATE TABLE reviews (
-    product INTEGER,
-    rater INTEGER,
-    ratee INTEGER,
-    liked BOOLEAN,
-    content VARCHAR(200)
+    product INTEGER NOT NULL,
+    rater INTEGER NOT NULL,
+    ratee INTEGER NOT NULL,
+    liked BOOLEAN NOT NULL,
+    content VARCHAR(200),
     PRIMARY KEY (product, ratee, rater)
 );
 
@@ -51,7 +53,12 @@ CREATE TABLE products (
     name VARCHAR(50) NOT NULL,
     current_price REAL NOT NULL,
     image VARCHAR(100) NOT NULL,
-    state product_state 
+    state product_state DEFAULT 'incoming' NOT NULL
+);
+
+CREATE TABLE categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE
 );
 
 CREATE TABLE product_categories (
@@ -63,25 +70,25 @@ CREATE TABLE product_categories (
 );
 
 CREATE TABLE bids (
-    product INTEGER,
-    buyer INTEGER,
-    bid_date TIMESTAMP,
-    price NUMERIC(12,2)
-    PRIMARY KEY (product, buyer)
+    id SERIAL PRIMARY KEY,
+    product INTEGER NOT NULL,
+    buyer INTEGER NOT NULL,
+    bid_date TIMESTAMP NOT NULL,
+    price NUMERIC(12,2) NOT NULL
 );
 
 CREATE TABLE product_questions (
-    questioner INTEGER,
+    id SERIAL PRIMARY KEY,
+    questioner INTEGER NOT NULL,
     answerer INTEGER,
     product INTEGER NOT NULL,
-    question VARCHAR(200),
+    question VARCHAR(200) NOT NULL,
     answer VARCHAR(200)
-    PRIMARY KEY (product, questioner, answerer)
 );
 
 CREATE TABLE refuse (
-    product INTEGER,
-    buyer INTEGER
+    product INTEGER NOT NULL,
+    buyer INTEGER NOT NULL,
     PRIMARY KEY (product, buyer)
 );
 
@@ -91,52 +98,48 @@ CREATE TABLE product_images (
 );
 
 CREATE TABLE product_descriptions (
-    product INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    product INTEGER NOT NULL,
     description VARCHAR(200) NOT NULL,
-    created_at TIMESTAMP
+    created_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE categories (
-    id INTEGER PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE
-);
 
 CREATE TABLE messages (
-    product INTEGER,
-    sender INTEGER,
+    id SERIAL PRIMARY KEY,
+    product INTEGER NOT NULL,
+    sender INTEGER NOT NULL,
     content VARCHAR(200),
     image VARCHAR(200),
-    type message_type,
-    created_at TIMESTAMP
-    PRIMARY KEY (product, sender)
+    type message_type NOT NULL,
+    created_at TIMESTAMP NOT NULL
 );
 
 CREATE TABLE bidder_winner (
     product INTEGER PRIMARY KEY,
-    bidder INTEGER
+    bidder INTEGER NOT NULL
 );
 
 CREATE TABLE sell_product (
-    seller INTEGER,
-    product INTEGER,
-    init_price REAL,
-    step_price REAL,
-    created_at TIMESTAMP,
-    expired_at TIMESTAMP
-    PRIMARY KEY (product, seller)
+    product INTEGER PRIMARY KEY,
+    seller INTEGER NOT NULL,
+    init_price REAL NOT NULL,
+    step_price REAL NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    expired_at TIMESTAMP NOT NULL
 );
 
 CREATE TABLE trade_verifications (
     product INTEGER PRIMARY KEY,
-    bidder INTEGER,
-    seller INTEGER,
+    bidder INTEGER NOT NULL,
+    seller INTEGER NOT NULL,
     delivery_address VARCHAR(100),
     invoice_image VARCHAR(100),
-    reciept_image VARCHAR(100),
+    receipt_image VARCHAR(100),
     delivery_invoice_image VARCHAR(100),
-    sell_accept BOOLEAN,
-    bidder_accept BOOLEAN
-    state trade_state
+    sell_accept BOOLEAN NOT NULL DEFAULT 'false',
+    bidder_accept BOOLEAN NOT NULL DEFAULT 'false',
+    state state NOT NULL DEFAULT 'pending'
 );
 
 -- CHECK KEY CONSTRAINTS
@@ -147,7 +150,7 @@ CHECK ( birthdate <= CURRENT_DATE - INTERVAL '18 years' );
 
 ALTER TABLE users
 ADD CONSTRAINT chk_users_rating
-CHECK (rating >= 0 AND rating < 1);
+CHECK (rating >= 0 AND rating <= 1);
 
 ALTER TABLE requests
 ADD CONSTRAINT chk_requests_created_at
@@ -254,7 +257,3 @@ ADD CONSTRAINT fk_sell_product_product
 FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE,
 ADD CONSTRAINT fk_sell_product_seller
 FOREIGN KEY (seller) REFERENCES users(id) ON DELETE CASCADE;
-
-ALTER TABLE products
-ADD CONSTRAINT fk_products_category
-FOREIGN KEY (category) REFERENCES categories(id) ON DELETE CASCADE;
