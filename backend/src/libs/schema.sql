@@ -15,107 +15,121 @@ CREATE TABLE users (
     email VARCHAR(50) UNIQUE,
     hashed_password VARCHAR(100) NOT NULL,
     birthdate DATE,
-    role user_role DEFAULT 'user',
-    rating INTEGER DEFAULT 0
+    role user_role DEFAULT 'bidder',
+    rating REAL DEFAULT 0
 );
 
 CREATE TABLE sessions (
-    user SERIAL PRIMARY KEY,
-    expired_at DATE REQUIRED,
+    user INTEGER PRIMARY KEY,
+    expired_at DATE NOT NULL,
     refresh_token VARCHAR(100) UNIQUE
 );
 
 CREATE TABLE requests (
-    bidder SERIAL PRIMARY KEY,
+    bidder INTEGER PRIMARY KEY,
     created_at DATE,
     accepted BOOLEAN
 );
 
 CREATE TABLE favorites (
-    product SERIAL PRIMARY KEY,
-    user SERIAL PRIMARY KEY
+    product INTEGER,
+    user INTEGER
+    PRIMARY KEY (product, user)
 );
 
 CREATE TABLE reviews (
-    product SERIAL PRIMARY KEY,
-    rater SERIAL PRIMARY KEY,
-    ratee SERIAL PRIMARY KEY,
+    product INTEGER,
+    rater INTEGER,
+    ratee INTEGER,
     liked BOOLEAN,
     content VARCHAR(200)
+    PRIMARY KEY (product, ratee, rater)
 );
 
 CREATE TABLE products (
     id SERIAL PRIMARY KEY,
-    category INTEGER[],
     name VARCHAR(50) NOT NULL,
     current_price REAL NOT NULL,
     image VARCHAR(100) NOT NULL,
     state product_state 
 );
 
+CREATE TABLE product_categories (
+    product INT NOT NULL,
+    category INT NOT NULL,
+    PRIMARY KEY (product, category),
+    FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (category) REFERENCES categories(id) ON DELETE CASCADE
+);
+
 CREATE TABLE bids (
-    product SERIAL PRIMARY KEY,
-    buyer SERIAL PRIMARY KEY,
+    product INTEGER,
+    buyer INTEGER,
     bid_date TIMESTAMP,
-    price REAL
+    price NUMERIC(12,2)
+    PRIMARY KEY (product, buyer)
 );
 
 CREATE TABLE product_questions (
-    questioner SERIAL PRIMARY KEY,
-    answerer SERIAL PRIMARY KEY,
-    product SERIAL PRIMARY KEY NOT NULL,
+    questioner INTEGER,
+    answerer INTEGER,
+    product INTEGER NOT NULL,
     question VARCHAR(200),
     answer VARCHAR(200)
+    PRIMARY KEY (product, questioner, answerer)
 );
 
 CREATE TABLE refuse (
-    product SERIAL PRIMARY KEY,
-    buyer SERIAL PRIMARY KEY
+    product INTEGER,
+    buyer INTEGER
+    PRIMARY KEY (product, buyer)
 );
 
 CREATE TABLE product_images (
-    product SERIAL PRIMARY KEY,
+    product INTEGER PRIMARY KEY,
     image_path VARCHAR(100)[] NOT NULL
 );
 
 CREATE TABLE product_descriptions (
-    product SERIAL PRIMARY KEY,
+    product INTEGER PRIMARY KEY,
     description VARCHAR(200) NOT NULL,
     created_at TIMESTAMP
 );
 
 CREATE TABLE categories (
-    id SERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE
 );
 
 CREATE TABLE messages (
-    product SERIAL PRIMARY KEY,
-    sender SERIAL PRIMARY KEY,
+    product INTEGER,
+    sender INTEGER,
     content VARCHAR(200),
     image VARCHAR(200),
     type message_type,
     created_at TIMESTAMP
+    PRIMARY KEY (product, sender)
 );
 
 CREATE TABLE bidder_winner (
-    product SERIAL PRIMARY KEY,
-    bidder SERIAL
+    product INTEGER PRIMARY KEY,
+    bidder INTEGER
 );
 
 CREATE TABLE sell_product (
-    seller SERIAL PRIMARY KEY,
-    product SERIAL PRIMARY KEY,
+    seller INTEGER,
+    product INTEGER,
     init_price REAL,
     step_price REAL,
     created_at TIMESTAMP,
     expired_at TIMESTAMP
+    PRIMARY KEY (product, seller)
 );
 
 CREATE TABLE trade_verifications (
-    product SERIAL PRIMARY KEY,
-    bidder SERIAL
-    seller SERIAL,
+    product INTEGER PRIMARY KEY,
+    bidder INTEGER,
+    seller INTEGER,
     delivery_address VARCHAR(100),
     invoice_image VARCHAR(100),
     reciept_image VARCHAR(100),
@@ -125,47 +139,122 @@ CREATE TABLE trade_verifications (
     state trade_state
 );
 
-ALTER TABLE users
-ADD CONSTRAINT chk_birthdate
-CHECK (
-    birthdate <= CURRENT_DATE             
-    AND birthdate <= CURRENT_DATE - INTERVAL '18 years'  
-);
+-- CHECK KEY CONSTRAINTS
 
 ALTER TABLE users
-ADD CONSTRAINT chk_birthdate
-CHECK (rating > 0 AND rating < 1);
+ADD CONSTRAINT chk_users_birthdate
+CHECK ( birthdate <= CURRENT_DATE - INTERVAL '18 years' );
+
+ALTER TABLE users
+ADD CONSTRAINT chk_users_rating
+CHECK (rating >= 0 AND rating < 1);
 
 ALTER TABLE requests
-ADD CONSTRAINT chk_created_at
+ADD CONSTRAINT chk_requests_created_at
 CHECK (created_at <= CURRENT_DATE);
 
 ALTER TABLE sell_product
-ADD CONSTRAINT chk_created_at
-CHECK (created_at <= CURRENT_DATE)
-ADD CONSTRAINT chk_expired_at
-CHECK (expired_at > created_at)
-ADD CONSTRAINT chk_init_price
-CHECK (init_price > 0)
-ADD CONSTRAINT chk_step_price
+ADD CONSTRAINT chk_sell_product_created_at
+CHECK (created_at <= CURRENT_DATE),
+ADD CONSTRAINT chk_sell_product_expired_at
+CHECK (expired_at > created_at),
+ADD CONSTRAINT chk_sell_product_init_price
+CHECK (init_price > 0),
+ADD CONSTRAINT chk_sell_product_step_price
 CHECK (step_price > 0);
 
 ALTER TABLE messages
-ADD CONSTRAINT chk_created_at
+ADD CONSTRAINT chk_messages_created_at
 CHECK (created_at <= CURRENT_DATE);
 
 ALTER TABLE product_descriptions
-ADD CONSTRAINT chk_created_at
+ADD CONSTRAINT chk_product_descriptions_created_at
 CHECK (created_at <= CURRENT_DATE);
 
-ALTER TABLE product_imagess
-ADD CONSTRAINT chk_image_path
+ALTER TABLE product_images
+ADD CONSTRAINT chk_product_images_image_path
 CHECK (array_length(image_path, 1) >= 3);
 
 ALTER TABLE products
-ADD CONSTRAINT chk_current_price
+ADD CONSTRAINT chk_products_current_price
 CHECK (current_price > 0);
 
+-- FOREIGN KEY CONSTRAINTS
+
+ALTER TABLE sessions
+ADD CONSTRAINT fk_sessions_user
+FOREIGN KEY (user) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE requests
+ADD CONSTRAINT fk_requests_bidder
+FOREIGN KEY (bidder) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE favorites
+ADD CONSTRAINT fk_favorites_user
+FOREIGN KEY (user) REFERENCES users(id) ON DELETE CASCADE,
+ADD CONSTRAINT fk_favorites_product
+FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE;
+
 ALTER TABLE bids
-ADD CONSTRAINT fk_auction
-FOREIGN KEY (auction_id) REFERENCES auctions(id) ON DELETE CASCADE;
+ADD CONSTRAINT fk_bids_buyer
+FOREIGN KEY (buyer) REFERENCES users(id) ON DELETE CASCADE,
+ADD CONSTRAINT fk_bids_product
+FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE;
+
+ALTER TABLE product_questions
+ADD CONSTRAINT fk_product_questions_questioner
+FOREIGN KEY (questioner) REFERENCES users(id) ON DELETE CASCADE,
+ADD CONSTRAINT fk_product_questions_answerer
+FOREIGN KEY (answerer) REFERENCES users(id) ON DELETE CASCADE,
+ADD CONSTRAINT fk_product_questions_product
+FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE;
+
+ALTER TABLE refuse
+ADD CONSTRAINT fk_refuse_buyer
+FOREIGN KEY (buyer) REFERENCES users(id) ON DELETE CASCADE,
+ADD CONSTRAINT fk_refuse_product
+FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE;
+
+ALTER TABLE product_images
+ADD CONSTRAINT fk_product_images_product
+FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE;
+
+ALTER TABLE product_descriptions
+ADD CONSTRAINT fk_product_descriptions_product
+FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE;
+
+ALTER TABLE bidder_winner
+ADD CONSTRAINT fk_bidder_winner_product
+FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE;
+
+ALTER TABLE messages
+ADD CONSTRAINT fk_messages_product
+FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE,
+ADD CONSTRAINT fk_messages_sender
+FOREIGN KEY (sender) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE trade_verifications
+ADD CONSTRAINT fk_trade_verifications_product
+FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE,
+ADD CONSTRAINT fk_trade_verifications_bidder
+FOREIGN KEY (bidder) REFERENCES users(id) ON DELETE CASCADE,
+ADD CONSTRAINT fk_trade_verifications_seller
+FOREIGN KEY (seller) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE reviews
+ADD CONSTRAINT fk_reviews_product
+FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE,
+ADD CONSTRAINT fk_reviews_rater
+FOREIGN KEY (rater) REFERENCES users(id) ON DELETE CASCADE,
+ADD CONSTRAINT fk_reviews_ratee
+FOREIGN KEY (ratee) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE sell_product
+ADD CONSTRAINT fk_sell_product_product
+FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE,
+ADD CONSTRAINT fk_sell_product_seller
+FOREIGN KEY (seller) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE products
+ADD CONSTRAINT fk_products_category
+FOREIGN KEY (category) REFERENCES categories(id) ON DELETE CASCADE;
