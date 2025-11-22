@@ -81,7 +81,7 @@ CREATE TABLE product_images (
 CREATE TABLE product_descriptions (
     product SERIAL PRIMARY KEY,
     description VARCHAR(200) NOT NULL,
-    created_date TIMESTAMP
+    created_at TIMESTAMP
 );
 
 CREATE TABLE categories (
@@ -125,3 +125,47 @@ CREATE TABLE trade_verifications (
     state trade_state
 );
 
+ALTER TABLE users
+ADD CONSTRAINT chk_birthdate
+CHECK (
+    birthdate <= CURRENT_DATE             
+    AND birthdate <= CURRENT_DATE - INTERVAL '18 years'  
+);
+
+ALTER TABLE users
+ADD CONSTRAINT chk_birthdate
+CHECK (rating > 0 AND rating < 1);
+
+ALTER TABLE requests
+ADD CONSTRAINT chk_created_at
+CHECK (created_at <= CURRENT_DATE);
+
+ALTER TABLE sell_product
+ADD CONSTRAINT chk_created_at
+CHECK (created_at <= CURRENT_DATE)
+ADD CONSTRAINT chk_expired_at
+CHECK (expired_at > created_at)
+ADD CONSTRAINT chk_init_price
+CHECK (init_price > 0)
+ADD CONSTRAINT chk_step_price
+CHECK (step_price > 0);
+
+ALTER TABLE messages
+ADD CONSTRAINT chk_created_at
+CHECK (created_at <= CURRENT_DATE);
+
+ALTER TABLE product_descriptions
+ADD CONSTRAINT chk_created_at
+CHECK (created_at <= CURRENT_DATE);
+
+ALTER TABLE product_imagess
+ADD CONSTRAINT chk_image_path
+CHECK (array_length(image_path, 1) >= 3);
+
+ALTER TABLE products
+ADD CONSTRAINT chk_current_price
+CHECK (current_price > 0);
+
+ALTER TABLE bids
+ADD CONSTRAINT fk_auction
+FOREIGN KEY (auction_id) REFERENCES auctions(id) ON DELETE CASCADE;
