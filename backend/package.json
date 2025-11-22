@@ -1,0 +1,23 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "keywords": [
+    "onlineauction"
+  ],
+  "homepage": "https://github.com/LeNgocBao145/OnlineAuction#readme",
+  "bugs": {
+    "url": "https://github.com/LeNgocBao145/OnlineAuction/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LeNgocBao145/OnlineAuction.git"
+  },
+  "license": "ISC",
+  "author": "lengocbao",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
