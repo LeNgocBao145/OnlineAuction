@@ -23,7 +23,7 @@ CREATE TABLE sessions (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     expired_at DATE NOT NULL,
-    refresh_token VARCHAR(100) UNIQUE NOT NULL
+    refresh_token text UNIQUE NOT NULL
 );
 
 CREATE TABLE requests (
