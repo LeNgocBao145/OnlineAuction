@@ -7,6 +7,7 @@ import {
   createSession,
   getSessionByRefreshToken,
   createUser,
+  deleteSessionByRefreshToken,
 } from "../libs/sqlQuery.js";
 
 const ACCESS_TOKEN_TTL = "15m";
@@ -72,6 +73,19 @@ class AuthController {
 
   async logout(req, res) {
     try {
+      const refreshToken = req.cookies?.refreshToken;
+
+      if (refreshToken) {
+        // Delete refresh token in session
+        await query(deleteSessionByRefreshToken, [refreshToken]);
+        res.clearCookie("refreshToken", {
+          httpOnly: true,
+          sameSite: "none",
+          secure: true,
+        });
+      }
+
+      return res.status(200).json({ message: "Logout successful" });
     } catch (error) {
       console.error("Logout Error: ", error);
       res.status(500).json({ message: "Internal Server Error" });
