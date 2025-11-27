@@ -8,9 +8,31 @@ import {
   getSessionByRefreshToken,
   createUser,
 } from "../libs/sqlQuery.js";
+import axios from "axios";
 
 const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 7 * 1000;
+
+async function verifyCaptcha(token) {
+  const secret = process.env.RECAPTCHA_SECRET;
+  try {
+    const res = await axios.post(
+      `https://www.google.com/recaptcha/api/siteverify`,
+      null,
+      {
+        params: {
+          secret: secret,
+          response: token,
+        },
+      }
+    );
+
+    return res.data.success;
+  } catch (error) {
+    console.error("Captcha Verification Error: ", error);
+    return false;
+  }
+}
 
 class AuthController {
   async login(req, res) {
@@ -122,11 +144,20 @@ class AuthController {
   async register(req, res) {
     try {
       const { name, email, password, birthdate, address } = req.body;
+
+      const token = req.body["g-recaptcha-response"];
+
+      const ok = await verifyCaptcha(token);
+
+      if (!ok) {
+        return res.status(400).json({ message: "Captcha validation failed" });
+      }
+
       // Validate input
       if (!name || !email || !password || !birthdate || !address) {
-        return res
-          .status(400)
-          .json({ message: "Name, email, password, birthdate, and address are required" });
+        return res.status(400).json({
+          message: "Name, email, password, birthdate, and address are required",
+        });
       }
 
       const isExistingUser = await query(getUserByEmail, [email]);
@@ -147,7 +178,9 @@ class AuthController {
       ]);
       const newUser = result.rows[0];
 
-      return res.status(201).json({ message: "User registered successfully", user: newUser });
+      return res
+        .status(201)
+        .json({ message: "User registered successfully", user: newUser });
     } catch (error) {
       console.error("Register Error: ", error);
       res.status(500).json({ message: "Internal Server Error" });
