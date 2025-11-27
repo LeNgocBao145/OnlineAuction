@@ -17,33 +17,20 @@ const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 7 * 1000;
 
 async function verifyCaptcha(token) {
-  // const secret = process.env.RECAPTCHA_SECRET;
+  const secret = process.env.RECAPTCHA_SECRET;
   try {
-    // const res = await axios.post(
-    //   `https://www.google.com/recaptcha/api/siteverify`,
-    //   null,
-    //   {
-    //     params: {
-    //       secret: secret,
-    //       response: token,
-    //     },
-    //   }
-    // );
-    const secret ="6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe" // Test Secret Key
-      
-
     const res = await axios.post(
-      "https://www.google.com/recaptcha/api/siteverify",
-      "", // body rỗng
+      `https://www.google.com/recaptcha/api/siteverify`,
+      null,
       {
         params: {
-          secret,
+          secret: secret,
           response: token,
         },
       }
     );
-    return res.data.success;
-    
+  
+    return res.data.success;    
   } catch (error) {
     console.error("Captcha Verification Error: ", error);
     return false;
