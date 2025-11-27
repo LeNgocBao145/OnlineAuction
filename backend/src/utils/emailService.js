@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
 
 export async function sendOTPEmail(email, otp) {
   const mailOptions = {
-    from: "Online Auction Platform",
+    from: `Online Auction Platform <${process.env.EMAIL_USER}>`,
     to: email,
     subject: "Email Verification OTP for Online Auction Platform",
     html: `
