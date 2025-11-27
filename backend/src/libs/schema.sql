@@ -26,6 +26,15 @@ CREATE TABLE sessions (
     refresh_token text UNIQUE NOT NULL
 );
 
+CREATE TABLE otps (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(50) NOT NULL,
+    otp_code VARCHAR(6) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    expired_at TIMESTAMP NOT NULL,
+    verified BOOLEAN DEFAULT FALSE
+);
+
 CREATE TABLE requests (
     id SERIAL PRIMARY KEY,
     bidder INTEGER NOT NULL,
