@@ -9,25 +9,41 @@ import {
   createUser,
 } from "../libs/sqlQuery.js";
 import axios from "axios";
+import { sendOTPEmail } from "../utils/emailService.js";
+
+const otpStore = new Map();
 
 const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 7 * 1000;
 
 async function verifyCaptcha(token) {
-  const secret = process.env.RECAPTCHA_SECRET;
+  // const secret = process.env.RECAPTCHA_SECRET;
   try {
+    // const res = await axios.post(
+    //   `https://www.google.com/recaptcha/api/siteverify`,
+    //   null,
+    //   {
+    //     params: {
+    //       secret: secret,
+    //       response: token,
+    //     },
+    //   }
+    // );
+    const secret ="6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe" // Test Secret Key
+      
+
     const res = await axios.post(
-      `https://www.google.com/recaptcha/api/siteverify`,
-      null,
+      "https://www.google.com/recaptcha/api/siteverify",
+      "", // body rỗng
       {
         params: {
-          secret: secret,
+          secret,
           response: token,
         },
       }
     );
-
     return res.data.success;
+    
   } catch (error) {
     console.error("Captcha Verification Error: ", error);
     return false;
@@ -165,7 +181,56 @@ class AuthController {
         return res.status(409).json({ message: "Email is already registered" });
       }
 
-      // Hash password
+      // Generate OTP
+      const otp = crypto.randomInt(100000, 999999).toString();
+      const expiredAt = Date.now() + 10 * 60 * 1000;
+
+      // Store OTP in memory
+      otpStore.set(email, { otp, expiredAt });
+
+      // Send OTP email
+      await sendOTPEmail(email, otp);
+
+      return res.status(200).json({
+        message: "OTP sent to email. Please verify to complete registration.",
+        email,
+      });
+    } catch (error) {
+      console.error("Register Error: ", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
+
+  async verifyOTP(req, res) {
+    try {
+      const { email, otp, name, password, birthdate, address } = req.body;
+
+      if (!email || !otp || !name || !password || !birthdate || !address) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Get OTP from memory
+      const otpRecord = otpStore.get(email);
+
+      if (!otpRecord) {
+        return res.status(400).json({ message: "Invalid or expired OTP" });
+      }
+
+      // Check if OTP is expired
+      if (Date.now() > otpRecord.expiredAt) {
+        otpStore.delete(email);
+        return res.status(400).json({ message: "OTP has expired" });
+      }
+
+      // Verify OTP
+      if (otpRecord.otp !== otp) {
+        return res.status(400).json({ message: "Invalid OTP" });
+      }
+
+      // Remove OTP from memory
+      otpStore.delete(email);
+
+      // Create user
       const hashedPassword = await bcrypt.hash(password, 10);
       const formattedBirthdate = new Date(birthdate);
 
@@ -178,11 +243,12 @@ class AuthController {
       ]);
       const newUser = result.rows[0];
 
-      return res
-        .status(201)
-        .json({ message: "User registered successfully", user: newUser });
+      return res.status(201).json({
+        message: "User registered successfully",
+        user: newUser,
+      });
     } catch (error) {
-      console.error("Register Error: ", error);
+      console.error("Verify OTP Error: ", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   }
