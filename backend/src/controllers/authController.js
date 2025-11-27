@@ -2,7 +2,11 @@ import query from "../libs/db.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
-import { getUserByEmail, createSession } from "../libs/sqlQuery.js";
+import {
+  getUserByEmail,
+  createSession,
+  getSessionByRefreshToken,
+} from "../libs/sqlQuery.js";
 
 const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 7 * 1000;
@@ -73,8 +77,41 @@ class AuthController {
     }
   }
 
-  async refresh(req, res) {
+  async refreshToken(req, res) {
     try {
+      const refreshToken = req.cookie?.refreshToken;
+      // Check if there is refresh token
+      if (!token) {
+        return res
+          .status(403)
+          .json({ message: "Refresh token is not exist!!" });
+      }
+
+      // Find refresh token in database
+      const session = await query(getSessionByRefreshToken, [refreshToken]);
+
+      // Check if refresh token is valid
+      if (!session) {
+        return res
+          .status(401)
+          .json({ message: "Refresh token is expired or invalid!" });
+      }
+
+      // Check expiredAt of refresh token to ensure it's not expired
+      if (session.expiredAt < new Date()) {
+        return res.status(403).json({ message: "Refresh token is expired" });
+      }
+
+      // Create new access token
+      const accessToken = jwt.sign(
+        { userId: session.userId },
+        process.env.ACCESS_TOKEN_SECRET,
+        {
+          expiresIn: ACCESS_TOKEN_TTL,
+        }
+      );
+
+      return res.status(200).json({ accessToken });
     } catch (error) {
       console.error("Refresh Error: ", error);
       res.status(500).json({ message: "Internal Server Error" });
