@@ -6,6 +6,7 @@ import {
   getUserByEmail,
   createSession,
   getSessionByRefreshToken,
+  createUser,
 } from "../libs/sqlQuery.js";
 
 const ACCESS_TOKEN_TTL = "15m";
@@ -120,6 +121,33 @@ class AuthController {
 
   async register(req, res) {
     try {
+      const { name, email, password, birthdate, address } = req.body;
+      // Validate input
+      if (!name || !email || !password || !birthdate || !address) {
+        return res
+          .status(400)
+          .json({ message: "Name, email, password, birthdate, and address are required" });
+      }
+
+      const isExistingUser = await query(getUserByEmail, [email]);
+      if (isExistingUser.rows.length > 0) {
+        return res.status(409).json({ message: "Email is already registered" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const formattedBirthdate = new Date(birthdate);
+
+      const result = await query(createUser, [
+        name,
+        email,
+        hashedPassword,
+        formattedBirthdate,
+        address,
+      ]);
+      const newUser = result.rows[0];
+
+      return res.status(201).json({ message: "User registered successfully", user: newUser });
     } catch (error) {
       console.error("Register Error: ", error);
       res.status(500).json({ message: "Internal Server Error" });
