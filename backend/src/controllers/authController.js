@@ -241,6 +241,8 @@ class AuthController {
         hashedPassword,
         formattedBirthdate,
         address,
+        'bidder',
+        0,
       ]);
       const newUser = result.rows[0];
 

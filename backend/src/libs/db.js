@@ -24,11 +24,15 @@ const db = new pg.Pool({
     user: process.env.PG_USER,
     password: process.env.PG_PASSWORD,
     port: parseInt(process.env.PG_PORT, 10),
-    ssl: process.env.PG_SSL === 'true',
+    ssl: process.env.PG_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
 });
 
-db.connect()
-    .then(()=>{
+// Test connection
+db.query('SELECT NOW()')
+    .then(() => {
         console.log("Connect successfully with postgres database!")
     })
     .catch((err) => { 
@@ -38,8 +42,19 @@ db.connect()
 
 db.on('error', (err) => {
     console.error('Unexpected error on idle client', err);
-    process.exit(-1);
+    // Don't exit process, just log the error
 });
 
-const query = (text, params) => db.query(text, params);
+const query = async (text, params) => {
+    const client = await db.connect();
+    try {
+        const result = await client.query(text, params);
+        return result;
+    } catch (error) {
+        console.error('Database query error:', error);
+        throw error;
+    } finally {
+        client.release();
+    }
+};
 export default query;
