@@ -5,11 +5,16 @@ import {
   deleteUserById,
   createUser,
   getUserByEmail,
+  getCategories,
+  createCategory,
+  updateCategoryById,
+  deleteCategoryById,
 } from "../libs/sqlQuery.js";
 import query from "../libs/db.js";
 import bcrypt from "bcrypt";
 
 class AdminController {
+  // User Management
   async getUsers(req, res) {
     try {
       const users = await query(getUsers);
@@ -104,6 +109,75 @@ class AdminController {
       return res.status(200).json({ message: "User updated successfully!" });
     } catch (error) {
       console.error("Error when update user", error);      
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  // Category Management
+  async getCategories(req, res) {
+    try {
+      const categories = await query(getCategories);
+      if(!categories || !categories.rows || categories.rows.length === 0) {
+        return res.status(404).json({ message: "No categories found" });
+      }
+      return res.status(200).json({
+        message: "Categories retrieved successfully!",
+        categories: categories.rows,
+      });
+    } catch (error) {
+      console.error("Error when get categories", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async updateCategory(req, res) {
+    try {
+      const { name } =  req.body;
+      const categoryId = req.params.categoryId;
+      const updatedCategory = await query(updateCategoryById, [name, categoryId]);
+      if (!updatedCategory.rows.length) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      return res.status(200).json({
+        message: "Category updated successfully!",
+        category: updatedCategory.rows[0],
+      });
+    } catch (error) {
+      console.error("Error when update category", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async createCategory(req, res) {
+    try {
+      const { name } = req.body;
+      if(!name) {
+        return res.status(400).json({ message: "Category name is required" });
+      }
+      const newCategory = await query(createCategory, [name]);
+      if (!newCategory) {
+        return res.status(403).json({ message: "Create category failed!" });
+      }
+      return res.status(201).json({
+        message: "Category created successfully!",
+        category: newCategory.rows[0],
+      });
+    } catch (error) {
+      console.error("Error when create category", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async deleteCategory(req, res) {
+    try {
+      const categoryId = req.params.categoryId;
+      if(!categoryId) {
+        return res.status(400).json({ message: "Category ID is required" });
+      }
+      await query(deleteCategoryById, [categoryId]);
+      return res.status(200).json({ message: "Delete category successfully!" });
+    } catch (error) {
+      console.error("Error when delete category", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   }

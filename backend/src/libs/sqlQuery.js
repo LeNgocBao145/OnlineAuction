@@ -22,6 +22,12 @@ export const deleteSessionByRefreshToken = `DELETE FROM sessions WHERE refresh_t
 // Category Queries
 export const getCategories = `SELECT * FROM categories`;
 
+export const createCategory = `INSERT INTO categories (name) VALUES ($1) RETURNING *`;
+
+export const updateCategoryById = `UPDATE categories SET name = $1 WHERE id = $2 RETURNING *`;
+
+export const deleteCategoryById = `DELETE FROM categories WHERE id = $1`;
+
 // Product Queries
 export const getProducts = `SELECT * FROM products`;
 

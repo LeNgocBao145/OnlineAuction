@@ -3,8 +3,17 @@ import AdminController from '../controllers/adminController.js';
 
 const router = express.Router();
 
+// User Account Management
 router.get('/accounts', AdminController.getUsers);
-router.post('/addAccount', AdminController.createUser);
-router.delete('/:accountId', AdminController.deleteUser);
-router.put('/:accountId', AdminController.updateUser);
+router.post('/accounts', AdminController.createUser);
+router.delete('/accounts/:accountId', AdminController.deleteUser);
+router.put('/accounts/:accountId', AdminController.updateUser);
+
+// Category Management
+router.get('/categories', AdminController.getCategories);
+router.post('/categories', AdminController.createCategory);
+router.put('/categories/:categoryId', AdminController.updateCategory);
+router.delete('/categories/:categoryId', AdminController.deleteCategory);
+
+
 export default router;
