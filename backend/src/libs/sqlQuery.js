@@ -12,6 +12,8 @@ export const deleteUserById = `DELETE FROM users WHERE id = $1`;
 
 export const updateUserById = `UPDATE users SET name = $1, email = $2, birthdate = $3, address = $4, role = $5, rating = $6 WHERE id = $7 RETURNING *`;
 
+export const updateUserInformationById = `UPDATE users SET name = $1, email = $2, birthdate = $3 WHERE id = $4 RETURNING *`;
+
 // Session Queries
 export const createSession = `INSERT INTO sessions (user_id, refresh_token, expired_at) VALUES ($1, $2, $3)`;
 
