@@ -105,9 +105,9 @@ class AuthController {
 
   async refreshToken(req, res) {
     try {
-      const refreshToken = req.cookie?.refreshToken;
+      const refreshToken = req.cookies?.refreshToken;
       // Check if there is refresh token
-      if (!token) {
+      if (!refreshToken) {
         return res
           .status(403)
           .json({ message: "Refresh token is not exist!!" });
@@ -173,7 +173,7 @@ class AuthController {
       const expiredAt = Date.now() + 10 * 60 * 1000;
 
       // Store OTP in memory
-      otpStore.set(email, { otp, expiredAt });
+      otpStore.set(email, { otp, expiredAt, name, password, birthdate, address });
 
       // Send OTP email
       await sendOTPEmail(email, otp);
@@ -190,10 +190,10 @@ class AuthController {
 
   async verifyOTP(req, res) {
     try {
-      const { email, otp, name, password, birthdate, address } = req.body;
+      const { email, otp } = req.body;
 
-      if (!email || !otp || !name || !password || !birthdate || !address) {
-        return res.status(400).json({ message: "All fields are required" });
+      if (!email || !otp) {
+        return res.status(400).json({ message: "Email and OTP are required" });
       }
 
       // Get OTP from memory
@@ -213,6 +213,8 @@ class AuthController {
       if (otpRecord.otp !== otp) {
         return res.status(400).json({ message: "Invalid OTP" });
       }
+
+      const { name, password, birthdate, address } = otpRecord;
 
       // Remove OTP from memory
       otpStore.delete(email);
