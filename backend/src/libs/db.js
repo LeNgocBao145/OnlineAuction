@@ -57,4 +57,5 @@ const query = async (text, params) => {
         client.release();
     }
 };
+
 export default query;

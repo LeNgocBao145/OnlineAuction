@@ -1,4 +1,3 @@
-
 // User Queries
 export const getUserByEmail = `SELECT * FROM users WHERE email = $1`;
 
@@ -23,6 +22,8 @@ export const deleteSessionByRefreshToken = `DELETE FROM sessions WHERE refresh_t
 export const getCategories = `SELECT * FROM categories`;
 
 // Product Queries
+export const createProduct = `INSERT INTO products (name, current_price, image, state) VALUES ($1, $2, $3, $4) RETURNING *`;
+
 export const getProducts = `SELECT * FROM products`;
 
 // Admin Queries
