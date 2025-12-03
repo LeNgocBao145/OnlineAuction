@@ -15,5 +15,7 @@ router.post('/categories', AdminController.createCategory);
 router.put('/categories/:categoryId', AdminController.updateCategory);
 router.delete('/categories/:categoryId', AdminController.deleteCategory);
 
+// Product Management
+router.delete('/products/:productId', AdminController.deleteProduct);
 
 export default router;

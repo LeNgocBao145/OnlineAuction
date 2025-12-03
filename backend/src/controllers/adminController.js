@@ -9,6 +9,8 @@ import {
   createCategory,
   updateCategoryById,
   deleteCategoryById,
+  getProductById,
+  deleteProductById,
 } from "../libs/sqlQuery.js";
 import query from "../libs/db.js";
 import bcrypt from "bcrypt";
@@ -54,7 +56,7 @@ class AdminController {
         hashedPassword,
         formattedBirthdate,
         address,
-        role ?? 'bidder',
+        role ?? "bidder",
         rating ?? 0,
       ]);
       if (!user) {
@@ -71,7 +73,7 @@ class AdminController {
 
   async deleteUser(req, res) {
     try {
-      const userId = req.params.accountId;    
+      const userId = req.params.accountId;
       const user = await query(getUserById, [userId]);
       if (!user.rows.length) {
         return res.status(404).json({ message: "No users found" });
@@ -88,9 +90,17 @@ class AdminController {
     try {
       const userId = req.params.accountId;
       const { name, email, birthdate, address, role, rating } = req.body;
-      if (!name || !email || !birthdate || !address || !role || rating === undefined) {
+      if (
+        !name ||
+        !email ||
+        !birthdate ||
+        !address ||
+        !role ||
+        rating === undefined
+      ) {
         return res.status(400).json({
-          message: "Name, email, birthdate, address, role, and rating are required",
+          message:
+            "Name, email, birthdate, address, role, and rating are required",
         });
       }
       const user = await query(getUserById, [userId]);
@@ -108,7 +118,25 @@ class AdminController {
       ]);
       return res.status(200).json({ message: "User updated successfully!" });
     } catch (error) {
-      console.error("Error when update user", error);      
+      console.error("Error when update user", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }  
+
+  async deleteProduct(req, res) {
+    try {
+      const productId = req.params.productId;
+      if (!productId) {
+        return res.status(400).json({ message: "Product ID is required" });
+      }
+      const product = await query(getProductById, [productId]);
+      if (!product.rows.length) {
+        return res.status(404).json({ message: "No products found" });
+      }
+      await query(deleteProductById, [productId]);
+      return res.status(200).json({ message: "Delete product successfully!" });
+    } catch (error) {
+      console.error("Error when get products!", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   }
