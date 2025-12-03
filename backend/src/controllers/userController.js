@@ -1,67 +1,82 @@
-import { getUserById, updateUserInformationById } from "../libs/sqlQuery.js";
+import {
+  getUserById,
+  updateUserInformationById,
+  updateUserPasswordById,
+} from "../libs/sqlQuery.js";
 import query from "../libs/db.js";
-import crypto from 'crypto';
-import { sendOTPEmail } from '../utils/emailService.js';
+import crypto from "crypto";
+import bcrypt from "bcrypt";
+import { sendOTPEmail } from "../utils/emailService.js";
 
 const otpStore = new Map();
 
 class UserController {
   async updateUser(req, res) {
-    try {        
-        const userId = req.params.userId;
-        const { name, email, birthdate } = req.body;
-    
-        if (!name || !email || !birthdate) {
-          return res
-            .status(400)
-            .json({ error: "Name, email, and birthdate are required." });
-        }
-    
-        const user = await query(getUserById, [userId]);
-        if (user.rows.length === 0) {
-          return res.status(404).json({ error: "User not found." });
-        }
-    
-        // Validate birthdate (must be 18+)
-        const birthDate = new Date(birthdate);
-        const age = Math.floor(
-          (Date.now() - birthDate) / (365.25 * 24 * 60 * 60 * 1000)
-        );
-        if (age < 18) {
-          return res
-            .status(400)
-            .json({ error: "User must be at least 18 years old." });
-        }
-    
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          return res.status(400).json({ error: "Invalid email format." });
-        }
-    
-        // If email changed, require OTP verification
-        if (user.rows[0].email !== email) {
-          // Generate OTP
-          const otp = crypto.randomInt(100000, 999999).toString();
-          const expiredAt = Date.now() + 10 * 60 * 1000;
-    
-          // Store OTP with user data in memory
-          otpStore.set(email, { otp, expiredAt, name, birthdate });
-    
-          // Send OTP email
-          await sendOTPEmail(email, otp);
-          return res.status(200).json({
-              message: "OTP sent to email. Please verify to complete registration.",
-              email,
-          });
-        }
+    try {
+      const userId = req.params.userId;
+      const { name, email, birthdate } = req.body;
 
-        const updatedUser = await query(updateUserInformationById, [name, email, birthdate, userId]);
+      if (!name || !email || !birthdate) {
+        return res
+          .status(400)
+          .json({ error: "Name, email, and birthdate are required." });
+      }
 
-        return res.status(201).json({ message: "Update user information successfully!", updatedUser });
+      const user = await query(getUserById, [userId]);
+      if (user.rows.length === 0) {
+        return res.status(404).json({ error: "User not found." });
+      }
+
+      // Validate birthdate (must be 18+)
+      const birthDate = new Date(birthdate);
+      const age = Math.floor(
+        (Date.now() - birthDate) / (365.25 * 24 * 60 * 60 * 1000)
+      );
+      if (age < 18) {
+        return res
+          .status(400)
+          .json({ error: "User must be at least 18 years old." });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "Invalid email format." });
+      }
+
+      // If email changed, require OTP verification
+      if (user.rows[0].email !== email) {
+        // Generate OTP
+        const otp = crypto.randomInt(100000, 999999).toString();
+        const expiredAt = Date.now() + 10 * 60 * 1000;
+
+        // Store OTP with user data in memory
+        otpStore.set(email, { otp, expiredAt, name, birthdate });
+
+        // Send OTP email
+        await sendOTPEmail(email, otp);
+        return res.status(200).json({
+          message: "OTP sent to email. Please verify to complete registration.",
+          email,
+        });
+      }
+
+      const updatedUser = await query(updateUserInformationById, [
+        name,
+        email,
+        birthdate,
+        userId,
+      ]);
+
+      return res
+        .status(201)
+        .json({
+          message: "Update user information successfully!",
+          updatedUser,
+        });
     } catch (error) {
-        console.error("Error when update user information!", error);
-        return res.status(500).json({ error: "Internal server error." });
+      console.error("Error when update user information!", error);
+      return res.status(500).json({ error: "Internal server error." });
     }
   }
   async verifyOTP(req, res) {
@@ -96,12 +111,61 @@ class UserController {
 
       // Update user information using stored data
       const { name, birthdate } = otpRecord;
-      const updatedUser = await query(updateUserInformationById, [name, email, birthdate, userId]);
+      const updatedUser = await query(updateUserInformationById, [
+        name,
+        email,
+        birthdate,
+        userId,
+      ]);
 
-      return res.status(200).json({ message: "Update user information successfully!", updatedUser });      
+      return res
+        .status(200)
+        .json({
+          message: "Update user information successfully!",
+          updatedUser,
+        });
     } catch (error) {
-        console.error("Error when verify email!", error);
-        return res.status(500).json({ error: "Internal server error." });
+      console.error("Error when verify email!", error);
+      return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
+  async changePassword(req, res) {
+    try {
+      const userId = req.params.userId;
+      const { oldPassword, newPassword, confirmPassword } = req.body;
+
+      if (!oldPassword || !newPassword || !confirmPassword) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Get user from database
+      const user = await query(getUserById, [userId]);
+      if (user.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Verify old password
+      const isValidPassword = await bcrypt.compare(
+        oldPassword,
+        user.rows[0].hashed_password
+      );
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Old password is incorrect" });
+      }
+
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({ message: "Passwords do not match" });
+      }
+
+      // Update password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await query(updateUserPasswordById, [hashedPassword, userId]);
+
+      return res.status(200).json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Change Password Error: ", error);
+      return res.status(500).json({ error: "Internal server error." });
     }
   }
 }

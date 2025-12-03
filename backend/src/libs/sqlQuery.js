@@ -14,6 +14,8 @@ export const updateUserById = `UPDATE users SET name = $1, email = $2, birthdate
 
 export const updateUserInformationById = `UPDATE users SET name = $1, email = $2, birthdate = $3 WHERE id = $4 RETURNING *`;
 
+export const updateUserPasswordById = `UPDATE users SET hashed_password = $1 WHERE id = $2 RETURNING *`;
+
 // Session Queries
 export const createSession = `INSERT INTO sessions (user_id, refresh_token, expired_at) VALUES ($1, $2, $3)`;
 
