@@ -13,6 +13,7 @@ import axios from "axios";
 import { sendOTPEmail } from "../utils/emailService.js";
 
 const otpStore = new Map();
+const resetPasswordOtpStore = new Map();
 
 const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 7 * 1000;
@@ -254,6 +255,91 @@ class AuthController {
       });
     } catch (error) {
       console.error("Verify OTP Error: ", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
+
+  async forgotPassword(req, res) {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Check if user exists
+      const result = await query(getUserByEmail, [email]);
+      const user = result.rows[0];
+
+      if (!user) {
+        return res.status(404).json({ message: "Email not found" });
+      }
+
+      // Generate OTP
+      const otp = crypto.randomInt(100000, 999999).toString();
+      const expiredAt = Date.now() + 10 * 60 * 1000;
+
+      // Store OTP in memory
+      resetPasswordOtpStore.set(email, { otp, expiredAt });
+
+      // Send OTP email
+      await sendOTPEmail(email, otp);
+
+      return res.status(200).json({
+        message: "OTP sent to email. Please verify to reset password.",
+        email,
+      });
+    } catch (error) {
+      console.error("Forgot Password Error: ", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
+
+  async resetPassword(req, res) {
+    try {
+      const { email, otp, newPassword, confirmPassword } = req.body;
+
+      if (!email || !otp || !newPassword || !confirmPassword) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({ message: "Passwords do not match" });
+      }
+
+      // Get OTP from memory
+      const otpRecord = resetPasswordOtpStore.get(email);
+
+      if (!otpRecord) {
+        return res.status(400).json({ message: "Invalid or expired OTP" });
+      }
+
+      // Check if OTP is expired
+      if (Date.now() > otpRecord.expiredAt) {
+        resetPasswordOtpStore.delete(email);
+        return res.status(400).json({ message: "OTP has expired" });
+      }
+
+      // Verify OTP
+      if (otpRecord.otp !== otp) {
+        return res.status(400).json({ message: "Invalid OTP" });
+      }
+
+      // Remove OTP from memory
+      resetPasswordOtpStore.delete(email);
+
+      // Update password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await query("UPDATE users SET hashed_password = $1 WHERE email = $2", [
+        hashedPassword,
+        email,
+      ]);
+
+      return res.status(200).json({
+        message: "Password reset successfully",
+      });
+    } catch (error) {
+      console.error("Reset Password Error: ", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   }
