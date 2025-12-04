@@ -44,7 +44,8 @@ class ProductController {
 
     async addImages(req, res) {
         try {
-            const { productId, imagePath } = req.body;
+            const productId = req.params.productId;
+            const { imagePath } = req.body;
 
             if (!productId || !imagePath) {
                 return res.status(400).json({
@@ -78,7 +79,8 @@ class ProductController {
 
     async addDescription(req, res) {
         try {
-            const { productId, des } = req.body;
+            const productId = req.params.productId;
+            const { des } = req.body;
 
             if (!productId || !des) {
                 return res.status(400).json({
