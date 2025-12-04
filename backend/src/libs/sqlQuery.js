@@ -25,5 +25,31 @@ export const getCategories = `SELECT * FROM categories`;
 // Product Queries
 export const getProducts = `SELECT * FROM products`;
 
+export const getProductById = `SELECT * FROM products WHERE id = $1`;
+
+// Favorite Queries
+export const markFavoriteProduct = `
+    INSERT INTO favorites (user_id, product) 
+    VALUES ($1, $2)
+    ON CONFLICT (user_id, product) DO NOTHING;
+`;
+
+export const unmarkFavoriteProduct = `
+    DELETE FROM favorites 
+    WHERE user_id = $1 AND product = $2;
+`;
+
+export const getFavoritesByUserId = `
+    SELECT p.* 
+    FROM favorites f 
+      JOIN products p ON f.product = p.id 
+    WHERE f.user_id = $1;
+`;
+
+export const getFavoriteByUserAndProduct = `
+    SELECT * FROM favorites 
+    WHERE user_id = $1 AND product = $2;
+`;
+
 // Admin Queries
 
