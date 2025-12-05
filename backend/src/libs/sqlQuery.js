@@ -64,7 +64,6 @@ export const getFilteredProductsQuery = (sortLogic) => `
             plainto_tsquery('simple', unaccent($1)) AS query
 
     WHERE (p.search_vector @@ query OR p.name ILIKE '%' || $1 || '%') 
-      AND sp.expired_at > NOW()
       AND ($2::int IS NULL OR pc.category = $2)
 
     GROUP BY p.id, p.image, p.name, p.current_price, 
