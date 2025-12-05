@@ -42,13 +42,107 @@ export const updateProductById = `UPDATE products SET name = $1, description = $
 export const deleteProductById = `DELETE FROM products WHERE id = $1`;
 
 export const getProductDetailsById = `
+    WITH base AS (
+        SELECT
+            p.id,
+            p.name,
+            p.image,
+            p.current_price,
+            p.state,
+            sp.seller AS seller_id,
+            u.name AS seller_name,
+            sp.created_at,
+            sp.expired_at
+        FROM products p
+            LEFT JOIN sell_product sp ON sp.product = p.id
+            LEFT JOIN users u ON u.id = sp.seller
+        WHERE p.id = $1
+    )
 
+    SELECT
+        b.*,
+
+        -- Categories
+        COALESCE(
+            (
+                SELECT json_agg(c.name)
+                FROM product_categories pc
+                JOIN categories c ON c.id = pc.category
+                WHERE pc.product = b.id
+            ),
+            '[]'
+        ) AS categories,
+
+        -- Additional images
+        COALESCE(
+            (
+                SELECT to_json(pi.image_path)
+                FROM product_images pi
+                WHERE pi.product = b.id
+            ),
+            '[]'::json
+        ) AS additional_images,
+
+        -- Descriptions
+        COALESCE(
+            (
+                SELECT json_agg(
+                    json_build_object(
+                        'description', d.description,
+                        'created_at', d.created_at
+                    ) ORDER BY d.created_at ASC
+                )
+                FROM product_descriptions d
+                WHERE d.product = b.id
+            ),
+            '[]'
+        ) AS descriptions,
+
+        -- Bids
+        COALESCE(
+            (
+                SELECT json_agg(
+                    json_build_object(
+                        'bidder_name', u_b.name,  
+                        'amount', bid.price,
+                        'bid_time', bid.bid_date
+                    ) ORDER BY bid.price DESC
+                )
+                FROM bids bid 
+                JOIN users u_b ON u_b.id = bid.buyer
+                WHERE bid.product = b.id
+            ),
+            '[]'
+        ) AS bids,
+        
+        -- Questions & answers
+        COALESCE(
+            (
+                SELECT json_agg(
+                    json_build_object(
+                        'question', q.question,
+                        'questioner_name', u_q.name,
+                        'answer', q.answer,
+                        'answerer_name', u_a.name,
+                        'asked_at', q.asked_at,
+                        'answered_at', q.answered_at
+                    ) ORDER BY q.asked_at ASC
+                )
+                FROM product_questions q
+                    LEFT JOIN users u_q ON u_q.id = q.questioner
+                    LEFT JOIN users u_a ON u_a.id = q.answerer
+                WHERE q.product = b.id
+            ),
+            '[]'
+        ) AS qa
+
+    FROM base b;
 `;
 
 // Product Description Queries
-export const getProductDescriptionsByProductId = `SELECT * FROM product_descriptions WHERE product_id = $1`;
+export const getProductDescriptionsByProductId = `SELECT * FROM product_descriptions WHERE product = $1`;
 
-export const createProductDescription = `INSERT INTO product_descriptions (product_id, description, created_at) VALUES ($1, $2, $3) RETURNING *`;
+export const createProductDescription = `INSERT INTO product_descriptions (product, description, created_at) VALUES ($1, $2, $3) RETURNING *`;
 
 // Admin Queries
 
