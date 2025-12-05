@@ -25,5 +25,57 @@ export const getCategories = `SELECT * FROM categories`;
 // Product Queries
 export const getProducts = `SELECT * FROM products`;
 
+export const getFilteredProductsQuery = (sortLogic) => `
+    SELECT
+        p.id,
+        p.image,
+        p.name,
+        p.current_price,
+
+        -- Highest bidder
+        bidder.name as highest_bidder,
+
+        sp.created_at AS selling_date,
+        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
+
+        -- Bid count
+        COUNT(b.id) AS bid_count,
+
+        -- Is new
+        (sp.created_at >= NOW() - INTERVAL '90 minutes') AS is_new,
+
+        -- FTS ranking
+        ts_rank(p.search_vector, plainto_tsquery('simple', unaccent($1))) as rank,
+
+        COUNT(*) OVER() AS total_count
+
+    FROM
+        products p 
+            JOIN sell_product sp ON p.id = sp.product
+            JOIN product_categories pc ON p.id = pc.product
+            LEFT JOIN bids b ON p.id = b.product
+            LEFT JOIN LATERAL(
+                SELECT u.name
+                FROM bids b2 JOIN users u ON b2.buyer = u.id
+                WHERE b2.product = p.id
+                ORDER BY b2.price DESC
+                LIMIT 1
+            ) bidder ON true,
+            plainto_tsquery('simple', unaccent($1)) AS query
+
+    WHERE (p.search_vector @@ query OR p.name ILIKE '%' || $1 || '%') 
+      AND sp.expired_at > NOW()
+      AND ($2::int IS NULL OR pc.category = $2)
+
+    GROUP BY p.id, p.image, p.name, p.current_price, 
+             sp.expired_at, sp.created_at,
+             bidder.name,
+             query, p.search_vector
+
+    ORDER BY ${sortLogic}, rank DESC, is_new DESC
+
+    LIMIT $3 OFFSET $4;
+`;
+
 // Admin Queries
 
