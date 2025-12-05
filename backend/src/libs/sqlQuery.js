@@ -41,6 +41,10 @@ export const updateProductById = `UPDATE products SET name = $1, description = $
 
 export const deleteProductById = `DELETE FROM products WHERE id = $1`;
 
+export const getProductDetailsById = `
+
+`;
+
 // Product Description Queries
 export const getProductDescriptionsByProductId = `SELECT * FROM product_descriptions WHERE product_id = $1`;
 
