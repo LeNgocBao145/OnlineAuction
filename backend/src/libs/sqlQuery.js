@@ -39,7 +39,7 @@ export const getFilteredProductsQuery = (sortLogic) => `
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
 
         -- Bid count
-        COUNT(b.id) AS bid_count,
+        COUNT(DISTINCT b.id) AS bid_count,
 
         -- Is new
         (sp.created_at >= NOW() - INTERVAL '90 minutes') AS is_new,
