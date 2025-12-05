@@ -62,7 +62,7 @@ class AuthController {
       }
       // If login is successful, you can generate a token or set a session here
       const accessToken = jwt.sign(
-        { userId: user._id },
+        { userId: user.id },
         process.env.ACCESS_TOKEN_SECRET,
         {
           expiresIn: ACCESS_TOKEN_TTL,

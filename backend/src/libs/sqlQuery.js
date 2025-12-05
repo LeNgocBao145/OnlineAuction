@@ -39,11 +39,44 @@ export const unmarkFavoriteProduct = `
     WHERE user_id = $1 AND product = $2;
 `;
 
-export const getFavoritesByUserId = `
-    SELECT p.* 
-    FROM favorites f 
-      JOIN products p ON f.product = p.id 
-    WHERE f.user_id = $1;
+export const getFavoritesQuery = (sortLogic) => `
+    SELECT
+        p.id,
+        p.image,
+        p.name,
+        p.current_price,   
+        f.created_at AS favorited_date,
+        
+        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
+
+        COUNT(DISTINCT b.id) AS bid_count,
+
+        COUNT(*) OVER() AS total_count
+
+    FROM
+        favorites f
+            JOIN products p ON f.product = p.id
+            JOIN sell_product sp ON p.id = sp.product
+            LEFT JOIN product_categories pc ON p.id = pc.product
+            LEFT JOIN bids b ON p.id = b.product
+            LEFT JOIN LATERAL(
+                SELECT u.name
+                FROM bids b2 JOIN users u ON b2.buyer = u.id
+                WHERE b2.product = p.id
+                ORDER BY b2.price DESC
+                LIMIT 1
+            ) bidder ON true
+
+    WHERE 
+        f.user_id = $1
+        AND ($2::int IS NULL OR pc.category = $2)
+
+    GROUP BY p.id, p.image, p.name, p.current_price, 
+             sp.expired_at, f.created_at
+
+    ORDER BY ${sortLogic}
+
+    LIMIT $3 OFFSET $4;
 `;
 
 export const getFavoriteByUserAndProduct = `
