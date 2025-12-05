@@ -7,7 +7,7 @@ import {
     getFavoriteByUserAndProduct
 } from "../libs/sqlQuery.js";
 
-class BidderController {
+class UserController {
     async markFavorite(req, res) {
         try {
             const userId = req.user?._id;
@@ -94,5 +94,5 @@ class BidderController {
     }
 }
 
-const bidderController = new BidderController();
-export default bidderController;
+const userController = new UserController();
+export default userController;
