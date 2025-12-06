@@ -8,5 +8,6 @@ router.patch('/:userId/verify-otp', UserController.verifyOTP);
 router.get('/:userId/favorites', UserController.getFavorites);
 router.post('/:userId/favorites/:productId', UserController.markFavorite);
 router.delete('/:userId/favorites/:productId', UserController.unmarkFavorite);
+router.patch('/:userId/change-password', UserController.changePassword);
 
 export default router;

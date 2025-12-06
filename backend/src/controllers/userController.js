@@ -6,9 +6,11 @@ import {
   markFavoriteProduct,
   unmarkFavoriteProduct,
   getFavoriteByUserAndProduct,
+  updateUserPasswordById,
 } from "../libs/sqlQuery.js";
 import query from "../libs/db.js";
 import crypto from "crypto";
+import bcrypt from "bcrypt";
 import { sendOTPEmail } from "../utils/emailService.js";
 
 const otpStore = new Map();
@@ -71,10 +73,12 @@ class UserController {
         userId,
       ]);
 
-      return res.status(201).json({
-        message: "Update user information successfully!",
-        updatedUser,
-      });
+      return res
+        .status(201)
+        .json({
+          message: "Update user information successfully!",
+          updatedUser,
+        });
     } catch (error) {
       console.error("Error when update user information!", error);
       return res.status(500).json({ error: "Internal server error." });
@@ -119,10 +123,12 @@ class UserController {
         userId,
       ]);
 
-      return res.status(200).json({
-        message: "Update user information successfully!",
-        updatedUser,
-      });
+      return res
+        .status(200)
+        .json({
+          message: "Update user information successfully!",
+          updatedUser,
+        });
     } catch (error) {
       console.error("Error when verify email!", error);
       return res.status(500).json({ error: "Internal server error." });
@@ -262,6 +268,44 @@ class UserController {
     } catch (error) {
       console.error("Error when get favorites", error);
       return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+  async changePassword(req, res) {
+    try {
+      const userId = req.params.userId;
+      const { oldPassword, newPassword, confirmPassword } = req.body;
+
+      if (!oldPassword || !newPassword || !confirmPassword) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Get user from database
+      const user = await query(getUserById, [userId]);
+      if (user.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Verify old password
+      const isValidPassword = await bcrypt.compare(
+        oldPassword,
+        user.rows[0].hashed_password
+      );
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Old password is incorrect" });
+      }
+
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({ message: "Passwords do not match" });
+      }
+
+      // Update password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await query(updateUserPasswordById, [hashedPassword, userId]);
+
+      return res.status(200).json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Change Password Error: ", error);
+      return res.status(500).json({ error: "Internal server error." });
     }
   }
 }
