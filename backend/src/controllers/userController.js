@@ -10,7 +10,7 @@ import {
 class UserController {
     async markFavorite(req, res) {
         try {
-            const userId = req.user?.id;
+            const userId = req.params.userId;
             if (!userId) {
                 return res.status(401).json({ message: "Unauthorized" });
             }
@@ -46,7 +46,7 @@ class UserController {
 
     async unmarkFavorite(req, res) {
         try {
-            const userId = req.user?.id;
+            const userId = req.params.userId;
             if (!userId) {
                 return res.status(401).json({ message: "Unauthorized" });
             }
@@ -76,7 +76,7 @@ class UserController {
 
     async getFavorites(req, res) {
         try {
-            const userId = req.user?.id;
+            const userId = req.params.userId  ;
             if (!userId) {
                 return res.status(401).json({ message: "Unauthorized" });
             }
