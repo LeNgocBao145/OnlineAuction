@@ -45,6 +45,62 @@ export const deleteProductById = `DELETE FROM products WHERE id = $1`;
 export const getProductDescriptionsByProductId = `SELECT * FROM product_descriptions WHERE product_id = $1`;
 
 export const createProductDescription = `INSERT INTO product_descriptions (product_id, description, created_at) VALUES ($1, $2, $3) RETURNING *`;
+// Favorite Queries
+export const markFavoriteProduct = `
+    INSERT INTO favorites (user_id, product) 
+    VALUES ($1, $2)
+    ON CONFLICT (user_id, product) DO NOTHING;
+`;
+
+export const unmarkFavoriteProduct = `
+    DELETE FROM favorites 
+    WHERE user_id = $1 AND product = $2;
+`;
+
+export const getFavoritesQuery = (sortLogic) => `
+    SELECT
+        p.id,
+        p.image,
+        p.name,
+        p.current_price,   
+        f.created_at AS favorited_date,
+        
+        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
+
+        COUNT(DISTINCT b.id) AS bid_count,
+
+        COUNT(*) OVER() AS total_count
+
+    FROM
+        favorites f
+            JOIN products p ON f.product = p.id
+            JOIN sell_product sp ON p.id = sp.product
+            LEFT JOIN product_categories pc ON p.id = pc.product
+            LEFT JOIN bids b ON p.id = b.product
+            LEFT JOIN LATERAL(
+                SELECT u.name
+                FROM bids b2 JOIN users u ON b2.buyer = u.id
+                WHERE b2.product = p.id
+                ORDER BY b2.price DESC
+                LIMIT 1
+            ) bidder ON true
+
+    WHERE 
+        f.user_id = $1
+        AND ($2::int IS NULL OR pc.category = $2)
+
+    GROUP BY p.id, p.image, p.name, p.current_price, 
+             sp.expired_at, f.created_at
+
+    ORDER BY ${sortLogic}
+
+    LIMIT $3 OFFSET $4;
+`;
+
+export const getFavoriteByUserAndProduct = `
+    SELECT * FROM favorites 
+    WHERE user_id = $1 AND product = $2;
+`;
 
 // Admin Queries
 
