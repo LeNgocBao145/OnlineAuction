@@ -104,6 +104,15 @@ class UserController {
         return res.status(500).json({ error: "Internal server error." });
     }
   }
+
+  async getUserProfile(req, res) {  
+    try {
+
+    } catch (error) {
+        console.error("Error when get user profile!", error);
+        return res.status(500).json({ error: "Internal server error." });
+    }
+  }
 }
 
 const userController = new UserController();
