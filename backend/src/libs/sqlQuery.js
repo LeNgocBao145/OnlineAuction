@@ -32,6 +32,8 @@ export const getFilteredProductsQuery = (sortLogic) => `
         p.name,
         p.current_price,
 
+        sp.instant_price AS instant_price,
+
         -- Highest bidder
         bidder.name AS highest_bidder,
 
@@ -55,8 +57,8 @@ export const getFilteredProductsQuery = (sortLogic) => `
     FROM
         products p
             JOIN sell_product sp ON p.id = sp.product
-            JOIN product_categories pc ON p.id = pc.product
-            JOIN categories c ON pc.category = c.id
+            LEFT JOIN product_categories pc ON p.id = pc.product
+            LEFT JOIN categories c ON pc.category = c.id
             LEFT JOIN bids b ON p.id = b.product
             LEFT JOIN LATERAL (
                 SELECT u.name
@@ -72,8 +74,8 @@ export const getFilteredProductsQuery = (sortLogic) => `
 
     GROUP BY 
         p.id, p.image, p.name, p.current_price,
-        sp.expired_at, sp.created_at,
-        bidder.name,
+        sp.expired_at, sp.created_at, sp.instant_price,
+        bidder.name, 
         query, p.search_vector
 
     ORDER BY ${sortLogic}, rank DESC, is_new DESC
