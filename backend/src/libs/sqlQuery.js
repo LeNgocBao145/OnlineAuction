@@ -50,6 +50,9 @@ export const getProductDetailsById = `
             p.current_price,
             p.state,
             sp.seller AS seller_id,
+            sp.init_price AS init_price,
+            sp.step_price AS step_price,
+            sp.instant_price AS instant_price,
             u.name AS seller_name,
             sp.created_at,
             sp.expired_at
