@@ -126,6 +126,7 @@ CREATE TABLE sell_product (
     seller INTEGER NOT NULL,
     init_price REAL NOT NULL,
     step_price REAL NOT NULL,
+    instant_price REAL,
     created_at TIMESTAMP NOT NULL,
     expired_at TIMESTAMP NOT NULL
 );
