@@ -58,7 +58,8 @@ CREATE TABLE products (
 
 CREATE TABLE categories (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE
+    name VARCHAR(100) NOT NULL UNIQUE,
+    parent INT REFERENCES categories(id)
 );
 
 CREATE TABLE product_categories (
