@@ -12,6 +12,7 @@ router.get('/:userId/ratings', UserController.getRatings);
 router.get('/:userId/biddings', UserController.getBiddings);
 router.get('/:userId/sellings', UserController.getSellings);
 router.get('/:userId/wons', UserController.getWons);
+router.post('/:userId/request-to-be-seller', UserController.requestToBeSeller);
 router.post('/:userId/rate-seller/:productId', UserController.rateSeller);
 router.post('/:userId/favorites/:productId', UserController.markFavorite);
 router.delete('/:userId/favorites/:productId', UserController.unmarkFavorite);

@@ -5,9 +5,18 @@ const PRODUCT_SELECT_FIELDS = [
     'image',
     'state'
 ];
-
 const getProductColumns = () => PRODUCT_SELECT_FIELDS.map(col => `p.${col}`).join(', ');
 
+const USER_SELECT_FIELDS = [
+    'id',
+    'name',
+    'email',
+    'birthdate',
+    'address',
+    'role',
+    'rating'
+];
+const getUserColumns = () => USER_SELECT_FIELDS.map(col => `u.${col}`).join(', ');
 
 // User Queries
 export const getUserByEmail = `SELECT * FROM users WHERE email = $1`;
@@ -25,6 +34,10 @@ export const updateUserById = `UPDATE users SET name = $1, email = $2, birthdate
 export const updateUserInformationById = `UPDATE users SET name = $1, email = $2, birthdate = $3, address = $4 WHERE id = $5 RETURNING *`;
 
 export const updateUserPasswordById = `UPDATE users SET hashed_password = $1 WHERE id = $2 RETURNING *`;
+
+export const getUserRatePointById = `
+    SELECT u.rating AS rate_point FROM users u WHERE u.id = $1;
+`;
 
 export const getRatingsByUserId = (sortLogic) => `
     SELECT 
@@ -208,6 +221,20 @@ export const createRating = `
         $3,
         $4 
     )
+`;
+
+export const getRequestByBidder = `
+    SELECT created_at FROM requests WHERE bidder = $1;
+`;
+
+export const createRequest = `
+    INSERT INTO requests (bidder, created_at, state) VALUES ($1, NOW(), 'pending');
+`;
+
+export const updateRequestReset = `
+    UPDATE requests 
+    SET created_at = NOW(), state = 'pending' 
+    WHERE bidder = $1;
 `;
 
 // Session Queries
@@ -475,4 +502,49 @@ export const getProductDescriptionsByProductId = `SELECT * FROM product_descript
 export const createProductDescription = `INSERT INTO product_descriptions (product, description, created_at) VALUES ($1, $2, $3) RETURNING *`;
 
 // Admin Queries
+export const getRequests = (sortLogic) => `
+    SELECT
+        ${getUserColumns()},
+        r.id AS request_id,
+        r.created_at AS request_date,
+        r.state AS request_state,
+        ts_rank(u.search_vector, plainto_tsquery('simple', unaccent($1))) AS rank,
+        COUNT(*) OVER() AS total_count
 
+    FROM
+        requests r
+            JOIN users u ON u.id = r.bidder
+            CROSS JOIN plainto_tsquery('simple', unaccent($1)) AS query
+
+    WHERE (u.search_vector @@ query OR u.email ILIKE '%' || $1 || '%' OR u.name ILIKE '%' || $1 || '%')
+      AND (r.state = ANY($2) OR $2 IS NULL)
+
+    GROUP BY 
+        u.id,
+        r.id, r.created_at, r.state,
+        query, u.search_vector
+
+    ORDER BY ${sortLogic}, rank DESC
+
+    LIMIT $3 OFFSET $4;
+`;
+
+export const getRequestById = `SELECT * FROM requests WHERE id = $1`;
+
+export const approveRequest = `
+    WITH updated_request AS (
+        UPDATE requests
+        SET state = 'success'
+        WHERE id = $1 AND state = 'pending'
+        RETURNING bidder
+    )
+    UPDATE users
+    SET role = 'seller'
+    WHERE id = (SELECT bidder FROM updated_request);
+`;
+
+export const rejectRequest = `
+    UPDATE requests 
+    SET state = 'failed' 
+    WHERE id = $1 AND state = 'pending';
+`;

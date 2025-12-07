@@ -7,6 +7,7 @@ import {
   unmarkFavoriteProduct,
   getFavoriteByUserAndProduct,
   updateUserPasswordById,
+  getUserRatePointById,
   getRatingsByUserId,
   getBiddingsByUserId,
   getSellingsByUserId,
@@ -14,12 +15,16 @@ import {
   getRatingByUserIdAndProductId,
   checkIsWinner,
   createRating,
+  getRequestByBidder,
+  createRequest,
+  updateRequestReset,
 } from "../libs/sqlQuery.js";
 import query from "../libs/db.js";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { sendOTPEmail } from "../utils/emailService.js";
 import { get } from "http";
+import { create } from "domain";
 
 const otpStore = new Map();
 
@@ -384,9 +389,13 @@ class UserController {
         return ratingData;
       });
 
+      const ratePointResult = await query(getUserRatePointById, [userId]);
+      const ratePoint = ratePointResult.rows[0] ? parseFloat(ratePointResult.rows[0].rate_point) : 0;
+
       return res.status(200).json({
         message: "Ratings retrieved successfully",
-        data: { 
+        data: {
+          ratePoint,
           ratings, 
           pagination: { 
             page, 
@@ -687,6 +696,43 @@ class UserController {
       return res.status(201).json({ message: "Seller rated successfully" });
     } catch (error) {
       console.error("Error when rating seller", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async requestToBeSeller(req, res) {
+    try {
+      const userId = req.params.userId;
+      const checkUser = await query(getUserById, [userId]);
+      if (checkUser.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const userRole = checkUser.rows[0].role;
+      if (userRole !== "bidder") {
+        return res.status(403).json({ message: "Only bidders can request to be sellers" });
+      }
+
+      const existingRequest = await query(getRequestByBidder, [userId]);
+
+      if (existingRequest.rows.length === 0) {
+        await query(createRequest, [userId]);
+        return res.status(201).json({ message: "Request to be seller submitted successfully" });
+      }
+
+      const lastRequestDate = existingRequest.rows[0].created_at;
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      if (lastRequestDate > sevenDaysAgo) {
+        return res.status(429).json({ message: "You can only request to be a seller once every 7 days" });
+      }
+
+      await query(updateRequestReset, [userId]);
+
+      return res.status(200).json({ message: "Request updated and resubmitted successfully" });
+    } catch (error) {
+      console.error("Error when requesting to be seller", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   }

@@ -54,10 +54,13 @@ class ProductController {
       const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
       const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
 
+      const allowedStates = ["incoming", "bidding", "sold"];
+
       const states = req.query.states
-        ? req.query.states.split(",").map(s => s.trim()).filter(s => s !== "") 
+        ? req.query.states.split(",").map(s => s.trim())
         : null;
-      const finalStates = (states && states.length > 0) ? states : null;
+          
+      const finalStates = states?.filter(s => allowedStates.includes(s)) || null;
 
       const SORT_MAPPING = {
         price_asc: "p.current_price ASC",
