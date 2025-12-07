@@ -6,11 +6,13 @@ import {
   markFavoriteProduct,
   unmarkFavoriteProduct,
   getFavoriteByUserAndProduct,
-  getRatingsQuery,
-  getBiddingsQuery,
-  getSellingsQuery,
-  getWonAuctionsQuery,
   updateUserPasswordById,
+  getRatingsByUserId,
+  getBiddingsByUserId,
+  getSellingsByUserId,
+  getWonsByUserId,
+  getRatingByUserIdAndProductId,
+  createRating,
 } from "../libs/sqlQuery.js";
 import query from "../libs/db.js";
 import crypto from "crypto";
@@ -20,74 +22,85 @@ import { sendOTPEmail } from "../utils/emailService.js";
 const otpStore = new Map();
 
 class UserController {
-  async updateUser(req, res) {
+  async getUser(req, res) {
     try {
       const userId = req.params.userId;
-      const { name, email, birthdate } = req.body;
-
-      if (!name || !email || !birthdate) {
-        return res
-          .status(400)
-          .json({ error: "Name, email, and birthdate are required." });
-      }
-
-      const user = await query(getUserById, [userId]);
-      if (user.rows.length === 0) {
+      const result = await query(getUserById, [userId]);
+      if (result.rows.length === 0) {
         return res.status(404).json({ error: "User not found." });
       }
 
-      // Validate birthdate (must be 18+)
-      const birthDate = new Date(birthdate);
-      const age = Math.floor(
-        (Date.now() - birthDate) / (365.25 * 24 * 60 * 60 * 1000)
-      );
-      if (age < 18) {
-        return res
-          .status(400)
-          .json({ error: "User must be at least 18 years old." });
-      }
+      const user = result.rows[0];
 
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({ error: "Invalid email format." });
-      }
-
-      // If email changed, require OTP verification
-      if (user.rows[0].email !== email) {
-        // Generate OTP
-        const otp = crypto.randomInt(100000, 999999).toString();
-        const expiredAt = Date.now() + 10 * 60 * 1000;
-
-        // Store OTP with user data in memory
-        otpStore.set(email, { otp, expiredAt, name, birthdate });
-
-        // Send OTP email
-        await sendOTPEmail(email, otp);
-        return res.status(200).json({
-          message: "OTP sent to email. Please verify to complete registration.",
-          email,
-        });
-      }
-
-      const updatedUser = await query(updateUserInformationById, [
-        name,
-        email,
-        birthdate,
-        userId,
-      ]);
-
-      return res
-        .status(201)
-        .json({
-          message: "Update user information successfully!",
-          updatedUser,
-        });
+      return res.status(200).json({
+        message: "User retrieved successfully!",
+        data: { user },
+      });
     } catch (error) {
-      console.error("Error when update user information!", error);
+      console.error("Error when get user profile!", error);
       return res.status(500).json({ error: "Internal server error." });
     }
   }
+
+  async updateUser(req, res) {
+    try {
+        const userId = req.params.userId;
+        const user = await query(getUserById, [userId]);
+        if (user.rows.length === 0) {
+          return res.status(404).json({ error: "User not found." });
+        }
+
+        const { name, email, address, birthdate } = req.body;
+    
+        // Validate birthdate (must be 18+)
+        const birthDate = new Date(birthdate);
+        const age = Math.floor(
+          (Date.now() - birthDate) / (365.25 * 24 * 60 * 60 * 1000)
+        );
+        if (age < 18) {
+          return res
+            .status(400)
+            .json({ error: "User must be at least 18 years old." });
+        }
+    
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          return res.status(400).json({ error: "Invalid email format." });
+        }
+
+        // Validate address format
+        const addressRegex = /^[a-zA-Z0-9\s,.'-]{3,}$/;
+        if (!addressRegex.test(address)) {  
+          return res.status(400).json({ error: "Invalid address format." });
+        }
+
+        // If email changed, require OTP verification
+        if (user.rows[0].email !== email) {
+          // Generate OTP
+          const otp = crypto.randomInt(100000, 999999).toString();
+          const expiredAt = Date.now() + 10 * 60 * 1000;
+    
+          // Store OTP with user data in memory
+          otpStore.set(email, { otp, expiredAt, name, birthdate, address });
+    
+          // Send OTP email
+          await sendOTPEmail(email, otp);
+          return res.status(200).json({
+              message: "OTP sent to email. Please verify to complete registration.",
+              email,
+          });
+        }
+
+        const updatedUser = await query(updateUserInformationById, [name, email, birthdate, address, userId]);
+
+        return res.status(201).json({ message: "Update user profile successfully!", updatedUser });
+    } catch (error) {
+        console.error("Error when update user profile!", error);
+        return res.status(500).json({ error: "Internal server error." });
+    }
+  }
+
   async verifyOTP(req, res) {
     try {
       const userId = req.params.userId;
@@ -215,18 +228,31 @@ class UserController {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const category = req.query.category
-        ? parseInt(req.query.category, 10)
-        : null;
+      const keyword = req.query.keyword ? req.query.keyword.trim() : "";
+
+      const category = req.query.category ? parseInt(req.query.category, 10) : null;
+      
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-      const limit = parseInt(req.query.limit, 10) || 10;
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
       const offset = (page - 1) * limit;
+
+      const startDate = req.query.startDate && req.query.startDate !== "" ? req.query.startDate : null;
+      const endDate = req.query.endDate && req.query.endDate !== "" ? req.query.endDate : null;
+
+      const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
+      const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
+
+      const states = req.query.states
+        ? req.query.states.split(",").map(s => s.trim()).filter(s => s !== "") 
+        : null;
+      const finalStates = (states && states.length > 0) ? states : null;
 
       const SORT_MAPPING = {
         price_asc: "p.current_price ASC",
         price_desc: "p.current_price DESC",
         time_left_asc: "sp.expired_at ASC",
         time_left_desc: "sp.expired_at DESC",
+        newest: "sp.created_at DESC",
         recently_favorited: "f.created_at DESC",
       };
 
@@ -241,10 +267,20 @@ class UserController {
 
       const sqlQuery = getFavoritesQuery(orderBySql);
 
-      const { rows } = await query(sqlQuery, [userId, category, limit, offset]);
+      const { rows } = await query(sqlQuery, [
+        userId,
+        keyword,
+        category,
+        startDate,
+        endDate,
+        minPrice,
+        maxPrice,
+        finalStates,
+        limit,
+        offset,
+      ]);
 
-      const totalItems =
-        rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
+      const totalItems = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
       const totalPages = Math.ceil(totalItems / limit);
 
       const products = rows.map((item) => {
@@ -269,6 +305,7 @@ class UserController {
       return res.status(500).json({ message: "Internal server error" });
     }
   }
+
   async changePassword(req, res) {
     try {
       const userId = req.params.userId;
@@ -308,88 +345,105 @@ class UserController {
     }
   }
 
-  async getUserProfile(req, res) {  
-    try {
-      const userId = req.params.userId;
-      if (!userId) {
-            return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const user = await query(getUserById, [userId]);
-      if (user.rows.length === 0) {
-          return res.status(404).json({ error: "User not found." });
-      }
-
-      const ratings = await query(getRatingsQuery, [userId]);
-      const ratePoints = ratings.rows;
-
-      const favorites = await query(getFavoritesQuery('ORDER BY f.created_at DESC'), [userId]);
-      const biddings = await query(getBiddingsQuery('ORDER BY b.created_at DESC'), [userId]);
-      const sellings = await query(getSellingsQuery('ORDER BY sp.created_at DESC'), [userId]);
-      const wonAuctions = await query(getWonAuctionsQuery('ORDER BY sp.expired_at DESC'), [userId]);
-
-    } catch (error) {
-        console.error("Error when get user profile!", error);
-        return res.status(500).json({ error: "Internal server error." });
+  async getRatings(req, res) {
+    const userId = req.params.userId;
+    const result = await query(getUserById, [userId]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
     }
+
+    const ratingsResult = await query(getRatingsByUserId, [userId]);
+    const ratings = ratingsResult.rows;
+
+    const ratePoint = ratings.reduce((sum, r) => sum + r.point, 0);
+
+    return res.status(200).json({
+      message: "Ratings retrieved successfully",
+      data: { 
+        ratePoint: ratePoint,
+        ratings
+      }
+    });
   }
 
-  async updateUserProfile(req, res) {
+  async getBiddings(req, res) {
+    const userId = req.params.userId;
+    const result = await query(getUserById, [userId]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const bidsResult = await query(getBiddingsByUserId, [userId]);
+    const bids = bidsResult.rows;
+
+    return res.status(200).json({
+      message: "Bids retrieved successfully", 
+      data: { bids }
+    });
+  }
+
+  async getSellings(req, res) {
+    const userId = req.params.userId;
+    const result = await query(getUserById, [userId]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const sellingsResult = await query(getSellingsByUserId, [userId]);
+    const sellings = sellingsResult.rows;
+
+    return res.status(200).json({
+      message: "Sellings retrieved successfully", 
+      data: { sellings }
+    });
+  }
+
+  async getWons(req, res) {
+    const userId = req.params.userId;
+    const result = await query(getUserById, [userId]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const wonsResult = await query(getWonsByUserId, [userId]);
+    const wons = wonsResult.rows;
+    
+    return res.status(200).json({
+      message: "Wons retrieved successfully", 
+      data: { wons }
+    });
+  }
+
+  async rateSeller(req, res) {
     try {
-        const userId = req.params.userId;
-        const user = await query(getUserById, [userId]);
-        if (user.rows.length === 0) {
-          return res.status(404).json({ error: "User not found." });
-        }
+      const userId = req.params.userId;
+      const userResult = await query(getUserById, [userId]);
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
 
-        const { name, email, address, birthdate } = req.body;
-    
-        // Validate birthdate (must be 18+)
-        const birthDate = new Date(birthdate);
-        const age = Math.floor(
-          (Date.now() - birthDate) / (365.25 * 24 * 60 * 60 * 1000)
-        );
-        if (age < 18) {
-          return res
-            .status(400)
-            .json({ error: "User must be at least 18 years old." });
-        }
-    
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          return res.status(400).json({ error: "Invalid email format." });
-        }
+      const productId = req.params.productId;
+      const productResult = await query(getProductById, [productId]);
+      if (productResult.rows.length === 0) {
+        return res.status(404).json({ message: "Product not found" });
+      }
 
-        // Validate address format
-        const addressRegex = /^[a-zA-Z0-9\s,.'-]{3,}$/;
-        if (!addressRegex.test(address)) {  
-          return res.status(400).json({ error: "Invalid address format." });
-        }
+      const { point, comment } = req.body;
+      if (point !== 0 && point !== 1) {
+        return res.status(400).json({ message: "Point must be 0 or 1" });
+      }
 
-        // If email changed, require OTP verification
-        if (user.rows[0].email !== email) {
-          // Generate OTP
-          const otp = crypto.randomInt(100000, 999999).toString();
-          const expiredAt = Date.now() + 10 * 60 * 1000;
-    
-          // Store OTP with user data in memory
-          otpStore.set(email, { otp, expiredAt, name, birthdate, address });
-    
-          // Send OTP email
-          await sendOTPEmail(email, otp);
-          return res.status(200).json({
-              message: "OTP sent to email. Please verify to complete registration.",
-              email,
-          });
-        }
+      const existingRatingResult = await query(getRatingByUserIdAndProductId, [userId, productId]);
+      if (existingRatingResult.rows.length > 0) {
+        return res.status(409).json({ message: "You have already rated this seller for this product" });
+      }
 
-        const updatedUser = await query(updateUserInformationById, [name, email, birthdate, address, userId]);
+      await query(createRating, [userId, productId, point, comment]);
 
-        return res.status(201).json({ message: "Update user profile successfully!", updatedUser });
+      return res.status(201).json({ message: "Seller rated successfully" });
     } catch (error) {
-        console.error("Error when update user profile!", error);
-        return res.status(500).json({ error: "Internal server error." });
+      console.error("Error when rating seller", error);
+      return res.status(500).json({ message: "Internal server error" });
     }
   }
 }

@@ -16,6 +16,70 @@ export const updateUserInformationById = `UPDATE users SET name = $1, email = $2
 
 export const updateUserPasswordById = `UPDATE users SET hashed_password = $1 WHERE id = $2 RETURNING *`;
 
+export const getRatingsByUserId = `
+    SELECT 
+        rater.name AS rater_name,
+        ratee.name AS ratee_name,
+        (CASE WHEN r.liked = TRUE THEN 1 ELSE -1 END) AS liked,
+        r.content,
+        r.created_at
+
+    FROM 
+        reviews r
+            JOIN users rater ON r.rater = rater.id
+            JOIN users ratee ON r.ratee = ratee.id
+
+    WHERE r.ratee = $1
+`;
+
+export const getBiddingsByUserId = `
+    SELECT
+
+
+    FROM
+        bids b
+            JOIN products p ON b.product = p.id
+            JOIN sell_product sp ON p.id = sp.product
+
+
+    WHERE b.buyer = $1
+`;
+
+export const getSellingsByUserId = `
+    SELECT
+
+    FROM
+
+    WHERE user_id = $1
+`;
+
+export const getWonsByUserId = `
+    SELECT
+
+    FROM
+
+    WHERE user_id = $1
+`;
+
+export const getRatingByUserIdAndProductId = `
+    SELECT
+
+    FROM
+
+    WHERE user_id = $1 AND product_id = $2
+`;
+
+export const createRating = `
+    INSERT INTO reviews (rater, product, ratee, liked, content) 
+    VALUES (
+        $1, 
+        $2, 
+        (SELECT seller FROM sell_product WHERE product = $2),
+        $3,
+        $4 
+    )
+`;
+
 // Session Queries
 export const createSession = `INSERT INTO sessions (user_id, refresh_token, expired_at) VALUES ($1, $2, $3)`;
 
@@ -33,6 +97,16 @@ export const updateCategoryById = `UPDATE categories SET name = $1 WHERE id = $2
 export const deleteCategoryById = `DELETE FROM categories WHERE id = $1`;
 
 // Product Queries
+const PRODUCT_SELECT_FIELDS = [
+    'id',
+    'name',
+    'current_price',
+    'image',
+    'state'
+];
+
+const getProductColumns = () => PRODUCT_SELECT_FIELDS.map(col => `p.${col}`).join(', ');
+
 export const getProducts = `SELECT * FROM products`;
 
 export const getProductById = `SELECT * FROM products WHERE id = $1`;
@@ -43,7 +117,6 @@ export const updateProductById = `UPDATE products SET name = $1, description = $
 
 export const deleteProductById = `DELETE FROM products WHERE id = $1`;
 
-// Favorite Queries
 export const markFavoriteProduct = `
     INSERT INTO favorites (user_id, product) 
     VALUES ($1, $2)
@@ -57,16 +130,16 @@ export const unmarkFavoriteProduct = `
 
 export const getFavoritesQuery = (sortLogic) => `
     SELECT
-        p.id,
-        p.image,
-        p.name,
-        p.current_price,   
+        ${getProductColumns()},
         f.created_at AS favorited_date,
-        
+        sp.instant_price,
+        bidder.name AS highest_bidder,
+        sp.created_at,
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
-
+        ARRAY_AGG(DISTINCT c.name) AS categories,
         COUNT(DISTINCT b.id) AS bid_count,
-
+        (sp.created_at >= NOW() - INTERVAL '90 minutes') AS is_new,
+        ts_rank(p.search_vector, plainto_tsquery('simple', unaccent($2))) AS rank,
         COUNT(*) OVER() AS total_count
 
     FROM
@@ -74,6 +147,7 @@ export const getFavoritesQuery = (sortLogic) => `
             JOIN products p ON f.product = p.id
             JOIN sell_product sp ON p.id = sp.product
             LEFT JOIN product_categories pc ON p.id = pc.product
+            LEFT JOIN categories c ON pc.category = c.id
             LEFT JOIN bids b ON p.id = b.product
             LEFT JOIN LATERAL(
                 SELECT u.name
@@ -81,18 +155,28 @@ export const getFavoritesQuery = (sortLogic) => `
                 WHERE b2.product = p.id
                 ORDER BY b2.price DESC
                 LIMIT 1
-            ) bidder ON true
+            ) bidder ON true,
+            plainto_tsquery('simple', unaccent($2)) AS query
 
     WHERE 
         f.user_id = $1
-        AND ($2::int IS NULL OR pc.category = $2)
+        AND (p.search_vector @@ query OR p.name ILIKE '%' || $2 || '%')
+        AND ($3::int IS NULL OR pc.category = $3)
+        AND (sp.created_at >= $4::timestamp OR $4::timestamp IS NULL)
+        AND (sp.created_at <= $5::timestamp OR $5::timestamp IS NULL)
+        AND (p.current_price >= $6 AND p.current_price <= $7 OR $6 IS NULL OR $7 IS NULL)
+        AND (p.state = ANY($8) OR $8 IS NULL)
 
-    GROUP BY p.id, p.image, p.name, p.current_price, 
-             sp.expired_at, f.created_at
+    GROUP BY 
+        p.id,
+        f.created_at,
+        sp.expired_at, sp.created_at, sp.instant_price,
+        bidder.name, 
+        query, p.search_vector
 
-    ORDER BY ${sortLogic}
+    ORDER BY ${sortLogic}, rank DESC, is_new DESC
 
-    LIMIT $3 OFFSET $4;
+    LIMIT $9 OFFSET $10;
 `;
 
 export const getFavoriteByUserAndProduct = `
@@ -103,11 +187,7 @@ export const getFavoriteByUserAndProduct = `
 export const getProductDetailsById = `
     WITH base AS (
         SELECT
-            p.id,
-            p.name,
-            p.image,
-            p.current_price,
-            p.state,
+            ${getProductColumns()},
             sp.seller AS seller_id,
             sp.init_price AS init_price,
             sp.step_price AS step_price,
@@ -203,31 +283,15 @@ export const getProductDetailsById = `
 
 export const getFilteredProductsQuery = (sortLogic) => `
     SELECT
-        p.id,
-        p.image,
-        p.name,
-        p.current_price,
-
-        sp.instant_price AS instant_price,
-
-        -- Highest bidder
+        ${getProductColumns()},
+        sp.instant_price,
         bidder.name AS highest_bidder,
-
-        sp.created_at AS selling_date,
+        sp.created_at,
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
-
-        -- Category names
         ARRAY_AGG(DISTINCT c.name) AS categories,
-
-        -- Bid count
         COUNT(DISTINCT b.id) AS bid_count,
-
-        -- Is new
         (sp.created_at >= NOW() - INTERVAL '90 minutes') AS is_new,
-
-        -- FTS ranking
         ts_rank(p.search_vector, plainto_tsquery('simple', unaccent($1))) AS rank,
-
         COUNT(*) OVER() AS total_count
 
     FROM
@@ -247,16 +311,20 @@ export const getFilteredProductsQuery = (sortLogic) => `
 
     WHERE (p.search_vector @@ query OR p.name ILIKE '%' || $1 || '%')
       AND ($2::int IS NULL OR pc.category = $2)
+      AND (sp.created_at >= $3::timestamp OR $3::timestamp IS NULL)
+      AND (sp.created_at <= $4::timestamp OR $4::timestamp IS NULL)
+      AND (p.current_price >= $5 AND p.current_price <= $6 OR $5 IS NULL OR $6 IS NULL)
+      AND (p.state = ANY($7) OR $7 IS NULL)
 
     GROUP BY 
-        p.id, p.image, p.name, p.current_price,
+        p.id,
         sp.expired_at, sp.created_at, sp.instant_price,
         bidder.name, 
         query, p.search_vector
 
     ORDER BY ${sortLogic}, rank DESC, is_new DESC
 
-    LIMIT $3 OFFSET $4;
+    LIMIT $8 OFFSET $9;
 `;
 
 // Product Description Queries

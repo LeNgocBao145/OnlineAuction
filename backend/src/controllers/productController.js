@@ -30,22 +30,34 @@ class ProductController {
       res.status(500).json({ message: "Internal server error" });
     }
   }
+
   async filterProducts(req, res) {
     try {
-      const keyword = req.query.keyword || "";
-      const sanitizedKeyword = keyword.trim();
-      const category = req.query.category
-        ? parseInt(req.query.category, 10)
-        : null;
+      const keyword = req.query.keyword ? req.query.keyword.trim() : "";
+
+      const category = req.query.category ? parseInt(req.query.category, 10) : null;
+      
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-      const limit = parseInt(req.query.limit, 10) || 10;
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
       const offset = (page - 1) * limit;
+
+      const startDate = req.query.startDate && req.query.startDate !== "" ? req.query.startDate : null;
+      const endDate = req.query.endDate && req.query.endDate !== "" ? req.query.endDate : null;
+
+      const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
+      const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
+
+      const states = req.query.states
+        ? req.query.states.split(",").map(s => s.trim()).filter(s => s !== "") 
+        : null;
+      const finalStates = (states && states.length > 0) ? states : null;
 
       const SORT_MAPPING = {
         price_asc: "p.current_price ASC",
         price_desc: "p.current_price DESC",
         time_left_asc: "sp.expired_at ASC",
         time_left_desc: "sp.expired_at DESC",
+        newest: "sp.created_at DESC",
       };
 
       let sortCriteria = req.query.sort || "time_left_desc,price_asc";
@@ -59,14 +71,18 @@ class ProductController {
       const sqlQuery = getFilteredProductsQuery(orderBySql);
 
       const { rows } = await query(sqlQuery, [
-        sanitizedKeyword,
+        keyword,
         category,
+        startDate,
+        endDate,
+        minPrice,
+        maxPrice,
+        finalStates,
         limit,
         offset,
       ]);
 
-      const totalItems =
-        rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
+      const totalItems = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
       const totalPages = Math.ceil(totalItems / limit);
 
       const products = rows.map((item) => {
