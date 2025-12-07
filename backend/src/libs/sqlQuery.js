@@ -447,6 +447,28 @@ export const getFilteredProductsQuery = (sortLogic) => `
     LIMIT $8 OFFSET $9;
 `;
 
+export const getProductByProductIdAndSellerId = `
+    SELECT * 
+
+    FROM 
+        products p
+            JOIN sell_product sp ON p.id = sp.product
+    
+    WHERE p.id = $1 AND sp.seller = $2
+`;
+
+export const getQuestionByIdAndProductId = `
+    SELECT * FROM product_questions WHERE id = $1 AND product = $2;
+`;
+
+export const createQuestion = `
+    INSERT INTO product_questions (questioner, product, question, asked_at) VALUES ($1, $2, $3, NOW()) RETURNING *;
+`;
+
+export const updateQuestionAnswer = `
+    UPDATE product_questions SET answerer = $1, answer = $2, answered_at = NOW() WHERE id = $3 RETURNING *;
+`;
+
 // Product Description Queries
 export const getProductDescriptionsByProductId = `SELECT * FROM product_descriptions WHERE product = $1`;
 
