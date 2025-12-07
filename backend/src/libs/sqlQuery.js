@@ -14,6 +14,8 @@ export const updateUserById = `UPDATE users SET name = $1, email = $2, birthdate
 
 export const updateUserInformationById = `UPDATE users SET name = $1, email = $2, birthdate = $3, address = $4 WHERE id = $5 RETURNING *`;
 
+export const updateUserPasswordById = `UPDATE users SET hashed_password = $1 WHERE id = $2 RETURNING *`;
+
 // Session Queries
 export const createSession = `INSERT INTO sessions (user_id, refresh_token, expired_at) VALUES ($1, $2, $3)`;
 
@@ -41,12 +43,18 @@ export const updateProductById = `UPDATE products SET name = $1, description = $
 
 export const deleteProductById = `DELETE FROM products WHERE id = $1`;
 
-// Product Description Queries
-export const getProductDescriptionsByProductId = `SELECT * FROM product_descriptions WHERE product_id = $1`;
-
-export const createProductDescription = `INSERT INTO product_descriptions (product_id, description, created_at) VALUES ($1, $2, $3) RETURNING *`;
-
 // Favorite Queries
+export const markFavoriteProduct = `
+    INSERT INTO favorites (user_id, product) 
+    VALUES ($1, $2)
+    ON CONFLICT (user_id, product) DO NOTHING;
+`;
+
+export const unmarkFavoriteProduct = `
+    DELETE FROM favorites 
+    WHERE user_id = $1 AND product = $2;
+`;
+
 export const getFavoritesQuery = (sortLogic) => `
     SELECT
         p.id,
@@ -86,6 +94,175 @@ export const getFavoritesQuery = (sortLogic) => `
 
     LIMIT $3 OFFSET $4;
 `;
+
+export const getFavoriteByUserAndProduct = `
+    SELECT * FROM favorites 
+    WHERE user_id = $1 AND product = $2;
+`;
+
+export const getProductDetailsById = `
+    WITH base AS (
+        SELECT
+            p.id,
+            p.name,
+            p.image,
+            p.current_price,
+            p.state,
+            sp.seller AS seller_id,
+            sp.init_price AS init_price,
+            sp.step_price AS step_price,
+            sp.instant_price AS instant_price,
+            u.name AS seller_name,
+            sp.created_at,
+            sp.expired_at
+        FROM products p
+            LEFT JOIN sell_product sp ON sp.product = p.id
+            LEFT JOIN users u ON u.id = sp.seller
+        WHERE p.id = $1
+    )
+
+    SELECT
+        b.*,
+
+        -- Categories
+        COALESCE(
+            (
+                SELECT json_agg(c.name)
+                FROM product_categories pc
+                JOIN categories c ON c.id = pc.category
+                WHERE pc.product = b.id
+            ),
+            '[]'
+        ) AS categories,
+
+        -- Additional images
+        COALESCE(
+            (
+                SELECT to_json(pi.image_path)
+                FROM product_images pi
+                WHERE pi.product = b.id
+            ),
+            '[]'::json
+        ) AS additional_images,
+
+        -- Descriptions
+        COALESCE(
+            (
+                SELECT json_agg(
+                    json_build_object(
+                        'description', d.description,
+                        'created_at', d.created_at
+                    ) ORDER BY d.created_at ASC
+                )
+                FROM product_descriptions d
+                WHERE d.product = b.id
+            ),
+            '[]'
+        ) AS descriptions,
+
+        -- Bids
+        COALESCE(
+            (
+                SELECT json_agg(
+                    json_build_object(
+                        'bidder_name', u_b.name,  
+                        'amount', bid.price,
+                        'bid_time', bid.bid_date
+                    ) ORDER BY bid.price DESC
+                )
+                FROM bids bid 
+                JOIN users u_b ON u_b.id = bid.buyer
+                WHERE bid.product = b.id
+            ),
+            '[]'
+        ) AS bids,
+        
+        -- Questions & answers
+        COALESCE(
+            (
+                SELECT json_agg(
+                    json_build_object(
+                        'question', q.question,
+                        'questioner_name', u_q.name,
+                        'answer', q.answer,
+                        'answerer_name', u_a.name,
+                        'asked_at', q.asked_at,
+                        'answered_at', q.answered_at
+                    ) ORDER BY q.asked_at ASC
+                )
+                FROM product_questions q
+                    LEFT JOIN users u_q ON u_q.id = q.questioner
+                    LEFT JOIN users u_a ON u_a.id = q.answerer
+                WHERE q.product = b.id
+            ),
+            '[]'
+        ) AS qa
+
+    FROM base b;
+`;
+
+export const getFilteredProductsQuery = (sortLogic) => `
+    SELECT
+        p.id,
+        p.image,
+        p.name,
+        p.current_price,
+
+        sp.instant_price AS instant_price,
+
+        -- Highest bidder
+        bidder.name AS highest_bidder,
+
+        sp.created_at AS selling_date,
+        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
+
+        -- Category names
+        ARRAY_AGG(DISTINCT c.name) AS categories,
+
+        -- Bid count
+        COUNT(DISTINCT b.id) AS bid_count,
+
+        -- Is new
+        (sp.created_at >= NOW() - INTERVAL '90 minutes') AS is_new,
+
+        -- FTS ranking
+        ts_rank(p.search_vector, plainto_tsquery('simple', unaccent($1))) AS rank,
+
+        COUNT(*) OVER() AS total_count
+
+    FROM
+        products p
+            JOIN sell_product sp ON p.id = sp.product
+            LEFT JOIN product_categories pc ON p.id = pc.product
+            LEFT JOIN categories c ON pc.category = c.id
+            LEFT JOIN bids b ON p.id = b.product
+            LEFT JOIN LATERAL (
+                SELECT u.name
+                FROM bids b2 JOIN users u ON b2.buyer = u.id
+                WHERE b2.product = p.id
+                ORDER BY b2.price DESC
+                LIMIT 1
+            ) bidder ON true,
+            plainto_tsquery('simple', unaccent($1)) AS query
+
+    WHERE (p.search_vector @@ query OR p.name ILIKE '%' || $1 || '%')
+      AND ($2::int IS NULL OR pc.category = $2)
+
+    GROUP BY 
+        p.id, p.image, p.name, p.current_price,
+        sp.expired_at, sp.created_at, sp.instant_price,
+        bidder.name, 
+        query, p.search_vector
+
+    ORDER BY ${sortLogic}, rank DESC, is_new DESC
+
+    LIMIT $3 OFFSET $4;
+`;
+
+// Product Description Queries
+export const getProductDescriptionsByProductId = `SELECT * FROM product_descriptions WHERE product = $1`;
+
+export const createProductDescription = `INSERT INTO product_descriptions (product, description, created_at) VALUES ($1, $2, $3) RETURNING *`;
 
 // Admin Queries
 
