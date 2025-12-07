@@ -1,3 +1,13 @@
+const PRODUCT_SELECT_FIELDS = [
+    'id',
+    'name',
+    'current_price',
+    'image',
+    'state'
+];
+
+const getProductColumns = () => PRODUCT_SELECT_FIELDS.map(col => `p.${col}`).join(', ');
+
 
 // User Queries
 export const getUserByEmail = `SELECT * FROM users WHERE email = $1`;
@@ -16,57 +26,178 @@ export const updateUserInformationById = `UPDATE users SET name = $1, email = $2
 
 export const updateUserPasswordById = `UPDATE users SET hashed_password = $1 WHERE id = $2 RETURNING *`;
 
-export const getRatingsByUserId = `
+export const getRatingsByUserId = (sortLogic) => `
     SELECT 
         rater.name AS rater_name,
-        ratee.name AS ratee_name,
         (CASE WHEN r.liked = TRUE THEN 1 ELSE -1 END) AS liked,
         r.content,
-        r.created_at
+        r.created_at,
+        COUNT(*) OVER() AS total_count
 
     FROM 
         reviews r
-            JOIN users rater ON r.rater = rater.id
-            JOIN users ratee ON r.ratee = ratee.id
+            LEFT JOIN users rater ON r.rater = rater.id
 
     WHERE r.ratee = $1
+
+    ORDER BY ${sortLogic}
+
+    LIMIT $2 OFFSET $3;
 `;
 
-export const getBiddingsByUserId = `
+export const getBiddingsByUserId = (sortLogic) => `
     SELECT
-
+        ${getProductColumns()},
+        b.bid_date,
+        b.price AS bid_price,
+        sp.instant_price,
+        bidder.name AS highest_bidder,
+        sp.created_at,
+        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
+        ARRAY_AGG(DISTINCT c.name) AS categories,
+        COUNT(DISTINCT pb.id) AS bid_count,
+        ts_rank(p.search_vector, plainto_tsquery('simple', unaccent($2))) AS rank,
+        COUNT(*) OVER() AS total_count
 
     FROM
         bids b
             JOIN products p ON b.product = p.id
             JOIN sell_product sp ON p.id = sp.product
+            LEFT JOIN product_categories pc ON p.id = pc.product
+            LEFT JOIN categories c ON pc.category = c.id
+            LEFT JOIN bids pb ON p.id = pb.product
+            LEFT JOIN LATERAL(
+                SELECT u.name
+                FROM bids b2 JOIN users u ON b2.buyer = u.id
+                WHERE b2.product = p.id
+                ORDER BY b2.price DESC
+                LIMIT 1
+            ) bidder ON true,
+            plainto_tsquery('simple', unaccent($2)) AS query
 
+    WHERE 
+        b.buyer = $1
+        AND (p.search_vector @@ query OR p.name ILIKE '%' || $2 || '%')
+        AND ($3::int IS NULL OR pc.category = $3)
+        AND (sp.created_at >= $4::timestamp OR $4::timestamp IS NULL)
+        AND (sp.created_at <= $5::timestamp OR $5::timestamp IS NULL)
+        AND (p.current_price >= $6 AND p.current_price <= $7 OR $6 IS NULL OR $7 IS NULL)
+        AND (p.state = ANY($8) OR $8 IS NULL)
 
-    WHERE b.buyer = $1
+    GROUP BY 
+        p.id,
+        b.bid_date, b.price,
+        sp.expired_at, sp.created_at, sp.instant_price,
+        bidder.name, 
+        query, p.search_vector
+
+    ORDER BY ${sortLogic}, rank DESC
+
+    LIMIT $9 OFFSET $10;
 `;
 
-export const getSellingsByUserId = `
+export const getSellingsByUserId = (sortLogic) => `
     SELECT
+        ${getProductColumns()},
+        sp.instant_price,
+        bidder.name AS highest_bidder,
+        sp.created_at,
+        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
+        ARRAY_AGG(DISTINCT c.name) AS categories,
+        COUNT(DISTINCT b.id) AS bid_count,
+        ts_rank(p.search_vector, plainto_tsquery('simple', unaccent($2))) AS rank,
+        COUNT(*) OVER() AS total_count
 
     FROM
+        sell_product sp
+            JOIN products p ON sp.product = p.id
+            LEFT JOIN product_categories pc ON p.id = pc.product
+            LEFT JOIN categories c ON pc.category = c.id
+            LEFT JOIN bids b ON p.id = b.product
+            LEFT JOIN LATERAL(
+                SELECT u.name
+                FROM bids b2 JOIN users u ON b2.buyer = u.id
+                WHERE b2.product = p.id
+                ORDER BY b2.price DESC
+                LIMIT 1
+            ) bidder ON true,
+            plainto_tsquery('simple', unaccent($2)) AS query
 
-    WHERE user_id = $1
+    WHERE 
+        sp.seller = $1
+        AND (p.search_vector @@ query OR p.name ILIKE '%' || $2 || '%')
+        AND ($3::int IS NULL OR pc.category = $3)
+        AND (sp.created_at >= $4::timestamp OR $4::timestamp IS NULL)
+        AND (sp.created_at <= $5::timestamp OR $5::timestamp IS NULL)
+        AND (p.current_price >= $6 AND p.current_price <= $7 OR $6 IS NULL OR $7 IS NULL)
+        AND (p.state = ANY($8) OR $8 IS NULL)
+
+    GROUP BY 
+        p.id,
+        sp.expired_at, sp.created_at, sp.instant_price,
+        bidder.name, 
+        query, p.search_vector
+
+    ORDER BY ${sortLogic}, rank DESC
+
+    LIMIT $9 OFFSET $10;
 `;
 
-export const getWonsByUserId = `
+export const getWonsByUserId = (sortLogic) => `
     SELECT
+        ${getProductColumns()},
+        sp.instant_price,
+        bidder.name AS highest_bidder,
+        sp.created_at,
+        sp.expired_at as win_time,
+        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
+        ARRAY_AGG(DISTINCT c.name) AS categories,
+        COUNT(DISTINCT b.id) AS bid_count,
+        ts_rank(p.search_vector, plainto_tsquery('simple', unaccent($2))) AS rank,
+        COUNT(*) OVER() AS total_count
 
     FROM
+        bidder_winner bw
+            JOIN products p ON bw.product = p.id
+            JOIN sell_product sp ON p.id = sp.product
+            LEFT JOIN product_categories pc ON p.id = pc.product
+            LEFT JOIN categories c ON pc.category = c.id
+            LEFT JOIN bids b ON p.id = b.product
+            LEFT JOIN LATERAL(
+                SELECT u.name
+                FROM bids b2 JOIN users u ON b2.buyer = u.id
+                WHERE b2.product = p.id
+                ORDER BY b2.price DESC
+                LIMIT 1
+            ) bidder ON true,
+            plainto_tsquery('simple', unaccent($2)) AS query
 
-    WHERE user_id = $1
+    WHERE 
+        bw.bidder = $1
+        AND (p.search_vector @@ query OR p.name ILIKE '%' || $2 || '%')
+        AND ($3::int IS NULL OR pc.category = $3)
+        AND (sp.created_at >= $4::timestamp OR $4::timestamp IS NULL)
+        AND (sp.created_at <= $5::timestamp OR $5::timestamp IS NULL)
+        AND (p.current_price >= $6 AND p.current_price <= $7 OR $6 IS NULL OR $7 IS NULL)
+        AND (p.state = ANY($8) OR $8 IS NULL)
+
+    GROUP BY 
+        p.id,
+        sp.expired_at, sp.created_at, sp.instant_price,
+        bidder.name, 
+        query, p.search_vector
+
+    ORDER BY ${sortLogic}, rank DESC
+
+    LIMIT $9 OFFSET $10;
 `;
 
 export const getRatingByUserIdAndProductId = `
-    SELECT
+    SELECT * FROM reviews WHERE rater = $1 AND product = $2
+`;
 
-    FROM
-
-    WHERE user_id = $1 AND product_id = $2
+export const checkIsWinner = `
+    SELECT * FROM bidder_winner WHERE bidder = $1 AND product = $2
 `;
 
 export const createRating = `
@@ -97,16 +228,6 @@ export const updateCategoryById = `UPDATE categories SET name = $1 WHERE id = $2
 export const deleteCategoryById = `DELETE FROM categories WHERE id = $1`;
 
 // Product Queries
-const PRODUCT_SELECT_FIELDS = [
-    'id',
-    'name',
-    'current_price',
-    'image',
-    'state'
-];
-
-const getProductColumns = () => PRODUCT_SELECT_FIELDS.map(col => `p.${col}`).join(', ');
-
 export const getProducts = `SELECT * FROM products`;
 
 export const getProductById = `SELECT * FROM products WHERE id = $1`;

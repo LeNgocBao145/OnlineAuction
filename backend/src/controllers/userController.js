@@ -18,6 +18,7 @@ import query from "../libs/db.js";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { sendOTPEmail } from "../utils/emailService.js";
+import { get } from "http";
 
 const otpStore = new Map();
 
@@ -346,91 +347,331 @@ class UserController {
   }
 
   async getRatings(req, res) {
-    const userId = req.params.userId;
-    const result = await query(getUserById, [userId]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const ratingsResult = await query(getRatingsByUserId, [userId]);
-    const ratings = ratingsResult.rows;
-
-    const ratePoint = ratings.reduce((sum, r) => sum + r.point, 0);
-
-    return res.status(200).json({
-      message: "Ratings retrieved successfully",
-      data: { 
-        ratePoint: ratePoint,
-        ratings
+    try {
+      const userId = req.params.userId;
+      const result = await query(getUserById, [userId]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
       }
-    });
+
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+      const offset = (page - 1) * limit;
+
+      const SORT_MAPPING = {
+        oldest: "r.created_at ASC",
+        newest: "r.created_at DESC",
+      };
+
+      let sortCriteria = req.query.sort || "newest";
+      const orderBySql =
+        sortCriteria
+          .split(",")
+          .map((key) => SORT_MAPPING[key.trim()])
+          .filter(Boolean)
+          .join(", ") || "r.created_at DESC";
+
+      const sqlQuery = getRatingsByUserId(orderBySql);
+
+      const { rows } = await query(sqlQuery, [userId, limit, offset]);
+
+      const totalItems = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
+      const totalPages = Math.ceil(totalItems / limit);
+
+      const ratings = rows.map((item) => {
+        const { total_count, ...ratingData } = item;
+        return ratingData;
+      });
+
+      return res.status(200).json({
+        message: "Ratings retrieved successfully",
+        data: { 
+          ratings, 
+          pagination: { 
+            page, 
+            limit, 
+            totalItems, 
+            totalPages 
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Error when get ratings", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
   }
 
   async getBiddings(req, res) {
-    const userId = req.params.userId;
-    const result = await query(getUserById, [userId]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "User not found" });
+    try {
+      const userId = req.params.userId;
+      const result = await query(getUserById, [userId]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const keyword = req.query.keyword ? req.query.keyword.trim() : "";
+
+      const category = req.query.category ? parseInt(req.query.category, 10) : null;
+      
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+      const offset = (page - 1) * limit;
+
+      const startDate = req.query.startDate && req.query.startDate !== "" ? req.query.startDate : null;
+      const endDate = req.query.endDate && req.query.endDate !== "" ? req.query.endDate : null;
+
+      const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
+      const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
+
+      const states = req.query.states
+        ? req.query.states.split(",").map(s => s.trim()).filter(s => s !== "") 
+        : null;
+      const finalStates = (states && states.length > 0) ? states : null;
+
+      const SORT_MAPPING = {
+        price_asc: "p.current_price ASC",
+        price_desc: "p.current_price DESC",
+        time_left_asc: "sp.expired_at ASC",
+        time_left_desc: "sp.expired_at DESC",
+        newest_bid: "b.bid_date DESC",
+        oldest_bid: "b.bid_date ASC",
+      };
+
+      let sortCriteria = req.query.sort || "newest_bid";
+
+      const orderBySql =
+        sortCriteria
+          .split(",")
+          .map((key) => SORT_MAPPING[key.trim()])
+          .filter(Boolean)
+          .join(", ") || "b.bid_date DESC";
+
+      const sqlQuery = getBiddingsByUserId(orderBySql);
+
+      const { rows } = await query(sqlQuery, [
+        userId,
+        keyword,
+        category,
+        startDate,
+        endDate,
+        minPrice,
+        maxPrice,
+        finalStates,
+        limit,
+        offset,
+      ]);
+
+      const totalItems = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
+      const totalPages = Math.ceil(totalItems / limit);
+
+      const products = rows.map((item) => {
+        const { total_count, ...productData } = item;
+        return productData;
+      });
+
+      return res.status(200).json({
+        message: "Biddings retrieved successfully",
+        data: {
+          products,
+          pagination: {
+            page,
+            limit,
+            totalItems,
+            totalPages,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Error when get biddings", error);
+      return res.status(500).json({ message: "Internal server error" });
     }
-
-    const bidsResult = await query(getBiddingsByUserId, [userId]);
-    const bids = bidsResult.rows;
-
-    return res.status(200).json({
-      message: "Bids retrieved successfully", 
-      data: { bids }
-    });
   }
 
   async getSellings(req, res) {
-    const userId = req.params.userId;
-    const result = await query(getUserById, [userId]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "User not found" });
+    try {
+      const userId = req.params.userId;
+      const result = await query(getUserById, [userId]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const keyword = req.query.keyword ? req.query.keyword.trim() : "";
+
+      const category = req.query.category ? parseInt(req.query.category, 10) : null;
+      
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+      const offset = (page - 1) * limit;
+
+      const startDate = req.query.startDate && req.query.startDate !== "" ? req.query.startDate : null;
+      const endDate = req.query.endDate && req.query.endDate !== "" ? req.query.endDate : null;
+
+      const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
+      const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
+
+      const states = req.query.states
+        ? req.query.states.split(",").map(s => s.trim()).filter(s => s !== "") 
+        : null;
+      const finalStates = (states && states.length > 0) ? states : null;
+
+      const SORT_MAPPING = {
+        price_asc: "p.current_price ASC",
+        price_desc: "p.current_price DESC",
+        time_left_asc: "sp.expired_at ASC",
+        time_left_desc: "sp.expired_at DESC",
+        newest_sell: "sp.created_at DESC",
+        oldest_sell: "sp.created_at ASC",
+        expired_soon: "sp.expired_at ASC",
+        expired_late: "sp.expired_at DESC",
+      };
+
+      let sortCriteria = req.query.sort || "newest_sell";
+
+      const orderBySql =
+        sortCriteria
+          .split(",")
+          .map((key) => SORT_MAPPING[key.trim()])
+          .filter(Boolean)
+          .join(", ") || "sp.created_at DESC";
+
+      const sqlQuery = getSellingsByUserId(orderBySql);
+
+      const { rows } = await query(sqlQuery, [
+        userId,
+        keyword,
+        category,
+        startDate,
+        endDate,
+        minPrice,
+        maxPrice,
+        finalStates,
+        limit,
+        offset,
+      ]);
+
+      const totalItems = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
+      const totalPages = Math.ceil(totalItems / limit);
+
+      const products = rows.map((item) => {
+        const { total_count, ...productData } = item;
+        return productData;
+      });
+
+      return res.status(200).json({
+        message: "Sellings retrieved successfully",
+        data: {
+          products,
+          pagination: {
+            page,
+            limit,
+            totalItems,
+            totalPages,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Error when get sellings", error);
+      return res.status(500).json({ message: "Internal server error" });
     }
-
-    const sellingsResult = await query(getSellingsByUserId, [userId]);
-    const sellings = sellingsResult.rows;
-
-    return res.status(200).json({
-      message: "Sellings retrieved successfully", 
-      data: { sellings }
-    });
   }
 
   async getWons(req, res) {
-    const userId = req.params.userId;
-    const result = await query(getUserById, [userId]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    try {
+      const userId = req.params.userId;
+      const result = await query(getUserById, [userId]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
 
-    const wonsResult = await query(getWonsByUserId, [userId]);
-    const wons = wonsResult.rows;
-    
-    return res.status(200).json({
-      message: "Wons retrieved successfully", 
-      data: { wons }
-    });
+      const keyword = req.query.keyword ? req.query.keyword.trim() : "";
+
+      const category = req.query.category ? parseInt(req.query.category, 10) : null;
+      
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+      const offset = (page - 1) * limit;
+
+      const startDate = req.query.startDate && req.query.startDate !== "" ? req.query.startDate : null;
+      const endDate = req.query.endDate && req.query.endDate !== "" ? req.query.endDate : null;
+
+      const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
+      const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
+
+      const states = req.query.states
+        ? req.query.states.split(",").map(s => s.trim()).filter(s => s !== "") 
+        : null;
+      const finalStates = (states && states.length > 0) ? states : null;
+
+      const SORT_MAPPING = {
+        price_asc: "p.current_price ASC",
+        price_desc: "p.current_price DESC",
+        newest_win: "win_time DESC",
+        oldest_win: "win_time ASC",
+      };
+
+      let sortCriteria = req.query.sort || "newest_win";
+
+      const orderBySql =
+        sortCriteria
+          .split(",")
+          .map((key) => SORT_MAPPING[key.trim()])
+          .filter(Boolean)
+          .join(", ") || "win_time DESC";
+
+      const sqlQuery = getWonsByUserId(orderBySql);
+
+      const { rows } = await query(sqlQuery, [
+        userId,
+        keyword,
+        category,
+        startDate,
+        endDate,
+        minPrice,
+        maxPrice,
+        finalStates,
+        limit,
+        offset,
+      ]);
+
+      const totalItems = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
+      const totalPages = Math.ceil(totalItems / limit);
+
+      const products = rows.map((item) => {
+        const { total_count, ...productData } = item;
+        return productData;
+      });
+
+      return res.status(200).json({
+        message: "Wons retrieved successfully",
+        data: {
+          products,
+          pagination: {
+            page,
+            limit,
+            totalItems,
+            totalPages,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Error when get wons", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
   }
 
   async rateSeller(req, res) {
     try {
       const userId = req.params.userId;
-      const userResult = await query(getUserById, [userId]);
-      if (userResult.rows.length === 0) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
       const productId = req.params.productId;
-      const productResult = await query(getProductById, [productId]);
-      if (productResult.rows.length === 0) {
-        return res.status(404).json({ message: "Product not found" });
-      }
 
       const { point, comment } = req.body;
       if (point !== 0 && point !== 1) {
-        return res.status(400).json({ message: "Point must be 0 or 1" });
+        return res.status(400).json({ message: "Point must be 0 (dislike) or 1 (like)" });
+      }
+
+      const winnerCheck = await query(checkIsWinner, [userId, productId]);
+      if (winnerCheck.rows.length === 0) {
+        return res.status(403).json({ message: "You are not eligible to rate the seller for this product" });
       }
 
       const existingRatingResult = await query(getRatingByUserIdAndProductId, [userId, productId]);
@@ -438,7 +679,9 @@ class UserController {
         return res.status(409).json({ message: "You have already rated this seller for this product" });
       }
 
-      await query(createRating, [userId, productId, point, comment]);
+      const isLiked = point === 1;
+
+      await query(createRating, [userId, productId, isLiked, comment]);
 
       return res.status(201).json({ message: "Seller rated successfully" });
     } catch (error) {
