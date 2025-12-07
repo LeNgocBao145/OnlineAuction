@@ -433,8 +433,8 @@ class UserController {
         price_desc: "p.current_price DESC",
         time_left_asc: "sp.expired_at ASC",
         time_left_desc: "sp.expired_at DESC",
-        newest_bid: "b.bid_date DESC",
-        oldest_bid: "b.bid_date ASC",
+        newest_bid: "bid_date DESC",
+        oldest_bid: "bid_date ASC",
       };
 
       let sortCriteria = req.query.sort || "newest_bid";
@@ -444,7 +444,7 @@ class UserController {
           .split(",")
           .map((key) => SORT_MAPPING[key.trim()])
           .filter(Boolean)
-          .join(", ") || "b.bid_date DESC";
+          .join(", ") || "bid_date DESC";
 
       const sqlQuery = getBiddingsByUserId(orderBySql);
 
