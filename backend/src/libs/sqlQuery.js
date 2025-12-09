@@ -19,13 +19,13 @@ const USER_SELECT_FIELDS = [
 const getUserColumns = () => USER_SELECT_FIELDS.map(col => `u.${col}`).join(', ');
 
 // User Queries
-export const getUserByEmail = `SELECT * FROM users WHERE email = $1`;
+export const getUserByEmail = `SELECT ${getUserColumns()} FROM users u WHERE email = $1`;
 
-export const getUserById = `SELECT * FROM users WHERE id = $1`;
+export const getUserById = `SELECT ${getUserColumns()} FROM users u WHERE u.id = $1`;
 
 export const createUser = `INSERT INTO users (name, email, hashed_password, birthdate, address, role, rating) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`;
 
-export const getUsers = `SELECT * FROM users`;
+export const getUsers = `SELECT ${getUserColumns()} FROM users u`;
 
 export const deleteUserById = `DELETE FROM users WHERE id = $1`;
 
@@ -237,6 +237,10 @@ export const updateRequestReset = `
     WHERE bidder = $1;
 `;
 
+export const countUserRatings = `
+    SELECT count(*) as total FROM reviews WHERE ratee = $1
+`;
+
 // Session Queries
 export const createSession = `INSERT INTO sessions (user_id, refresh_token, expired_at) VALUES ($1, $2, $3)`;
 
@@ -254,9 +258,9 @@ export const updateCategoryById = `UPDATE categories SET name = $1 WHERE id = $2
 export const deleteCategoryById = `DELETE FROM categories WHERE id = $1`;
 
 // Product Queries
-export const getProducts = `SELECT * FROM products`;
+export const getProducts = `SELECT ${getProductColumns()} FROM products p`;
 
-export const getProductById = `SELECT * FROM products WHERE id = $1`;
+export const getProductById = `SELECT ${getProductColumns()} FROM products p WHERE id = $1`;
 
 export const createProduct = `INSERT INTO products (name, description, image, start_price, current_price, end_time, seller_id, category_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`;
 
@@ -480,6 +484,128 @@ export const createQuestion = `
 
 export const updateQuestionAnswer = `
     UPDATE product_questions SET answerer = $1, answer = $2, answered_at = NOW() WHERE id = $3 RETURNING *;
+`;
+
+export const getBidRequestsByProductId = (sortLogic) => `
+   SELECT
+        ${getUserColumns()},
+        br.id AS request_id,
+        br.request_date,
+        br.state AS request_state,
+        ts_rank(u.search_vector, plainto_tsquery('simple', unaccent($1))) AS rank,
+        COUNT(*) OVER() AS total_count
+
+    FROM
+        bid_requests br
+            JOIN users u ON u.id = br.bidder
+            CROSS JOIN plainto_tsquery('simple', unaccent($1)) AS query
+
+    WHERE (u.search_vector @@ query OR u.email ILIKE '%' || $1 || '%' OR u.name ILIKE '%' || $1 || '%')
+      AND (br.product = $2 OR $2 IS NULL)
+      AND (br.state = ANY($3) OR $3 IS NULL)
+
+    ORDER BY ${sortLogic}, rank DESC
+
+    LIMIT $4 OFFSET $5;
+`;
+
+export const checkIsAllowedBidder = `
+    SELECT 1 FROM allowed_bidder WHERE bidder = $1 AND product = $2
+`;
+
+export const getProductAndSellInfoById = `
+    SELECT
+        p.id,                 
+        p.name,
+        p.current_price,
+        p.image,
+        p.state,
+        sp.instant_price,
+        sp.init_price,
+        sp.seller,             
+        sp.step_price,
+        sp.created_at,         
+        sp.expired_at,       
+        u.name AS seller_name,
+        u.email
+        
+    FROM products p
+        JOIN sell_product sp ON p.id = sp.product
+        JOIN users u ON sp.seller = u.id
+        
+    WHERE p.id = $1;
+`;
+
+export const getBidRequestByBidderAndProduct = `
+    SELECT request_date FROM bid_requests WHERE bidder = $1 AND product = $2;
+`;
+
+export const createBidRequest = `
+    INSERT INTO bid_requests (bidder, product, request_date, state) VALUES ($1, $2, NOW(), 'pending');
+`;
+
+export const updateBidRequestReset = `
+    UPDATE bid_requests 
+    SET request_date = NOW(), state = 'pending' 
+    WHERE bidder = $1 AND product = $2;
+`;
+
+export const approveBidRequest = `
+    WITH updated_request AS (
+        UPDATE bid_requests
+        SET state = 'success'
+        WHERE id = $1 AND state = 'pending'
+        RETURNING bidder, product
+    )
+    INSERT INTO allowed_bidder (bidder, product)
+    SELECT bidder, product FROM updated_request
+    ON CONFLICT (bidder, product) DO NOTHING;
+`;
+
+export const rejectBidRequest = `
+    UPDATE bid_requests
+    SET state = 'failed'
+    WHERE id = $1 AND state = 'pending';
+`;
+
+export const handleInstantBuyQuery = `
+    WITH updated_product AS (
+        UPDATE products
+        SET current_price = $3, state = 'sold'
+        WHERE id = $2 AND state = 'bidding'
+        RETURNING id
+    ),
+    inserted_bid AS (
+        INSERT INTO bids (buyer, product, price, bid_date)
+        SELECT $1, id, $3, NOW() 
+        FROM updated_product
+    ),
+    inserted_winner AS (
+        INSERT INTO bidder_winner (bidder, product)
+        SELECT $1, id 
+        FROM updated_product
+    )
+    INSERT INTO trade_verifications (product, bidder, seller, delivery_address)
+    SELECT 
+        up.id,                                                  
+        $1,                                                    
+        (SELECT seller FROM sell_product WHERE product = up.id),
+        (SELECT address FROM users WHERE id = $1)              
+    FROM updated_product up;                     
+`;
+
+export const placeBidTransaction = `
+    WITH new_bid AS (
+        INSERT INTO bids (buyer, product, price, bid_date)
+        VALUES ($1, $2, $3, NOW())
+        RETURNING product
+    )
+    UPDATE products
+    SET current_price = $3
+    WHERE id = $2 
+        AND current_price + (SELECT step_price FROM sell_product WHERE product = $2) <= $3
+        AND state = 'bidding'
+    RETURNING id;
 `;
 
 // Product Description Queries
