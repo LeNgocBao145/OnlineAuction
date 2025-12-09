@@ -3,43 +3,46 @@ import env from 'dotenv'
 
 env.config();
 
-const requiredEnvVars = [
-    'PG_HOST',
-    'PG_DATABASE',
-    'PG_USER',
-    'PG_PASSWORD',
-    'PG_PORT',
-    'PG_SSL',
-];
-
-requiredEnvVars.forEach((envVar) => {
-    if (!process.env[envVar]) {
-        throw new Error(`Missing required environment variable: ${envVar}`);
-    }
-});
+// Build connection string for Neon
+const connectionString = `postgresql://${process.env.PG_USER}:${process.env.PG_PASSWORD}@${process.env.PG_HOST}:${process.env.PG_PORT}/${process.env.PG_DATABASE}?sslmode=require`;
 
 const db = new pg.Pool({
-    host: process.env.PG_HOST,
-    database: process.env.PG_DATABASE,
-    user: process.env.PG_USER,
-    password: process.env.PG_PASSWORD,
-    port: parseInt(process.env.PG_PORT, 10),
-    ssl: process.env.PG_SSL === 'true',
+    connectionString,
+    ssl: {
+        rejectUnauthorized: false
+    },
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+    acquireTimeoutMillis: 60000,
+    createTimeoutMillis: 30000,
+    destroyTimeoutMillis: 5000,
+    reapIntervalMillis: 1000,
+    createRetryIntervalMillis: 200,
 });
 
-db.connect()
-    .then(()=>{
-        console.log("Connect successfully with postgres database!")
-    })
-    .catch((err) => { 
-        console.log("Couldn't connect to database", err) 
-        process.exit(1);
-    });
+// Test the connection
+(async () => {
+    try {
+        const client = await db.connect();
+        console.log('✅ Connected to PostgreSQL database successfully');
+        client.release();
+    } catch (err) {
+        console.error('❌ Database connection failed:', err.message);
+    }
+})();
 
 db.on('error', (err) => {
-    console.error('Unexpected error on idle client', err);
-    process.exit(-1);
+    console.error('Database pool error:', err);
 });
 
-const query = (text, params) => db.query(text, params);
+const query = async (text, params) => {
+    try {
+        const result = await db.query(text, params);
+        return result;
+    } catch (error) {
+        console.error('Database query error:', error);
+        throw error;
+    }
+};
 export default query;
