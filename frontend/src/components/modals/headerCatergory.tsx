@@ -20,7 +20,7 @@ export default function HeaderCategory() {
             <div className="w-5/20 p-4 border-r-4 border-white/60">
             {allCategories.map((category, index) => (
                 <div key={index} 
-                     className='text-white/80 hover:bg-(--primary) rounded-lg mb-2 cursor-pointer flex justify-between items-center px-2'
+                     className='text-white/80 hover:bg-(--primary) h-10 rounded-lg mb-2 cursor-pointer flex justify-between items-center px-2'
                      onMouseEnter={() => setSelectedCategory(category)}
                 >
                     {category}
