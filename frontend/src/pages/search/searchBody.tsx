@@ -1,6 +1,5 @@
 import { useState } from "react";
-
-import { PlayCircleIcon } from "@heroicons/react/24/solid" // solid filled
+import { useNavigate } from "react-router";
 
 export default function SearchBody() {
     const [itemsData, setItemsData] = useState(
@@ -13,6 +12,8 @@ export default function SearchBody() {
             {id: 6, name: "Item 6", buyPrice: 600, currentBid: 550, bidCount: 15, status:"sold", timeLeft: "0h 0m", imageUrl: "/path/to/image6.jpg", highestBidder: "UserF", createdDate: "2024-06-01"},
         ]
     );
+
+    const navigate = useNavigate();
 
     return (
         <div className="w-full p-4 mt-4">
@@ -31,7 +32,9 @@ export default function SearchBody() {
             </div>
             <div className="w-full grid grid-cols-[repeat(auto-fill,minmax(clamp(15rem,30dvw,20rem),1fr))] m-auto gap-4">
                 {itemsData.map((item) => (
-                    <div key={item.id} className="border border-white/10 rounded-xl bg-(--third) p-4 flex flex-col">
+                    <div key={item.id} className="border border-white/10 rounded-xl bg-(--third) p-4 flex flex-col hover:scale-[1.02] transition-transform duration-200 cursor-pointer"
+                        onClick={() => navigate(`/product/${item.id}`)}
+                    >
                         <img src={item.imageUrl} alt={item.name} className="w-full h-48 object-cover rounded-lg mb-4 bg-(--secondary) flex items-center justify-center text-white"/>
                         <h2 className="text-2xl font-bold text-white mb-2">{item.name}</h2>
                         <div className="flex justify-between mb-4">
