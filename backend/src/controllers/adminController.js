@@ -11,6 +11,10 @@ import {
   deleteCategoryById,
   getProductById,
   deleteProductById,
+  getRequests,
+  getRequestById,
+  approveRequest,
+  rejectRequest,
 } from "../libs/sqlQuery.js";
 import query from "../libs/db.js";
 import bcrypt from "bcrypt";
@@ -206,6 +210,101 @@ class AdminController {
       return res.status(200).json({ message: "Delete category successfully!" });
     } catch (error) {
       console.error("Error when delete category", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async getBidderRequests(req, res) {
+    try {
+      const keyword = req.query.keyword ? req.query.keyword.trim() : "";
+      
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 5));
+      const offset = (page - 1) * limit;
+
+      const allowedStates = ["pending", "success", "failed"];
+      const states = req.query.states
+        ? req.query.states.split(",").map(s => s.trim())
+        : null;
+      const finalStates = states?.filter(s => allowedStates.includes(s)) || null;
+
+      const SORT_MAPPING = {
+        name_asc: "u.name ASC",
+        name_desc: "u.name DESC",
+        oldest: "r.created_at ASC",
+        newest: "r.created_at DESC",
+      };
+
+      let sortCriteria = req.query.sort || "newest,name_asc";
+      const orderBySql =
+        sortCriteria
+          .split(",")
+          .map((key) => SORT_MAPPING[key.trim()])
+          .filter(Boolean)
+          .join(", ") || "r.created_at DESC, u.name ASC";
+
+      const sqlQuery = getRequests(orderBySql);
+
+      const { rows } = await query(sqlQuery, [
+        keyword,
+        finalStates,
+        limit,
+        offset,
+      ]);
+
+      const totalItems = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
+      const totalPages = Math.ceil(totalItems / limit);
+
+      const requests = rows.map((item) => {
+        const { total_count, ...requestData } = item;
+        return requestData;
+      });
+
+      return res.status(200).json({
+        message: "Bidder requests retrieved successfully",
+        data: {
+          requests,
+          pagination: {
+            page,
+            limit,
+            totalItems,
+            totalPages,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Error when get bidder requests", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async approveBidderRequest(req, res) {
+    try {
+      const requestId = req.params.requestId;
+      const result = await query(approveRequest, [requestId]);
+
+      if (result.rowCount === 0) {
+        return res.status(400).json({ message: "Request not found or already processed" });
+      }
+
+      return res.status(200).json({ message: "Bidder request approved successfully!" });
+    } catch (error) {
+      console.error("Error when approve bidder request", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async rejectBidderRequest(req, res) {
+    try {
+      const requestId = req.params.requestId;
+      const result = await query(rejectRequest, [requestId]);
+      if (result.rowCount === 0) {
+        return res.status(400).json({ message: "Request not found or already processed" });
+      }
+
+      return res.status(200).json({ message: "Bidder request rejected successfully!" });
+    } catch (error) {
+      console.error("Error when reject bidder request", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   }

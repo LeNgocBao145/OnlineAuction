@@ -9,6 +9,11 @@ router.post('/accounts', AdminController.createUser);
 router.delete('/accounts/:accountId', AdminController.deleteUser);
 router.put('/accounts/:accountId', AdminController.updateUser);
 
+// Bidder Request Management
+router.get('/requests', AdminController.getBidderRequests);
+router.post('/requests/:requestId/approve', AdminController.approveBidderRequest);
+router.post('/requests/:requestId/reject', AdminController.rejectBidderRequest);
+
 // Category Management
 router.get('/categories', AdminController.getCategories);
 router.post('/categories', AdminController.createCategory);

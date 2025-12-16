@@ -27,7 +27,7 @@ const db = new pg.Pool({
     ssl: process.env.PG_SSL === 'true' ? { rejectUnauthorized: false } : false,
     max: 20,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    connectionTimeoutMillis: 10000,
 });
 
 // Test connection
@@ -37,7 +37,7 @@ db.query('SELECT NOW()')
     })
     .catch((err) => { 
         console.log("Couldn't connect to database", err) 
-        process.exit(1);
+        // Don't exit, allow server to start
     });
 
 db.on('error', (err) => {
@@ -57,4 +57,5 @@ const query = async (text, params) => {
         client.release();
     }
 };
+
 export default query;
