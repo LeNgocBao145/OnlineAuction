@@ -3,6 +3,10 @@ import UserController from '../controllers/userController.js';
 
 const router = express.Router();
 
+// Specific routes first to avoid conflict with :userId
+router.get('/me', UserController.authMe);
+
+// Dynamic routes
 router.get('/:userId', UserController.getUser);
 router.patch('/:userId', UserController.updateUser);
 router.patch('/:userId/verify-otp', UserController.verifyOTP);

@@ -548,3 +548,103 @@ export const rejectRequest = `
     SET state = 'failed' 
     WHERE id = $1 AND state = 'pending';
 `;
+
+// Home Queries
+export const getTop5EndingSoon = `
+    SELECT
+        ${getProductColumns()},
+        sp.instant_price,
+        bidder.name AS highest_bidder,
+        sp.created_at,
+        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
+        ARRAY_AGG(DISTINCT c.name) AS categories,
+        COUNT(DISTINCT b.id) AS bid_count
+
+    FROM
+        products p
+            JOIN sell_product sp ON p.id = sp.product
+            LEFT JOIN product_categories pc ON p.id = pc.product
+            LEFT JOIN categories c ON pc.category = c.id
+            LEFT JOIN bids b ON p.id = b.product
+            LEFT JOIN LATERAL (
+                SELECT u.name
+                FROM bids b2 JOIN users u ON b2.buyer = u.id
+                WHERE b2.product = p.id
+                ORDER BY b2.price DESC
+                LIMIT 1
+            ) bidder ON true
+
+    WHERE p.state = 'bidding' AND sp.expired_at > NOW()
+
+    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name
+
+    ORDER BY sp.expired_at ASC
+
+    LIMIT 5;
+`;
+
+export const getTop5MostBids = `
+    SELECT
+        ${getProductColumns()},
+        sp.instant_price,
+        bidder.name AS highest_bidder,
+        sp.created_at,
+        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
+        ARRAY_AGG(DISTINCT c.name) AS categories,
+        COUNT(DISTINCT b.id) AS bid_count
+
+    FROM
+        products p
+            JOIN sell_product sp ON p.id = sp.product
+            LEFT JOIN product_categories pc ON p.id = pc.product
+            LEFT JOIN categories c ON pc.category = c.id
+            LEFT JOIN bids b ON p.id = b.product
+            LEFT JOIN LATERAL (
+                SELECT u.name
+                FROM bids b2 JOIN users u ON b2.buyer = u.id
+                WHERE b2.product = p.id
+                ORDER BY b2.price DESC
+                LIMIT 1
+            ) bidder ON true
+
+    WHERE p.state = 'bidding'
+
+    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name
+
+    ORDER BY bid_count DESC
+
+    LIMIT 5;
+`;
+
+export const getTop5HighestPrice = `
+    SELECT
+        ${getProductColumns()},
+        sp.instant_price,
+        bidder.name AS highest_bidder,
+        sp.created_at,
+        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
+        ARRAY_AGG(DISTINCT c.name) AS categories,
+        COUNT(DISTINCT b.id) AS bid_count
+
+    FROM
+        products p
+            JOIN sell_product sp ON p.id = sp.product
+            LEFT JOIN product_categories pc ON p.id = pc.product
+            LEFT JOIN categories c ON pc.category = c.id
+            LEFT JOIN bids b ON p.id = b.product
+            LEFT JOIN LATERAL (
+                SELECT u.name
+                FROM bids b2 JOIN users u ON b2.buyer = u.id
+                WHERE b2.product = p.id
+                ORDER BY b2.price DESC
+                LIMIT 1
+            ) bidder ON true
+
+    WHERE p.state = 'bidding'
+
+    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name
+
+    ORDER BY p.current_price DESC
+
+    LIMIT 5;
+`;

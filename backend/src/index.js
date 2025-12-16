@@ -12,14 +12,14 @@ const app = express();
 
 // middeware
 // This help express understand json format of request body
-app.use(express.json());
-app.use(cookieParser());
 const corsOptions = {
   origin: process.env.FRONTEND_URL,
   credentials: true,
 };
 
 app.use(cors(corsOptions));
+app.use(express.json());
+app.use(cookieParser());
 
 route(app);
 

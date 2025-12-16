@@ -29,6 +29,21 @@ import { create } from "domain";
 const otpStore = new Map();
 
 class UserController {
+  async authMe(req, res, next) {
+    try {
+      // Get user from authMiddleware
+      const user = req.user;
+
+      if (!user) {
+        return res.status(404).json({ message: "Error in authMiddleware" });
+      }
+
+      return res.status(200).json({ user });
+    } catch (error) {
+      console.error("Error when call authMe", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
   async getUser(req, res) {
     try {
       const userId = req.params.userId;
@@ -51,60 +66,68 @@ class UserController {
 
   async updateUser(req, res) {
     try {
-        const userId = req.params.userId;
-        const user = await query(getUserById, [userId]);
-        if (user.rows.length === 0) {
-          return res.status(404).json({ error: "User not found." });
-        }
+      const userId = req.params.userId;
+      const user = await query(getUserById, [userId]);
+      if (user.rows.length === 0) {
+        return res.status(404).json({ error: "User not found." });
+      }
 
-        const { name, email, address, birthdate } = req.body;
-    
-        // Validate birthdate (must be 18+)
-        const birthDate = new Date(birthdate);
-        const age = Math.floor(
-          (Date.now() - birthDate) / (365.25 * 24 * 60 * 60 * 1000)
-        );
-        if (age < 18) {
-          return res
-            .status(400)
-            .json({ error: "User must be at least 18 years old." });
-        }
-    
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          return res.status(400).json({ error: "Invalid email format." });
-        }
+      const { name, email, address, birthdate } = req.body;
 
-        // Validate address format
-        const addressRegex = /^[a-zA-Z0-9\s,.'-]{3,}$/;
-        if (!addressRegex.test(address)) {  
-          return res.status(400).json({ error: "Invalid address format." });
-        }
+      // Validate birthdate (must be 18+)
+      const birthDate = new Date(birthdate);
+      const age = Math.floor(
+        (Date.now() - birthDate) / (365.25 * 24 * 60 * 60 * 1000)
+      );
+      if (age < 18) {
+        return res
+          .status(400)
+          .json({ error: "User must be at least 18 years old." });
+      }
 
-        // If email changed, require OTP verification
-        if (user.rows[0].email !== email) {
-          // Generate OTP
-          const otp = crypto.randomInt(100000, 999999).toString();
-          const expiredAt = Date.now() + 10 * 60 * 1000;
-    
-          // Store OTP with user data in memory
-          otpStore.set(email, { otp, expiredAt, name, birthdate, address });
-    
-          // Send OTP email
-          await sendOTPEmail(email, otp);
-          return res.status(200).json({
-              message: "OTP sent to email. Please verify to complete registration.",
-              email,
-          });
-        }
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "Invalid email format." });
+      }
 
-        const updatedUser = await query(updateUserInformationById, [name, email, birthdate, address, userId]);
+      // Validate address format
+      const addressRegex = /^[a-zA-Z0-9\s,.'-]{3,}$/;
+      if (!addressRegex.test(address)) {
+        return res.status(400).json({ error: "Invalid address format." });
+      }
 
-        return res.status(201).json({ message: "Update user profile successfully!", updatedUser });
+      // If email changed, require OTP verification
+      if (user.rows[0].email !== email) {
+        // Generate OTP
+        const otp = crypto.randomInt(100000, 999999).toString();
+        const expiredAt = Date.now() + 10 * 60 * 1000;
+
+        // Store OTP with user data in memory
+        otpStore.set(email, { otp, expiredAt, name, birthdate, address });
+
+        // Send OTP email
+        await sendOTPEmail(email, otp);
+        return res.status(200).json({
+          message: "OTP sent to email. Please verify to complete registration.",
+          email,
+        });
+      }
+
+      const updatedUser = await query(updateUserInformationById, [
+        name,
+        email,
+        birthdate,
+        address,
+        userId,
+      ]);
+
+      return res
+        .status(201)
+        .json({ message: "Update user profile successfully!", updatedUser });
     } catch (error) {
-        console.error("Error when update user profile!", error);
-        return res.status(500).json({ error: "Internal server error." });
+      console.error("Error when update user profile!", error);
+      return res.status(500).json({ error: "Internal server error." });
     }
   }
 
@@ -140,14 +163,18 @@ class UserController {
 
       // Update user information using stored data
       const { name, birthdate, address } = otpRecord;
-      const updatedUser = await query(updateUserInformationById, [name, email, birthdate, address, userId]);
+      const updatedUser = await query(updateUserInformationById, [
+        name,
+        email,
+        birthdate,
+        address,
+        userId,
+      ]);
 
-      return res
-        .status(200)
-        .json({
-          message: "Update user information successfully!",
-          updatedUser,
-        });
+      return res.status(200).json({
+        message: "Update user information successfully!",
+        updatedUser,
+      });
     } catch (error) {
       console.error("Error when verify email!", error);
       return res.status(500).json({ error: "Internal server error." });
@@ -237,22 +264,40 @@ class UserController {
 
       const keyword = req.query.keyword ? req.query.keyword.trim() : "";
 
-      const category = req.query.category ? parseInt(req.query.category, 10) : null;
-      
+      const category = req.query.category
+        ? parseInt(req.query.category, 10)
+        : null;
+
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+      const limit = Math.min(
+        100,
+        Math.max(1, parseInt(req.query.limit, 10) || 10)
+      );
       const offset = (page - 1) * limit;
 
-      const startDate = req.query.startDate && req.query.startDate !== "" ? req.query.startDate : null;
-      const endDate = req.query.endDate && req.query.endDate !== "" ? req.query.endDate : null;
+      const startDate =
+        req.query.startDate && req.query.startDate !== ""
+          ? req.query.startDate
+          : null;
+      const endDate =
+        req.query.endDate && req.query.endDate !== ""
+          ? req.query.endDate
+          : null;
 
-      const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
-      const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
+      const minPrice = req.query.minPrice
+        ? parseFloat(req.query.minPrice)
+        : null;
+      const maxPrice = req.query.maxPrice
+        ? parseFloat(req.query.maxPrice)
+        : null;
 
       const states = req.query.states
-        ? req.query.states.split(",").map(s => s.trim()).filter(s => s !== "") 
+        ? req.query.states
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => s !== "")
         : null;
-      const finalStates = (states && states.length > 0) ? states : null;
+      const finalStates = states && states.length > 0 ? states : null;
 
       const SORT_MAPPING = {
         price_asc: "p.current_price ASC",
@@ -287,7 +332,8 @@ class UserController {
         offset,
       ]);
 
-      const totalItems = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
+      const totalItems =
+        rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
       const totalPages = Math.ceil(totalItems / limit);
 
       const products = rows.map((item) => {
@@ -361,7 +407,10 @@ class UserController {
       }
 
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+      const limit = Math.min(
+        100,
+        Math.max(1, parseInt(req.query.limit, 10) || 10)
+      );
       const offset = (page - 1) * limit;
 
       const SORT_MAPPING = {
@@ -381,7 +430,8 @@ class UserController {
 
       const { rows } = await query(sqlQuery, [userId, limit, offset]);
 
-      const totalItems = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
+      const totalItems =
+        rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
       const totalPages = Math.ceil(totalItems / limit);
 
       const ratings = rows.map((item) => {
@@ -390,18 +440,20 @@ class UserController {
       });
 
       const ratePointResult = await query(getUserRatePointById, [userId]);
-      const ratePoint = ratePointResult.rows[0] ? parseFloat(ratePointResult.rows[0].rate_point) : 0;
+      const ratePoint = ratePointResult.rows[0]
+        ? parseFloat(ratePointResult.rows[0].rate_point)
+        : 0;
 
       return res.status(200).json({
         message: "Ratings retrieved successfully",
         data: {
           ratePoint,
-          ratings, 
-          pagination: { 
-            page, 
-            limit, 
-            totalItems, 
-            totalPages 
+          ratings,
+          pagination: {
+            page,
+            limit,
+            totalItems,
+            totalPages,
           },
         },
       });
@@ -421,22 +473,40 @@ class UserController {
 
       const keyword = req.query.keyword ? req.query.keyword.trim() : "";
 
-      const category = req.query.category ? parseInt(req.query.category, 10) : null;
-      
+      const category = req.query.category
+        ? parseInt(req.query.category, 10)
+        : null;
+
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+      const limit = Math.min(
+        100,
+        Math.max(1, parseInt(req.query.limit, 10) || 10)
+      );
       const offset = (page - 1) * limit;
 
-      const startDate = req.query.startDate && req.query.startDate !== "" ? req.query.startDate : null;
-      const endDate = req.query.endDate && req.query.endDate !== "" ? req.query.endDate : null;
+      const startDate =
+        req.query.startDate && req.query.startDate !== ""
+          ? req.query.startDate
+          : null;
+      const endDate =
+        req.query.endDate && req.query.endDate !== ""
+          ? req.query.endDate
+          : null;
 
-      const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
-      const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
+      const minPrice = req.query.minPrice
+        ? parseFloat(req.query.minPrice)
+        : null;
+      const maxPrice = req.query.maxPrice
+        ? parseFloat(req.query.maxPrice)
+        : null;
 
       const states = req.query.states
-        ? req.query.states.split(",").map(s => s.trim()).filter(s => s !== "") 
+        ? req.query.states
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => s !== "")
         : null;
-      const finalStates = (states && states.length > 0) ? states : null;
+      const finalStates = states && states.length > 0 ? states : null;
 
       const SORT_MAPPING = {
         price_asc: "p.current_price ASC",
@@ -471,7 +541,8 @@ class UserController {
         offset,
       ]);
 
-      const totalItems = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
+      const totalItems =
+        rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
       const totalPages = Math.ceil(totalItems / limit);
 
       const products = rows.map((item) => {
@@ -507,22 +578,40 @@ class UserController {
 
       const keyword = req.query.keyword ? req.query.keyword.trim() : "";
 
-      const category = req.query.category ? parseInt(req.query.category, 10) : null;
-      
+      const category = req.query.category
+        ? parseInt(req.query.category, 10)
+        : null;
+
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+      const limit = Math.min(
+        100,
+        Math.max(1, parseInt(req.query.limit, 10) || 10)
+      );
       const offset = (page - 1) * limit;
 
-      const startDate = req.query.startDate && req.query.startDate !== "" ? req.query.startDate : null;
-      const endDate = req.query.endDate && req.query.endDate !== "" ? req.query.endDate : null;
+      const startDate =
+        req.query.startDate && req.query.startDate !== ""
+          ? req.query.startDate
+          : null;
+      const endDate =
+        req.query.endDate && req.query.endDate !== ""
+          ? req.query.endDate
+          : null;
 
-      const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
-      const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
+      const minPrice = req.query.minPrice
+        ? parseFloat(req.query.minPrice)
+        : null;
+      const maxPrice = req.query.maxPrice
+        ? parseFloat(req.query.maxPrice)
+        : null;
 
       const states = req.query.states
-        ? req.query.states.split(",").map(s => s.trim()).filter(s => s !== "") 
+        ? req.query.states
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => s !== "")
         : null;
-      const finalStates = (states && states.length > 0) ? states : null;
+      const finalStates = states && states.length > 0 ? states : null;
 
       const SORT_MAPPING = {
         price_asc: "p.current_price ASC",
@@ -559,7 +648,8 @@ class UserController {
         offset,
       ]);
 
-      const totalItems = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
+      const totalItems =
+        rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
       const totalPages = Math.ceil(totalItems / limit);
 
       const products = rows.map((item) => {
@@ -595,22 +685,40 @@ class UserController {
 
       const keyword = req.query.keyword ? req.query.keyword.trim() : "";
 
-      const category = req.query.category ? parseInt(req.query.category, 10) : null;
-      
+      const category = req.query.category
+        ? parseInt(req.query.category, 10)
+        : null;
+
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+      const limit = Math.min(
+        100,
+        Math.max(1, parseInt(req.query.limit, 10) || 10)
+      );
       const offset = (page - 1) * limit;
 
-      const startDate = req.query.startDate && req.query.startDate !== "" ? req.query.startDate : null;
-      const endDate = req.query.endDate && req.query.endDate !== "" ? req.query.endDate : null;
+      const startDate =
+        req.query.startDate && req.query.startDate !== ""
+          ? req.query.startDate
+          : null;
+      const endDate =
+        req.query.endDate && req.query.endDate !== ""
+          ? req.query.endDate
+          : null;
 
-      const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
-      const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
+      const minPrice = req.query.minPrice
+        ? parseFloat(req.query.minPrice)
+        : null;
+      const maxPrice = req.query.maxPrice
+        ? parseFloat(req.query.maxPrice)
+        : null;
 
       const states = req.query.states
-        ? req.query.states.split(",").map(s => s.trim()).filter(s => s !== "") 
+        ? req.query.states
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => s !== "")
         : null;
-      const finalStates = (states && states.length > 0) ? states : null;
+      const finalStates = states && states.length > 0 ? states : null;
 
       const SORT_MAPPING = {
         price_asc: "p.current_price ASC",
@@ -643,7 +751,8 @@ class UserController {
         offset,
       ]);
 
-      const totalItems = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
+      const totalItems =
+        rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
       const totalPages = Math.ceil(totalItems / limit);
 
       const products = rows.map((item) => {
@@ -676,17 +785,30 @@ class UserController {
 
       const { point, comment } = req.body;
       if (point !== 0 && point !== 1) {
-        return res.status(400).json({ message: "Point must be 0 (dislike) or 1 (like)" });
+        return res
+          .status(400)
+          .json({ message: "Point must be 0 (dislike) or 1 (like)" });
       }
 
       const winnerCheck = await query(checkIsWinner, [userId, productId]);
       if (winnerCheck.rows.length === 0) {
-        return res.status(403).json({ message: "You are not eligible to rate the seller for this product" });
+        return res
+          .status(403)
+          .json({
+            message: "You are not eligible to rate the seller for this product",
+          });
       }
 
-      const existingRatingResult = await query(getRatingByUserIdAndProductId, [userId, productId]);
+      const existingRatingResult = await query(getRatingByUserIdAndProductId, [
+        userId,
+        productId,
+      ]);
       if (existingRatingResult.rows.length > 0) {
-        return res.status(409).json({ message: "You have already rated this seller for this product" });
+        return res
+          .status(409)
+          .json({
+            message: "You have already rated this seller for this product",
+          });
       }
 
       const isLiked = point === 1;
@@ -710,14 +832,18 @@ class UserController {
 
       const userRole = checkUser.rows[0].role;
       if (userRole !== "bidder") {
-        return res.status(403).json({ message: "Only bidders can request to be sellers" });
+        return res
+          .status(403)
+          .json({ message: "Only bidders can request to be sellers" });
       }
 
       const existingRequest = await query(getRequestByBidder, [userId]);
 
       if (existingRequest.rows.length === 0) {
         await query(createRequest, [userId]);
-        return res.status(201).json({ message: "Request to be seller submitted successfully" });
+        return res
+          .status(201)
+          .json({ message: "Request to be seller submitted successfully" });
       }
 
       const lastRequestDate = existingRequest.rows[0].created_at;
@@ -725,12 +851,18 @@ class UserController {
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
       if (lastRequestDate > sevenDaysAgo) {
-        return res.status(429).json({ message: "You can only request to be a seller once every 7 days" });
+        return res
+          .status(429)
+          .json({
+            message: "You can only request to be a seller once every 7 days",
+          });
       }
 
       await query(updateRequestReset, [userId]);
 
-      return res.status(200).json({ message: "Request updated and resubmitted successfully" });
+      return res
+        .status(200)
+        .json({ message: "Request updated and resubmitted successfully" });
     } catch (error) {
       console.error("Error when requesting to be seller", error);
       return res.status(500).json({ message: "Internal server error" });

@@ -8,45 +8,30 @@ const authService = {
     birthdate: string,
     address: string
   ) => {
-    try {
-      const res = await api.post(
-        "/auth/register",
-        { name, email, password, birthdate, address },
-        { withCredentials: true }
-      );
-      return res.data;
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+    const res = await api.post(
+      "/auth/register",
+      { name, email, password, birthdate, address },
+      { withCredentials: true }
+    );
+    return res.data;
   },
 
   login: async (email: string, password: string) => {
-    try {
-      const res = await api.post(
-        "/auth/login",
-        { email, password },
-        { withCredentials: true }
-      );
-      return res.data;
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+    const res = await api.post(
+      "/auth/login",
+      { email, password },
+      { withCredentials: true }
+    );
+    return res.data;
   },
 
   logout: async () => {
-    try {
-      const res = await api.post(
-        "/auth/logout",
-        {},
-        { withCredentials: true }
-      );
-      return res.data;
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+    const res = await api.post(
+      "/auth/logout",
+      {},
+      { withCredentials: true }
+    );
+    return res.data;
   },
 
   fetchMe: async () => {
