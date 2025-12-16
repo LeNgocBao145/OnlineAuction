@@ -2,15 +2,16 @@ import api from "@/lib/axios";
 
 const authService = {
   register: async (
-    name: string,
     email: string,
+    name: string,
     password: string,
     birthdate: string,
-    address: string
+    address: string,
+    captchaToken: string
   ) => {
     const res = await api.post(
       "/auth/register",
-      { name, email, password, birthdate, address },
+      { name, email, password, birthdate, address, captchaToken },
       { withCredentials: true }
     );
     return res.data;
@@ -47,6 +48,26 @@ const authService = {
   refresh: async () => {
     try {
       const res = await api.post("/auth/refresh", { withCredentials: true });
+      return res.data;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  },
+
+  sendOTP: async(email: string) => {
+    try {
+      const res = await api.post("/auth/send-otp", {email}, { withCredentials: true });
+      return res.data;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  },
+
+  verifyOTP: async(email: string, otp: string) => {
+    try {
+      const res = await api.post("/auth/verify-otp", {email, otp}, { withCredentials: true });
       return res.data;
     } catch (error) {
       console.error(error);

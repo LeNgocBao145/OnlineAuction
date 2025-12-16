@@ -159,25 +159,25 @@ class AuthController {
     }
   }
 
+  // Step 1: Register info & send first OTP
   async register(req, res) {
     try {
-      const { name, email, password, birthdate, address } = req.body;
+      const { email, name, password, birthdate, address, captchaToken } = req.body;
 
-      const token = req.body["g-recaptcha-response"];
-
-      const ok = await verifyCaptcha(token);
-
-      if (!ok) {
-        return res.status(400).json({ message: "Captcha validation failed" });
+      if (!email || !name || !password || !birthdate || !address) {
+        return res.status(400).json({ message: "All fields are required" });
       }
 
-      // Validate input
-      if (!name || !email || !password || !birthdate || !address) {
-        return res.status(400).json({
-          message: "Name, email, password, birthdate, and address are required",
-        });
+      // Verify captcha
+      if (!captchaToken) {
+        return res.status(400).json({ message: "Captcha is required" });
+      }
+      const isCaptchaValid = await verifyCaptcha(captchaToken);
+      if (!isCaptchaValid) {
+        return res.status(400).json({ message: "Invalid captcha" });
       }
 
+      // Check if email already registered
       const isExistingUser = await query(getUserByEmail, [email]);
       if (isExistingUser.rows.length > 0) {
         return res.status(409).json({ message: "Email is already registered" });
@@ -185,17 +185,32 @@ class AuthController {
 
       // Generate OTP
       const otp = crypto.randomInt(100000, 999999).toString();
-      const expiredAt = Date.now() + 10 * 60 * 1000;
+      const expiredAt = Date.now() + 60 * 1000;
 
-      // Store OTP in memory
-      otpStore.set(email, { otp, expiredAt, name, password, birthdate, address });
+      // Store OTP and user data in memory
+      otpStore.set(email, {
+        otp,
+        expiredAt,
+        name,
+        password,
+        birthdate,
+        address,
+      });
+
+      // Auto remove OTP record after it is expired
+      const delay = Math.max(expiredAt - Date.now(), 0);
+      setTimeout(() => {
+        const record = otpStore.get(email);
+        if (record && record.expiredAt <= Date.now()) {
+          otpStore.delete(email);
+        }
+      }, delay);
 
       // Send OTP email
       await sendOTPEmail(email, otp);
 
       return res.status(200).json({
-        message: "OTP sent to email. Please verify to complete registration.",
-        email,
+        message: "OTP sent to email",
       });
     } catch (error) {
       console.error("Register Error: ", error);
@@ -203,12 +218,65 @@ class AuthController {
     }
   }
 
+  // Step 1b: Resend OTP (only need email, update existing otpRecord)
+  async sendOTP(req, res) {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Check if otpRecord exists
+      const existingRecord = otpStore.get(email);
+      if (!existingRecord) {
+        return res.status(400).json({ 
+          message: "No registration found for this email. Please register first." 
+        });
+      }
+
+      // Generate new OTP
+      const otp = crypto.randomInt(100000, 999999).toString();
+      const expiredAt = Date.now() + 60 * 1000;
+
+      // Update OTP in existing record (keep user data, only update OTP and expiredAt)
+      otpStore.set(email, {
+        ...existingRecord,
+        otp,
+        expiredAt,
+      });
+
+      // Auto remove OTP record after it is expired
+      const delay = Math.max(expiredAt - Date.now(), 0);
+      setTimeout(() => {
+        const record = otpStore.get(email);
+        if (record && record.expiredAt <= Date.now()) {
+          otpStore.delete(email);
+        }
+      }, delay);
+
+      // Send new OTP email
+      await sendOTPEmail(email, otp);
+
+      return res.status(200).json({
+        message: "OTP resent to email",
+      });
+    } catch (error) {
+      console.error("Send OTP Error: ", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
+
+  // Step 2: Verify OTP and create account
   async verifyOTP(req, res) {
     try {
-      const { email, otp } = req.body;
+      const { email, otp: requestOTP } = req.body;
 
-      if (!email || !otp) {
-        return res.status(400).json({ message: "Email and OTP are required" });
+      // Validate input
+      if (!email || !requestOTP) {
+        return res.status(400).json({
+          message: "Email and OTP are required",
+        });
       }
 
       // Get OTP from memory
@@ -218,18 +286,18 @@ class AuthController {
         return res.status(400).json({ message: "Invalid or expired OTP" });
       }
 
+      const { expiredAt, otp, name, password, birthdate, address } = otpRecord;
+
       // Check if OTP is expired
-      if (Date.now() > otpRecord.expiredAt) {
+      if (Date.now() > expiredAt) {
         otpStore.delete(email);
         return res.status(400).json({ message: "OTP has expired" });
       }
 
       // Verify OTP
-      if (otpRecord.otp !== otp) {
+      if (otp !== requestOTP) {
         return res.status(400).json({ message: "Invalid OTP" });
       }
-
-      const { name, password, birthdate, address } = otpRecord;
 
       // Remove OTP from memory
       otpStore.delete(email);
@@ -254,7 +322,7 @@ class AuthController {
         user: newUser,
       });
     } catch (error) {
-      console.error("Verify OTP Error: ", error);
+      console.error("Register Error: ", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   }

@@ -20,22 +20,38 @@ const useAuthStore = create<AuthState>()(
         set({ accessToken: newAccessToken });
       },
 
+      // Step 1: Register info & send first OTP
       register: async (
-        name: string,
         email: string,
+        name: string,
         password: string,
         birthdate: string,
-        address: string
+        address: string,
+        captchaToken: string
       ) => {
         try {
           set({ loading: true });
-          await authService.register(name, email, password, birthdate, address);
+          await authService.register(email, name, password, birthdate, address, captchaToken);
           toast.success(
-            "Register successfully! You will be redirected to log in page."
+            "OTP sent! Please check your email to verify your account."
           );
         } catch (error) {
           console.error(error);
-          toast.error("Error register account");
+          toast.error("Error sending OTP");
+        } finally {
+          set({ loading: false });
+        }
+      },
+
+      // Step 1b: Resend OTP (only need email)
+      sendOTP: async (email: string) => {
+        try {
+          set({ loading: true });
+          await authService.sendOTP(email);
+          toast.success("OTP resent! Please check your email.");
+        } catch (error) {
+          console.error(error);
+          toast.error("Error resending OTP");
         } finally {
           set({ loading: false });
         }
@@ -53,9 +69,10 @@ const useAuthStore = create<AuthState>()(
           await get().fetchMe();
 
           toast.success("Welcome to AUCTIONIFY!");
-        } catch (error) {
+        } catch (error: any) {
           console.error(error);
-          toast.error("Error logging in");
+          toast.error(error?.response?.data?.message || "Invalid email or password");
+          throw error;
         } finally {
           set({ loading: false });
         }
@@ -101,6 +118,17 @@ const useAuthStore = create<AuthState>()(
           get().clearState();
         } finally {
           set({ loading: false });
+        }
+      },
+
+      // Step 2: Verify OTP and create account
+      verifyOTP: async (email: string, otp: string) => {
+        try {
+          await authService.verifyOTP(email, otp);
+          toast.success("Registration successful! You can now sign in.");
+        } catch (error) {
+          console.error(error);
+          toast.error("OTP verification failed!");
         }
       },
     }),
