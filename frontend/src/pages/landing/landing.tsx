@@ -1,10 +1,29 @@
+import { useEffect } from "react";
 import Nav from "../../components/ui/nav";
 import EndingSoon from "./endingSoon";
 import Hero from "./hero";
 import HighestPrice from "./highestPrice";
 import MostBids from "./mostBids";
+import useHomeStore from "@/stores/homeStore";
 
 export default function Landing() {
+    const { fetchHomeData, loading } = useHomeStore();
+
+    useEffect(() => {
+        fetchHomeData();
+    }, []);
+
+    if (loading) {
+        return (
+            <>
+                <Nav />
+                <div className="flex h-screen items-center justify-center">
+                    <p className="text-white text-xl">Loading...</p>
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
             <Nav />

@@ -1,3 +1,4 @@
+import type { Product } from "./Product";
 import type { User } from "./User";
 
 export interface AuthState {
@@ -32,4 +33,13 @@ export interface AuthState {
 
   // Step 2: verify OTP
   verifyOTP: (email: string, otp: string) => Promise<void>;
+}
+
+export interface HomeState {
+  endingSoon: Product[];
+  mostBids: Product[];
+  highestPrice: Product[];
+  loading: boolean;
+  error: string | null;
+  fetchHomeData: () => Promise<void>;
 }
