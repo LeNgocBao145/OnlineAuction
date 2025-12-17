@@ -44,13 +44,19 @@ export default function SearchFilter() {
             if (data.bidding) states.push("bidding");
             if (data.sold) states.push("sold");
 
+            // Set default dates: from 1970 to 100 years from now
+            const defaultStartDate = "1970-01-01T00:00";
+            const defaultEndDate = new Date();
+            defaultEndDate.setFullYear(defaultEndDate.getFullYear() + 100);
+            const defaultEndDateString = defaultEndDate.toISOString().slice(0, 16);
+
             await filterProducts({
                 keyword: data.keyword || undefined,
-                startDate: data.timeFrom || undefined,
-                endDate: data.timeTo || undefined,
-                minPrice: data.minPrice ? parseFloat(data.minPrice) : undefined,
-                maxPrice: data.maxPrice ? parseFloat(data.maxPrice) : undefined,
-                states: states.length > 0 ? states : undefined,
+                startDate: data.timeFrom || defaultStartDate,
+                endDate: data.timeTo || defaultEndDateString,
+                minPrice: data.minPrice ? parseFloat(data.minPrice) : 0,
+                maxPrice: data.maxPrice ? parseFloat(data.maxPrice) : Number.MAX_SAFE_INTEGER,
+                states: states.length > 0 ? states : ["bidding"],
                 page: 1,
                 limit: 10,
             });

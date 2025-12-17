@@ -18,8 +18,11 @@ const productService = {
     if (params.limit) queryParams.append("limit", params.limit.toString());
     if (params.startDate) queryParams.append("startDate", params.startDate);
     if (params.endDate) queryParams.append("endDate", params.endDate);
-    if (params.minPrice) queryParams.append("minPrice", params.minPrice.toString());
-    if (params.maxPrice) queryParams.append("maxPrice", params.maxPrice.toString());
+    // Set default price range: 0 to MAX_SAFE_INTEGER if not provided
+    const minPrice = params.minPrice ?? 0;
+    const maxPrice = params.maxPrice ?? Number.MAX_SAFE_INTEGER;
+    queryParams.append("minPrice", minPrice.toString());
+    queryParams.append("maxPrice", maxPrice.toString());
     if (params.states && params.states.length > 0) {
       queryParams.append("states", params.states.join(","));
     }
