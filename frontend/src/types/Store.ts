@@ -1,4 +1,4 @@
-import type { Product, ProductDetail } from "./Product";
+import type { Product, ProductDetail, FilterParams, FilteredProductsResponse } from "./Product";
 import type { User } from "./User";
 
 export interface AuthState {
@@ -51,4 +51,15 @@ export interface ProductState {
   fetchProduct: (id: string | number) => Promise<void>;
   placeBid: (productId: string | number, userId: string | number, bidAmount: number) => Promise<void>;
   askQuestion: (productId: string | number, userId: string | number, question: string) => Promise<void>;
+}
+
+export interface SearchState {
+  data: FilteredProductsResponse | null;
+  loading: boolean;
+  error: string | null;
+  filterParams: FilterParams;
+  
+  filterProducts: (params: FilterParams) => Promise<void>;
+  setFilterParams: (params: FilterParams) => void;
+  clearSearch: () => void;
 }

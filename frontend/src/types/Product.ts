@@ -6,6 +6,8 @@ export interface Product {
   image_url?: string;
   time_left?: string;
   bid_count?: number;
+  state?: string;
+  image?: string;
 }
 
 export interface ProductDescription {
@@ -47,4 +49,32 @@ export interface ProductDetail {
   descriptions: ProductDescription[];
   bids: ProductBid[];
   qa: ProductQA[];
+}
+
+// Filter products parameters
+export interface FilterParams {
+  keyword?: string;
+  category?: number;
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  states?: string[];
+  sort?: string;
+}
+
+// Pagination info
+export interface Pagination {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+// Filtered products response from API
+export interface FilteredProductsResponse {
+  products: Product[];
+  pagination: Pagination;
 }
