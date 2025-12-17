@@ -77,6 +77,24 @@ CREATE TABLE bids (
     price NUMERIC(12,2) NOT NULL
 );
 
+CREATE TABLE bid_requests (
+    id SERIAL PRIMARY KEY,
+    bidder INTEGER NOT NULL,
+    product INTEGER NOT NULL,
+    request_date TIMESTAMP NOT NULL DEFAULT NOW(),
+    state state NOT NULL DEFAULT 'pending',
+
+    FOREIGN KEY (bidder) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE
+);
+
+CREATE TABLE allowed_bidder (
+    product INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    bidder INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    allowed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (product, bidder)
+);
+
 CREATE TABLE product_questions (
     id SERIAL PRIMARY KEY,
     questioner INTEGER NOT NULL,
@@ -126,7 +144,8 @@ CREATE TABLE sell_product (
     init_price REAL NOT NULL,
     step_price REAL NOT NULL,
     created_at TIMESTAMP NOT NULL,
-    expired_at TIMESTAMP NOT NULL
+    expired_at TIMESTAMP NOT NULL,
+    instant_price REAL
 );
 
 CREATE TABLE trade_verifications (
@@ -165,6 +184,8 @@ ADD CONSTRAINT chk_sell_product_init_price
 CHECK (init_price > 0),
 ADD CONSTRAINT chk_sell_product_step_price
 CHECK (step_price > 0);
+ADD CONSTRAINT chk_sell_product_instant_price
+CHECK (instant_price > init_price);
 
 ALTER TABLE messages
 ADD CONSTRAINT chk_messages_created_at

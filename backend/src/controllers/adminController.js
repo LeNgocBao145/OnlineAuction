@@ -12,7 +12,6 @@ import {
   getProductById,
   deleteProductById,
   getRequests,
-  getRequestById,
   approveRequest,
   rejectRequest,
 } from "../libs/sqlQuery.js";
@@ -231,17 +230,19 @@ class AdminController {
       const SORT_MAPPING = {
         name_asc: "u.name ASC",
         name_desc: "u.name DESC",
+        rating_asc: "u.rating ASC",
+        rating_desc: "u.rating DESC",
         oldest: "r.created_at ASC",
         newest: "r.created_at DESC",
       };
 
-      let sortCriteria = req.query.sort || "newest,name_asc";
+      let sortCriteria = req.query.sort || "newest,rating_asc";
       const orderBySql =
         sortCriteria
           .split(",")
           .map((key) => SORT_MAPPING[key.trim()])
           .filter(Boolean)
-          .join(", ") || "r.created_at DESC, u.name ASC";
+          .join(", ") || "r.created_at DESC, u.rating ASC";
 
       const sqlQuery = getRequests(orderBySql);
 
