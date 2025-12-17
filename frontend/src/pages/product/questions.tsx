@@ -2,20 +2,25 @@ import { useState } from "react";
 import { ArrowRightIcon } from "@heroicons/react/24/solid";
 import AskQuestionModal from "./modal/askQuestion";
 import useProductStore from "@/stores/productStore";
+import useAuthStore from "@/stores/authStore";
+import { getAvatarUrl } from "@/utils/avatarUtils";
 import { formatDate } from "@/utils/dateUtils";
 
 export default function ProductQuestions() {
   const [askingQuestion, setAskingQuestion] = useState(false);
-  const product = useProductStore((state) => state.product);
+  const {product} = useProductStore();
+  const { user } = useAuthStore();
   const questions = product?.qa || [];
+  const userAvatar = getAvatarUrl(user?.avatar || null, user?.name || "You");
 
   return (
     <div className="flex flex-col justify-center items-center px-[10%] gap-4 mt-4 border border-white/10 rounded-xl bg-(--third) w-full p-4">
       {askingQuestion && (
         <AskQuestionModal
           setAskingQuestion={setAskingQuestion}
-          profileName="You"
-          profilePicture="/path/to/profile.jpg"
+          productId={product?.id || ""}
+          profileName={user?.name || "You"}
+          profilePicture={userAvatar}
         />
       )}
 
@@ -51,7 +56,7 @@ export default function ProductQuestions() {
                 <p className="text-(--primary) font-bold text-2xl">
                   {q.answerer_name || "Seller"}
                   <span className="text-white/30 text-sm ml-2">
-                    {formatDate(q.answered_at)}
+                    {formatDate(q.answered_at) || "-"}
                   </span>
                 </p>
                 <p className="text-white/80">{q.answer || "No answer yet"}</p>

@@ -2,13 +2,25 @@ import React, {useState} from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import useProductStore from "@/stores/productStore";
+import useAuthStore from "@/stores/authStore";
 
 export default function PlaceBidModal(
-    {setPlacingBid, currentBid, stepPrice} : {setPlacingBid: React.Dispatch<React.SetStateAction<boolean>>, currentBid: number, stepPrice: number}
+    {setPlacingBid, productId, currentBid, stepPrice} : {
+        setPlacingBid: React.Dispatch<React.SetStateAction<boolean>>, 
+        productId: string | number,
+        currentBid: number, 
+        stepPrice: number
+    }
 ) {
     const [bid, setBid] = useState<number>(0);
     const [useCustom, setUseCustom] = useState<boolean>(false);
     const [customBid, setCustomBid] = useState<number>(0);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const { placeBid } = useProductStore();
+    const { user } = useAuthStore();
 
     const bidSchema = z.object({
         accept: z.boolean().refine((val) => val === true, { message: "You must accept the terms to place a bid" })
@@ -18,9 +30,30 @@ export default function PlaceBidModal(
         resolver: zodResolver(bidSchema)
     });
 
-    const handleBid = () => {
-        console.log("Bid submitted:", currentBid + (useCustom ? customBid : bid));
-        setPlacingBid(false);
+    const handleBid = async () => {
+        if (!user?.id) {
+            toast.error("You must be logged in to place a bid");
+            return;
+        }
+
+        const bidAmount = useCustom ? customBid : bid;
+        const finalBidPrice = currentBid + bidAmount;
+
+        if (finalBidPrice <= currentBid) {
+            toast.error("Bid amount must be greater than current bid");
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            await placeBid(productId, user.id, finalBidPrice);
+            toast.success("Bid placed successfully!");
+            setPlacingBid(false);
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to place bid");
+        } finally {
+            setIsSubmitting(false);
+        }
     }
 
     return (
@@ -38,7 +71,7 @@ export default function PlaceBidModal(
                         >
                             +1 step
                         </button>
-                        <p className="text-white/60">Value: ${currentBid + stepPrice}</p>
+                        <p className="text-white/60">Value: ${currentBid + bid + stepPrice}</p>
                     </div>
                     <div className="flex flex-col"> 
                         <button className="bg-(--primary) text-black font-bold p-2 rounded-md"
@@ -47,7 +80,7 @@ export default function PlaceBidModal(
                         >
                             +5 step
                         </button>
-                        <p className="text-white/60">Value: ${currentBid + stepPrice * 5}</p>
+                        <p className="text-white/60">Value: ${currentBid + bid + stepPrice * 5}</p>
                     </div>
                     <div className="flex flex-col">
                         <button className="bg-(--primary) text-black font-bold p-2 rounded-md"
@@ -56,7 +89,7 @@ export default function PlaceBidModal(
                         >
                             +10 step
                         </button>
-                        <p className="text-white/60">Value: ${currentBid + stepPrice * 10}</p>
+                        <p className="text-white/60">Value: ${currentBid + bid + stepPrice * 10}</p>
                     </div>
                     <div className="flex flex-col">
                         <button className="bg-(--primary) text-black font-bold p-2 rounded-md"
@@ -91,8 +124,10 @@ export default function PlaceBidModal(
                 {useCustom === true ? 
                     (customBid === 0) && <p className="text-red-400 text-center mt-4">You must enter a bid amount.</p>
                     : (bid === 0) && <p className="text-red-400 text-center mt-4">You must enter a bid amount.</p>}
-                <button type="submit" className="bg-(--primary) text-black font-bold p-2 mt-8 rounded-md w-full">Confirm</button>
+                <button type="submit" disabled={isSubmitting} className="bg-(--primary) text-black font-bold p-2 mt-8 rounded-md w-full disabled:opacity-50">
+                    {isSubmitting ? "Placing bid..." : "Confirm"}
+                </button>
             </form>
         </div>
     );
-}
+}    

@@ -6,4 +6,5 @@ export type User = {
     birthdate: string;
     role: string;
     rating: number;
+    avatar: string;
 }

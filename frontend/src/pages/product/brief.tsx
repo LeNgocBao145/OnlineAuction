@@ -28,6 +28,7 @@ export default function ProductBrief() {
         {placingBid && (
           <PlaceBidModal
             setPlacingBid={setPlacingBid}
+            productId={product.id}
             currentBid={product.current_price}
             stepPrice={product.step_price}
           />

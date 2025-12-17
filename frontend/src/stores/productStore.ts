@@ -23,6 +23,44 @@ const useProductStore = create<ProductState>((set) => ({
       set({ loading: false });
     }
   },
+
+  placeBid: async (productId: string | number, userId: string | number, bidPrice: number) => {
+    try {
+      set({ loading: true, error: null });
+      await productService.placeBid(productId, userId, bidPrice);
+      // Refresh product data to get updated bid information
+      const product = await productService.getProductById(productId);
+      set({ product });
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to place bid!";
+      set({ error: message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  askQuestion: async (productId: string | number, userId: string | number, question: string) => {
+    try {
+      set({ loading: true, error: null });
+      await productService.askQuestion(productId, userId, question);
+      // Refresh product data to get updated Q&A
+      const product = await productService.getProductById(productId);
+      set({ product });
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to ask question!";
+      set({ error: message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
 }));
 
 export default useProductStore;
