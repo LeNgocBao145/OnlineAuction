@@ -134,3 +134,67 @@ export async function sendQuestionAnsweredEmail(to, productName, answer, product
   `;
   await sendEmail(to, subject, html);
 }
+
+// Ask to Bid Email
+export async function sendBidRequestEmail(to, productName, buyerName, productUrl) {
+  const subject = `New Bid Request on Your Product - ${productName}`;
+  const html = `
+    <h2>New Bid Request</h2>
+    <p><strong>${buyerName}</strong> asked to bid on <strong>${productName}</strong>:</p>
+    <p><a href="${productUrl}">Respond to Bid Request</a></p>
+  `;
+  await sendEmail(to, subject, html);
+}
+
+// Response to Bid Request Email
+export async function sendBidResponseEmail(to, productName, accepted) {
+  const subject = `Response to Bid Request on Product - ${productName}`;
+  const html = `
+    <h2>New Bid Request Response</h2>
+    <p><strong>${productName}'s seller</strong> responded to the bid request on <strong>${productName}</strong>:</p>
+    <p>Accepted: <strong>${accepted ? 'Yes' : 'No'}</strong></p>
+  `;
+  await sendEmail(to, subject, html);
+}
+
+// Update Product Current Price Email
+export async function sendPriceUpdateEmail(to, productName, newPrice, productUrl) { // Seller and previous highest bidder
+  const subject = `Product Price Updated - ${productName}`;
+  const html = `
+    <h2>Product Price Updated</h2>
+    <p>The current price for <strong>${productName}</strong> has been updated to <strong>$${newPrice}</strong>.</p>
+    <p><a href="${productUrl}">View Product</a></p>
+  `;
+  await sendEmail(to, subject, html);
+}
+
+export async function sendBidSuccessfullyEmail(to, productName, newPrice, productUrl) { // current highest bidder
+  const subject = `Bid Successful - ${productName}`;
+  const html = `
+    <h2>Bid Successful</h2>
+    <p>The current price for <strong>${productName}</strong> has been updated to <strong>$${newPrice}</strong>.</p>
+    <p><a href="${productUrl}">View Product</a></p>
+  `;
+  await sendEmail(to, subject, html);
+}
+
+// Instant Buy Email
+export async function sendInstantBuyEmail(to, productName, buyPrice, productUrl) { // Seller and previous highest bidder
+  const subject = `${productName} - Was Bought Instantly`;
+  const html = `
+    <h2>Product Bought Instantly</h2>
+    <p><strong>${productName}</strong> was bought instantly for <strong>$${buyPrice}</strong>.</p>
+    <p><a href="${productUrl}">View Product</a></p>
+  `;
+  await sendEmail(to, subject, html);
+}
+
+export async function sendSuccessfullyInstantBuyEmail(to, productName, buyPrice, productUrl) { // current highest bidder
+  const subject = `Bought Successful - ${productName}`;
+  const html = `
+    <h2>Product Bought Instantly</h2>
+    <p><strong>${productName}</strong> was bought instantly for <strong>$${buyPrice}</strong>.</p>
+    <p><a href="${productUrl}">View Product</a></p>
+  `;
+  await sendEmail(to, subject, html);
+}
