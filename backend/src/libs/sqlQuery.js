@@ -12,6 +12,7 @@ const USER_SELECT_FIELDS = [
     'name',
     'email',
     'birthdate',
+    'hashed_password',
     'address',
     'role',
     'rating'

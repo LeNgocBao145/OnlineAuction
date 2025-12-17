@@ -49,6 +49,6 @@ export interface ProductState {
   loading: boolean;
   error: string | null;
   fetchProduct: (id: string | number) => Promise<void>;
-  placeBid: (productId: string | number, userId: string | number, bidPrice: number) => Promise<void>;
+  placeBid: (productId: string | number, userId: string | number, bidAmount: number) => Promise<void>;
   askQuestion: (productId: string | number, userId: string | number, question: string) => Promise<void>;
 }

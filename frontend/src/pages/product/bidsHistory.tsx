@@ -22,7 +22,7 @@ export default function BidHistory() {
             </div>
             <p className="text-white">{bid.bidder_name}</p>
             <p className="text-(--primary) font-bold">
-              {formatCurrency(bid.amount)} ₫
+              {formatCurrency(bid.amount)}
             </p>
           </div>
         ))

@@ -26,13 +26,13 @@ export default function AuctionInfo() {
         <div className="flex justify-between">
           <p className="text-white/60">Starting price:</p>
           <p className="text-white">
-            {formatCurrency(product.init_price)} ₫
+            {formatCurrency(product.init_price)}
           </p>
         </div>
         <div className="flex justify-between">
           <p className="text-white/60">Bid increment:</p>
           <p className="text-white">
-            {formatCurrency(product.step_price)} ₫
+            {formatCurrency(product.step_price)}
           </p>
         </div>
         <div className="flex justify-between">

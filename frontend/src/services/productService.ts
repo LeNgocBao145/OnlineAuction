@@ -11,11 +11,11 @@ const productService = {
   async placeBid(
     productId: string | number,
     userId: string | number,
-    bidPrice: number
+    bidAmount: number
   ): Promise<void> {
     const res = await api.post(
       `/products/${productId}/bid/${userId}`,
-      { bidPrice },
+      { bidAmount },
       { withCredentials: true }
     );
     return res.data;

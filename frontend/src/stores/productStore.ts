@@ -24,10 +24,10 @@ const useProductStore = create<ProductState>((set) => ({
     }
   },
 
-  placeBid: async (productId: string | number, userId: string | number, bidPrice: number) => {
+  placeBid: async (productId: string | number, userId: string | number, bidAmount: number) => {
     try {
       set({ loading: true, error: null });
-      await productService.placeBid(productId, userId, bidPrice);
+      await productService.placeBid(productId, userId, bidAmount);
       // Refresh product data to get updated bid information
       const product = await productService.getProductById(productId);
       set({ product });
