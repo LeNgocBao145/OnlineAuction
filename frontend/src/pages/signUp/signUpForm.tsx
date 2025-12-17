@@ -123,7 +123,7 @@ export default function SignUpForm() {
 
                 <ReCAPTCHA
                     ref={recaptchaRef}
-                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6Leuei0sAAAAADL_eRglWEyzSL4JxrfJUxpMyhSk"}
+                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
                 />
 
                 <button type='submit' className='w-7/10 h-[60px] bg-(--primary) text-white rounded-lg font-bold text-xl hover:bg-(--primary)/80'>

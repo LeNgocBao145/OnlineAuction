@@ -553,6 +553,7 @@ export const rejectRequest = `
 export const getTop5EndingSoon = `
     SELECT
         ${getProductColumns()},
+        p.image AS image_url,
         sp.instant_price,
         bidder.name AS highest_bidder,
         sp.created_at,
@@ -586,6 +587,7 @@ export const getTop5EndingSoon = `
 export const getTop5MostBids = `
     SELECT
         ${getProductColumns()},
+        p.image AS image_url,
         sp.instant_price,
         bidder.name AS highest_bidder,
         sp.created_at,
@@ -619,6 +621,7 @@ export const getTop5MostBids = `
 export const getTop5HighestPrice = `
     SELECT
         ${getProductColumns()},
+        p.image AS image_url,
         sp.instant_price,
         bidder.name AS highest_bidder,
         sp.created_at,

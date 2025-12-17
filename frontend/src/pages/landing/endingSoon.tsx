@@ -18,13 +18,25 @@ export default function EndingSoon() {
                                          transform hover:scale-105 transition-transform cursor-pointer"
                         onClick={() => navigate(`/product/${item.id}`)}
                     >
-                    <div className="border border-(--primary) rounded-md aspect-square h-8/10 ml-2"></div>
+                    <div className="border border-(--primary) rounded-md aspect-square h-8/10 ml-2 overflow-hidden bg-black/30">
+                        {item.image_url ? (
+                            <img
+                                src={item.image_url}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-white/50 text-sm">
+                                No image
+                            </div>
+                        )}
+                    </div>
                     <div className="flex flex-col justify-center ml-4">
                         <h2 className="text-white font-sans font-bold text-lg">{item.name}</h2>
                         <p className="text-white/60">Current Price: ${item.current_price}</p>
                     </div>
                     <div>
-                        <p className="text-(--primary)">{formatTimeLeft(item.time_left)}</p>
+                        <p className="text-(--primary)">{formatTimeLeft(item.time_left || 0)}</p>
                         <p className="text-white/60 mr-2">remaining</p>
                     </div>
                     </li>

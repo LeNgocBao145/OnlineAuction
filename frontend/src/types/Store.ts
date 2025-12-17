@@ -1,4 +1,4 @@
-import type { Product } from "./Product";
+import type { Product, ProductDetail } from "./Product";
 import type { User } from "./User";
 
 export interface AuthState {
@@ -42,4 +42,11 @@ export interface HomeState {
   loading: boolean;
   error: string | null;
   fetchHomeData: () => Promise<void>;
+}
+
+export interface ProductState {
+  product: ProductDetail | null;
+  loading: boolean;
+  error: string | null;
+  fetchProduct: (id: string | number) => Promise<void>;
 }
