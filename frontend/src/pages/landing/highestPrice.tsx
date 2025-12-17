@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import { useState, useEffect } from "react";
 import useHomeStore from "@/stores/homeStore";
+import { formatTimeLeft } from "@/utils/timeUtils";
 
 export default function HighestPrice() {
     const navigate = useNavigate();
@@ -19,7 +20,7 @@ export default function HighestPrice() {
                     <div className="border border-(--primary) rounded-md aspect-square h-8/10 ml-2"></div>
                     <div className="flex flex-col justify-center ml-4">
                         <h2 className="text-white font-sans font-bold text-lg">{item.name}</h2>
-                        <p className="text-white/60">{item.bid_count} • {item.end_time}</p>
+                        <p className="text-white/60">{item.bid_count} • {formatTimeLeft(item.time_left)}</p>
                     </div>
                     <div>
                         <p className="text-(--primary)">${item.current_price}</p>
