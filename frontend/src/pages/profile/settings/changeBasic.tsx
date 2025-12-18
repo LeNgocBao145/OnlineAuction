@@ -2,8 +2,21 @@ import { FaUser } from "react-icons/fa";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import useAuthStore from "@/stores/authStore";
+import useUserStore from "@/stores/userStore";
+import { useState, useEffect } from "react";
 
 export default function ChangeBasicInfo() {
+    const { user } = useAuthStore();
+    const { profile, loading, fetchProfile, updateProfile, changePassword } = useUserStore();
+    const [message, setMessage] = useState("");
+
+    useEffect(() => {
+        if (user?.id) {
+            fetchProfile(user.id);
+        }
+    }, [user?.id, fetchProfile]);
+
     const emailAndNameFormSchema = z.object({
         username: z.string().min(3, "Username must be at least 3 characters long"),
         email: z.string().email("Invalid email address"),
@@ -18,19 +31,42 @@ export default function ChangeBasicInfo() {
     });
 
     const { register: registerEmailAndName, handleSubmit: handleSubmitEmailAndName, formState: { errors: emailAndNameErrors } } = useForm({
-        resolver: zodResolver(emailAndNameFormSchema)
+        resolver: zodResolver(emailAndNameFormSchema),
+        defaultValues: {
+            username: profile?.name || "",
+            email: profile?.email || ""
+        }
     });
 
-    const { register: registerPassword, handleSubmit: handleSubmitPassword, formState: { errors: passwordErrors } } = useForm({
+    const { register: registerPassword, handleSubmit: handleSubmitPassword, formState: { errors: passwordErrors }, reset } = useForm({
         resolver: zodResolver(passwordFormSchema)
     });
 
-    const onSubmitEmailAndName = (data: any) => {
-        console.log(data);
+    const onSubmitEmailAndName = async (data: any) => {
+        try {
+            setMessage("");
+            await updateProfile(user?.id!, {
+                name: data.username,
+                email: data.email,
+                birthdate: profile?.birthdate || "",
+                address: profile?.address || ""
+            });
+            setMessage("Profile updated successfully!");
+        } catch (error) {
+            setMessage("Failed to update profile");
+            console.error(error);
+        }
     };
 
-    const onSubmitPassword = (data: any) => {
-        console.log(data);
+    const onSubmitPassword = async (data: any) => {
+        try {
+            setMessage("");
+            await changePassword(user?.id!, data.oldPassword, data.newPassword, data.confirmPassword);
+            setMessage("Password changed successfully!");
+        } catch (error) {
+            setMessage("Failed to change password");
+            console.error(error);
+        }
     }
 
     return (
@@ -45,55 +81,85 @@ export default function ChangeBasicInfo() {
             <form className="mt-6 flex flex-col gap-4"
                 onSubmit={handleSubmitEmailAndName(onSubmitEmailAndName)}
             >
+                {message && <p className={message.includes("successfully") ? "text-green-500" : "text-red-500"}>{message}</p>}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
                     <div className="flex flex-col">
                         <label className="text-white mb-2" htmlFor="username">Username</label>
-                        <input type="text" id="username" className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" placeholder="" 
-                        {...registerEmailAndName("username")}
+                        <input 
+                            type="text" 
+                            id="username" 
+                            className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" 
+                            placeholder="Enter username"
+                            {...registerEmailAndName("username")}
                         />
                         {emailAndNameErrors.username && <p className="text-red-500">{emailAndNameErrors.username.message}</p>}
                     </div>
                     <div className="flex flex-col">
                         <label className="text-white mb-2" htmlFor="email">Email</label>
-                        <input type="email" id="email" className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" placeholder="" 
-                        {...registerEmailAndName("email")}
+                        <input 
+                            type="email" 
+                            id="email" 
+                            className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" 
+                            placeholder="Enter email"
+                            {...registerEmailAndName("email")}
                         />
                         {emailAndNameErrors.email && <p className="text-red-500">{emailAndNameErrors.email.message}</p>}
                     </div>
                 </div>
-                <button type="submit" className="mt-4 p-3 bg-(--primary) text-black font-bold rounded-md w-32 self-end">
-                    Save Changes
+                <button 
+                    type="submit" 
+                    disabled={loading}
+                    className="mt-4 p-3 bg-(--primary) text-black font-bold rounded-md w-32 self-end disabled:opacity-50"
+                >
+                    {loading ? "Saving..." : "Save Changes"}
                 </button>
             </form>
                 <div className="w-full h-1 bg-white/10 rouned-lg my-8"></div>
             <form className="flex flex-col gap-4"
                 onSubmit={handleSubmitPassword(onSubmitPassword)}
             >
+                {message && <p className={message.includes("successfully") ? "text-green-500" : "text-red-500"}>{message}</p>}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="flex flex-col">
                         <label className="text-white mb-2" htmlFor="old-password">Old password</label>
-                        <input type="password" id="old-password" className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" placeholder="Enter your old password" 
-                        {...registerPassword("oldPassword")}
+                        <input 
+                            type="password" 
+                            id="old-password" 
+                            className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" 
+                            placeholder="Enter your old password" 
+                            {...registerPassword("oldPassword")}
                         />
                         {passwordErrors.oldPassword && <p className="text-red-500">{passwordErrors.oldPassword.message}</p>}
                     </div>
                     <div className="flex flex-col">
                         <label className="text-white mb-2" htmlFor="new-password">New password</label>
-                        <input type="password" id="new-password" className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" placeholder="Enter your new password" 
-                        {...registerPassword("newPassword")}
+                        <input 
+                            type="password" 
+                            id="new-password" 
+                            className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" 
+                            placeholder="Enter your new password" 
+                            {...registerPassword("newPassword")}
                         />
                         {passwordErrors.newPassword && <p className="text-red-500">{passwordErrors.newPassword.message}</p>}
                     </div>
                     <div className="flex flex-col">
                         <label className="text-white mb-2" htmlFor="confirm-password">Confirm password</label>
-                        <input type="password" id="confirm-password" className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" placeholder="Confirm your new password" 
-                        {...registerPassword("confirmPassword")}
+                        <input 
+                            type="password" 
+                            id="confirm-password" 
+                            className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" 
+                            placeholder="Confirm your new password" 
+                            {...registerPassword("confirmPassword")}
                         />
                         {passwordErrors.confirmPassword && <p className="text-red-500">{passwordErrors.confirmPassword.message}</p>}
                     </div>
                 </div>
-                <button type="submit" className="mt-4 p-3 bg-(--primary) text-black font-bold rounded-md w-32 self-end">
-                    Save Changes
+                <button 
+                    type="submit" 
+                    disabled={loading}
+                    className="mt-4 p-3 bg-(--primary) text-black font-bold rounded-md w-32 self-end disabled:opacity-50"
+                >
+                    {loading ? "Changing..." : "Save Changes"}
                 </button>
             </form>
         </div>
