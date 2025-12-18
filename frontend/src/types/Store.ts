@@ -1,5 +1,5 @@
 import type { Product, ProductDetail, FilterParams, FilteredProductsResponse } from "./Product";
-import type { User } from "./User";
+import type { User, UserProfile, UserRating, UserBidding, UserSelling } from "./User";
 
 export interface AuthState {
   accessToken: string | null;
@@ -62,4 +62,40 @@ export interface SearchState {
   filterProducts: (params: FilterParams) => Promise<void>;
   setFilterParams: (params: FilterParams) => void;
   clearSearch: () => void;
+}
+
+export interface UserProfileState {
+  profile: UserProfile | null;
+  ratings: UserRating[];
+  biddings: UserBidding[];
+  sellings: UserSelling[];
+  wons: UserBidding[];
+  favorites: FilteredProductsResponse | null;
+  
+  loading: boolean;
+  error: string | null;
+
+  fetchProfile: (userId: string | number) => Promise<void>;
+  updateProfile: (userId: string | number, data: {
+    name: string;
+    email: string;
+    birthdate: string;
+    address: string;
+  }) => Promise<void>;
+  changePassword: (userId: string | number, oldPassword: string, newPassword: string, confirmPassword: string) => Promise<void>;
+  verifyOTP: (userId: string | number, email: string, otp: string) => Promise<void>;
+
+  fetchRatings: (userId: string | number, page?: number, limit?: number) => Promise<void>;
+  fetchBiddings: (userId: string | number, page?: number, limit?: number) => Promise<void>;
+  fetchSellings: (userId: string | number, page?: number, limit?: number) => Promise<void>;
+  fetchWons: (userId: string | number, page?: number, limit?: number) => Promise<void>;
+
+  fetchFavorites: (userId: string | number, params?: any) => Promise<void>;
+  markFavorite: (userId: string | number, productId: string | number) => Promise<void>;
+  unmarkFavorite: (userId: string | number, productId: string | number) => Promise<void>;
+
+  requestToBeSeller: (userId: string | number) => Promise<void>;
+  rateSeller: (userId: string | number, productId: string | number, rating: number, content: string) => Promise<void>;
+
+  clearUserData: () => void;
 }

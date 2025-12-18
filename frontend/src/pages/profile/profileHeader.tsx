@@ -1,17 +1,27 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router";
+import useUserStore from "../../stores/userStore";
+import useAuthStore from "../../stores/authStore";
+import { getAvatarUrl } from "@/utils/avatarUtils";
 
-export default function ProfileHeader(
-    {profilePicture, profileName, profileEmail, activePage} : {profilePicture: string, profileName: string, profileEmail: string, activePage: string}
-) {
+export default function ProfileHeader({activePage} : {activePage: string}) {
     const navigate = useNavigate();
+    const { user } = useAuthStore();
+    const { profile, fetchProfile } = useUserStore();
+
+    useEffect(() => {
+        if (user?.id) {
+            fetchProfile(user.id);
+        }
+    }, [user?.id]);
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] py-10 px-15 border-b border-white/10 bg-(--secondary)">
             <div className="flex items-center gap-4">
-                <img src={profilePicture} alt={`${profileName}'s profile`} className="h-24 w-24 border-2 border-(--primary) rounded-full" />
+                <img src={getAvatarUrl(profile?.avatar, profile?.name || "User") || "/default-avatar.png"} alt={`${profile?.name}'s profile`} className="h-24 w-24 border-2 border-(--primary) rounded-full" />
                 <div className="flex flex-col">
-                    <h1 className="text-white text-2xl font-bold">{profileName}</h1>
-                    <p className="text-white/60">{profileEmail}</p>
+                    <h1 className="text-white text-2xl font-bold">{profile?.name || "User"}</h1>
+                    <p className="text-white/60">{profile?.email || "email@example.com"}</p>
                 </div>
             </div>
             <div className="relative grid grid-cols-2 lg:grid-cols-4 lg:mt-0 mt-4 gap-4 justify-center items-center h-full">

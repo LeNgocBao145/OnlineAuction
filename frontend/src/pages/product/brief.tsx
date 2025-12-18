@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { FaStar, FaRegStar } from "react-icons/fa";
 import PlaceBidModal from "./modal/placeBid";
 import useProductStore from "@/stores/productStore";
+import useUserStore from "@/stores/userStore";
+import useAuthStore from "@/stores/authStore";
 import { formatCurrency } from "@/utils/numberUtils";
 import { getRemainingTime } from "@/utils/timeUtils";
 import { getHighestBidder } from "@/utils/productUtils";
@@ -11,11 +13,35 @@ export default function ProductBrief() {
   const [placingBid, setPlacingBid] = useState(false);
   const [favorited, setFavorited] = useState(false);
   const product = useProductStore((state) => state.product);
+  const { user } = useAuthStore();
+  const { favorites, markFavorite, unmarkFavorite } = useUserStore();
+
+  useEffect(() => {
+    if (product?.id && favorites?.products) {
+      const isFavorited = favorites.products.some(fav => fav.id === product.id);
+      setFavorited(isFavorited);
+    }
+  }, [product?.id, favorites?.products]);
 
   const highestBid = useMemo(
     () => getHighestBidder(product?.bids || []),
     [product]
   );
+
+  const handleToggleFavorite = async () => {
+    if (!user?.id || !product?.id) return;
+    
+    try {
+      if (favorited) {
+        await unmarkFavorite(user.id, product.id);
+      } else {
+        await markFavorite(user.id, product.id);
+      }
+      setFavorited(!favorited);
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+    }
+  };
 
   if (!product) return null;
 
@@ -36,7 +62,7 @@ export default function ProductBrief() {
 
         <div className="flex justify-between mb-4">
           <h1 className="text-white text-3xl font-bold">{product.name}</h1>
-          <button onClick={() => setFavorited(!favorited)}>
+          <button onClick={handleToggleFavorite}>
             {favorited ? (
               <FaStar className="w-6 h-6 text-(--primary)" />
             ) : (
