@@ -6,7 +6,7 @@ CREATE TYPE product_state AS ENUM ('incoming', 'bidding', 'sold');
 
 CREATE TYPE state AS ENUM ('pending', 'failed', 'success');
 
-CREATE TYPE message_type AS ENUM ('text', 'image');
+CREATE TYPE message_type AS ENUM ('text', 'image', 'text_and_image');
 
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,

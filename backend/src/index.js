@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import route from "./routes/index.js";
 import cookieParser from "cookie-parser";
+import { app, server } from "./socket/socket.js";
 
 dotenv.config();
 
@@ -23,6 +24,6 @@ app.use(cookieParser());
 
 route(app);
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);
 });

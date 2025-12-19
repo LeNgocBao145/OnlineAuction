@@ -764,3 +764,27 @@ export const getTop5HighestPrice = `
 
     LIMIT 5;
 `;
+
+// Message Queries
+export const createMessage = `
+    INSERT INTO messages (product, sender, content, image, type, created_at) 
+    VALUES ($1, $2, $3, $4, $5, NOW()) 
+    RETURNING *
+`;
+
+export const getMessagesByProduct = (sortLogic = "created_at DESC") => `
+    SELECT 
+        m.id,
+        m.product,
+        m.sender,
+        u.name AS sender_name,
+        m.content,
+        m.image,
+        m.type,
+        m.created_at
+    FROM messages m
+    LEFT JOIN users u ON m.sender = u.id
+    WHERE m.product = $1
+    ORDER BY ${sortLogic}
+    LIMIT $2 OFFSET $3
+`;
