@@ -32,14 +32,16 @@ export const getCategories = `SELECT * FROM categories`;
 // ---------------------------
 
 //Products
-export const createProduct = `INSERT INTO products (name, current_price, image, state) VALUES ($1, $2, $3, $4) RETURNING *`;
+export const createProduct = `INSERT INTO products (name, current_price, image) VALUES ($1, $2, $3) RETURNING id`;
 
 export const getProducts = `SELECT * FROM products`;
 
 export const getProductById = `SELECT * FROM products WHERE id = $1`;
 
+export const createSellProduct = `INSERT INTO sell_product(product, seller, init_price, step_price, instant_price, starting_at, expired_at, "isExtent")
+                                            VALUES($1, $2, $3, $4, $5, $6, $7, $8)`;
 //Product images
-export const createProductImages = `INSERT INTO product_images (product, image_path) VALUES ($1, $2::varchar(100)[]) RETURNING *`;
+export const createProductImages = `INSERT INTO product_images (product, image_path) VALUES ($1, $2::varchar(500)[]) RETURNING *`;
 
 export const updateProductImages = ``;
 

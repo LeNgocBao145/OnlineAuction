@@ -61,7 +61,7 @@ CREATE TABLE products (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL,
     current_price REAL NOT NULL,
-    image VARCHAR(100) NOT NULL,
+    image VARCHAR(500) NOT NULL,
     state product_state DEFAULT 'incoming' NOT NULL
 );
 
@@ -103,7 +103,7 @@ CREATE TABLE refuse (
 
 CREATE TABLE product_images (
     product INTEGER PRIMARY KEY,
-    image_path VARCHAR(100)[] NOT NULL
+    image_path VARCHAR(500)[] NOT NULL
 );
 
 CREATE TABLE product_descriptions (
@@ -134,7 +134,10 @@ CREATE TABLE sell_product (
     seller INTEGER NOT NULL,
     init_price REAL NOT NULL,
     step_price REAL NOT NULL,
-    created_at TIMESTAMP NOT NULL,
+    instant_price REAL,
+    starting_at TIMESTAMP NOT NULL,
+    isExtent BOOLEAN NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT now(),    
     expired_at TIMESTAMP NOT NULL
 );
 
@@ -166,10 +169,8 @@ ADD CONSTRAINT chk_requests_created_at
 CHECK (created_at <= CURRENT_DATE);
 
 ALTER TABLE sell_product
-ADD CONSTRAINT chk_sell_product_created_at
-CHECK (created_at <= NOW()),
 ADD CONSTRAINT chk_sell_product_expired_at
-CHECK (expired_at > created_at),
+CHECK (expired_at > starting_at),
 ADD CONSTRAINT chk_sell_product_init_price
 CHECK (init_price > 0),
 ADD CONSTRAINT chk_sell_product_step_price

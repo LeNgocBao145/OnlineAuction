@@ -5,74 +5,49 @@ import {
     getProductImagesById,
     createProductImages,
     createProductDescription,
+    createSellProduct
   } from "../libs/sqlQuery.js";
 
 class ProductController {
     async addProduct(req, res) {
         try {
-            const { name, current_price, image, state } = req.body;
+            const { seller, name, images, init_price, step_price, instant_price, start_at, expired_at, description, isExtent } = req.body;
 
-            if (!name || !current_price || !image || !state) {
+            if (!seller || !name || !images || !init_price || !step_price || !start_at || !expired_at || !description || typeof (isExtent) !== 'boolean') {
                 return res.status(400).json({
-                  message: "Name, current price, image and state are required",
+                  message: "Seller id, name, images, init_price, step_price, description and isExtent are required"
                 });
             }
 
-            if(current_price <= 0) {
+            if(!Array.isArray(images) || images.length < 3) {
                 return res.status(400).json({
-                    message: "Current price must be positive",
+                    message: "Images must contain at least 3 items"
+                  });
+            }
+
+            if(init_price <= 0 || step_price <= 0) {
+                return res.status(400).json({
+                    message: "Init price and step price must be positive",
                 });
             }
 
             const result = await query(createProduct, [
                 name,
-                current_price,
-                image,
-                state
+                init_price,
+                images[0]
             ]);
 
-            const newProduct = result.rows[0];
+            const productId = result.rows[0].id;
 
-            return res
-                .status(201)
-                .json({ message: "Product created successfully!", newProduct });            
+            await Promise.all([
+                query(createProductImages, [productId, images]),
+                query(createProductDescription, [productId, description]),
+                query(createSellProduct, [productId, seller, init_price, step_price, instant_price || null, start_at, expired_at, isExtent])
+            ]);
+
+            return res.status(201).json({ message: "Product created successfully!", productId });     
         } catch(error) {
             console.error("[addProduct] Error: ", error);
-            res.status(500).json({ message: "Internal Server Error" });
-        }
-    }
-
-    async addImages(req, res) {
-        try {
-            const productId = req.params.productId;
-            const { imagePath } = req.body;
-
-            if (!productId || !imagePath) {
-                return res.status(400).json({
-                  message: "ProductID and imagePath are required",
-                });
-            }
-
-            const product = await query(getProductById, [productId]);
-
-            if (!product.rows.length) {
-                return res.status(404).json({ message: "No product found" });
-            }
-
-            const isExistingProductImages = await query(getProductImagesById, [productId]);
-            if (isExistingProductImages.rows.length > 0) {
-                return res.status(409).json({ message: "Product images already exist" });
-            }
-
-            const result = await query(createProductImages, [productId, imagePath]);
-
-            const newProductImages = result.rows[0];
-
-            return res
-                    .status(201)
-                    .json({ message: "Product images created successfully!", newProductImages });
-        } catch (error) {
-            console.error("[addImages] Error: ", error);
             res.status(500).json({ message: "Internal Server Error" });
         }
     }
