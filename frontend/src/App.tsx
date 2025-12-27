@@ -16,6 +16,12 @@ import ProfileFavorites from "./pages/profile/favorites";
 import ProductSellerPage from "./pages/profile/selling/productSeller";
 import CreateAuction from "./pages/profile/selling/createProdForSell";
 import ProtectedRoute from "./pages/ProtectedRoute";
+import UserManagementTab from "./pages/admin/user/user";
+import ProductManagementTab from "./pages/admin/product/product";
+import CategoryManagementTab from "./pages/admin/category/category";
+import RequestsManagementTab from "./pages/admin/upgradeRequests/requests";
+import BidderTransactionPage from "./pages/transaction/transactionBidder";
+import SellerTransactionPage from "./pages/transaction/transactionSeller";
 
 export default function App() {
   return (
@@ -28,6 +34,15 @@ export default function App() {
           <Route path="/signIn" element={<SignIn />} />
           <Route path="/signUp" element={<SignUp />} />
           <Route path="/verify-otp" element={<VerifyOTP />} />
+
+          {/*Route needing integration, putting it here for testing*/}
+          <Route path="/admin/user" element={<UserManagementTab />} />
+          <Route path="/admin/product" element={<ProductManagementTab />} />
+          <Route path="/admin/category" element={<CategoryManagementTab />} />
+          <Route path="/admin/requests" element={<RequestsManagementTab />} />
+          <Route path="/transactions/bidder/:id" element={<BidderTransactionPage />} />
+          <Route path="/transactions/seller/:id" element={<SellerTransactionPage />} />
+
           {/* protected route */}
           <Route element={<ProtectedRoute />}>
             <Route path="/search" element={<SearchPage />} />

@@ -16,8 +16,8 @@ export default function HeaderCategory() {
     const navigate = useNavigate();
 
     return (
-        <div className='absolute top-[100px] mt-1 left-1/6 w-2/3 h-auto bg-(--secondary) z-9999 flex rounded-lg'>
-            <div className="w-5/20 p-4 border-r-4 border-white/60">
+        <div className='absolute top-[100px] mt-1 lg:left-1/6 left-3/100 lg:w-2/3 w-95/100 h-auto bg-(--secondary) z-9999 flex rounded-lg'>
+            <div className="lg:w-5/20 w-7/20 p-4 border-r-4 border-white/60">
             {allCategories.map((category, index) => (
                 <div key={index} 
                      className='text-white/80 hover:bg-(--primary) h-10 rounded-lg mb-2 cursor-pointer flex justify-between items-center px-2'
@@ -28,7 +28,7 @@ export default function HeaderCategory() {
                 </div>
             ))}
             </div>
-            <div className="w-15/20 p-4">
+            <div className="lg:w-15/20 w-13/20 p-4">
             {selectedCategory && allSubCategories[selectedCategory] && (
                 <div>
                     <h3 className="text-(--primary) font-bold mb-4">{selectedCategory} Subcategories</h3>

@@ -10,7 +10,7 @@ export default function Nav() {
   const [openCategory, setOpenCategory] = useState(false);
 
   return (
-    <nav className="relative h-[100px] w-full grid grid-cols-[1fr_1fr_1fr_3fr] bg-(--bgc) border-b border-white/10 shadow-lg">
+    <nav className="relative lg:h-[100px] h-[150px] w-full grid lg:grid-cols-[1fr_1fr_1fr_3fr] grid-cols-3 bg-(--bgc) border-b border-white/10 shadow-lg">
       <div className="w-full flex justify-center items-center gap-2">
         <img src={Icon} className="flex-none aspect-auto h-6" />
         <p className="font-sans font-bold text-(--primary)">AUCTIONIFY</p>
@@ -29,7 +29,7 @@ export default function Nav() {
         <p className="text-white/60">Category</p>
         <ChevronDownIcon className="w-4 h-4 text-white/60 ml-1 mt-1" />
       </div>
-      <div className="w-full flex justify-center items-center gap-2">
+      <div className="w-full lg:col-span-1 col-span-full flex justify-center items-center gap-2 lg:px-0 px-4">
         <div className="relative flex-1 flex items-center">
           <input
             type="text"
@@ -40,13 +40,13 @@ export default function Nav() {
         </div>
         <button
           onClick={() => navigate("/signIn")}
-          className="text-white font-bold px-6 h-[50px] rounded-8px whitespace-nowrap cursor-pointer border border-(--primary) rounded-2xl bg-(--primary)"          
+          className="text-black font-bold px-6 h-[50px] rounded-8px whitespace-nowrap cursor-pointer border border-(--primary) rounded-md bg-(--primary)"          
         >
           Sign In
         </button>
         <button
           onClick={() => navigate("/signUp")}
-          className="text-white font-bold px-6 h-[50px] rounded-8px whitespace-nowrap cursor-pointer border border-(--primary) rounded-2xl bg-(--primary) mr-2"
+          className="text-black font-bold px-6 h-[50px] rounded-8px whitespace-nowrap cursor-pointer border border-(--primary) rounded-md bg-(--primary) lg:mr-2"
         >
           Sign Up
         </button>
