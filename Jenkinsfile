@@ -22,12 +22,7 @@ pipeline {
             }
         }
 
-        stage('Build Images') {
-            steps {
-                sh '''
-                  docker build -t $BACKEND_IMAGE:$TAG backend                  
-                '''
-                stage('Build Images') {
+        stage('Build Images') {            
             steps {
                 // Build backend normally
                 sh '''
@@ -44,9 +39,7 @@ pipeline {
                       --build-arg VITE_OTP_EXPIRE_TIME=$VITE_OTP_EXPIRE_TIME \
                       -t $FRONTEND_IMAGE:$TAG frontend
                 '''
-            }
-        }
-            }
+            }        
         }
 
         stage('Login to Docker Hub') {
