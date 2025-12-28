@@ -5,7 +5,7 @@ services:
     image: ${REGISTRY}/onlineauction-backend:${TAG}
     container_name: onlineauction-backend
     env_file:
-      - ./backend/.env
+      - /opt/onlineauction/backend/.env
     ports:
       - "5555:5555"
     restart: unless-stopped
@@ -14,7 +14,7 @@ services:
     image: ${REGISTRY}/onlineauction-frontend:${TAG}
     container_name: onlineauction-frontend
     env_file:
-      - ./frontend/.env.development
+      - /opt/onlineauction/frontend/.env.development
     ports:
       - "80:80"
     restart: unless-stopped
