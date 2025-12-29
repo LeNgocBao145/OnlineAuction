@@ -1,7 +1,4 @@
-import pg from 'pg'
-import env from 'dotenv'
-
-env.config();
+import pg from 'pg';
 
 const requiredEnvVars = [
     'PG_HOST',
