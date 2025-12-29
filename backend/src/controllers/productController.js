@@ -29,8 +29,6 @@ import {
   sendInstantBuyEmail,
   sendSuccessfullyInstantBuyEmail,
 } from "../utils/emailService.js";
-import { get, request } from "http";
-import { send } from "process";
 
 class ProductController {
   async getProductDetails(req, res) {
