@@ -8,7 +8,7 @@ ARG VITE_OTP_EXPIRE_TIME
 ENV VITE_OTP_EXPIRE_TIME=$VITE_OTP_EXPIRE_TIME
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 COPY . .
 RUN npm run build
 
