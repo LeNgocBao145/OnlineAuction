@@ -49,7 +49,48 @@ export const getProductImages = `SELECT * FROM product_images`;
 
 export const getProductImagesById = `SELECT * FROM product_images WHERE product = $1`;
 
-
+export const getListProducts = (type, order) => {
+    let query;
+    switch (type) {
+        case 'ENDING_SOON':
+            query = `SELECT
+                        p.name,
+                        p.current_price,
+                        CEIL(EXTRACT(EPOCH FROM (sp.expired_at - NOW())) / 60) AS minutes_left
+                     FROM sell_product sp
+                     JOIN products p ON p.id = sp.product
+                     WHERE p.state = 'bidding'
+                     AND sp.expired_at > NOW()
+                     ORDER BY sp.expired_at ${order}
+                     LIMIT $1`;
+            break;
+        case 'MOST_BIDDED':
+            query = `SELECT 
+                        p.id, 
+                        p.name, 
+                        count(b.id) AS bids,
+                        p.current_price
+                     FROM products p
+                     LEFT JOIN bids b ON b.product = p.id
+                     GROUP BY p.id, p.name, p.current_price
+                     ORDER BY bids ${order}
+                     LIMIT $1`
+            break;
+        case 'HIGHEST_PRICE':
+            query = `SELECT
+                        p.id,
+                        p.name,
+                        count(b.id) AS bids,
+                        p.current_price
+                     FROM products p
+                     LEFT JOIN bids b ON b.product = p.id
+                     GROUP BY p.id, p.name, p.current_price
+                     ORDER BY p.current_price ${order}
+                     LIMIT $1`
+            break;
+    }
+    return query;
+}
 //Product descriptions
 export const createProductDescription = `INSERT INTO product_descriptions (product, description) VALUES ($1, $2) RETURNING *`;
 

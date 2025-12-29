@@ -2,13 +2,27 @@ import query from "../libs/db.js";
 import {
     createProduct,
     getProductById,
-    getProductImagesById,
     createProductImages,
     createProductDescription,
-    createSellProduct
-  } from "../libs/sqlQuery.js";
+    createSellProduct,
+    getListProducts
+} from "../libs/sqlQuery.js";
 
 class ProductController {
+    async listProducts(req, res) {
+        const { 
+            type = 'ENDING_SOON', 
+            order = 'ASC', 
+            limit = 5 
+        } = req.query;
+
+        const safeOrder = String(order).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+
+        const queryP = getListProducts(type, safeOrder);
+        const result = await query(queryP, [limit]);
+        return res.status(200).json(result.rows);
+    }
+
     async addProduct(req, res) {
         try {
             const { seller, name, images, init_price, step_price, instant_price, start_at, expired_at, description, isExtent } = req.body;
@@ -80,6 +94,20 @@ class ProductController {
             console.error("[addDescription] Error: ", error);
             res.status(500).json({ message: "Internal Server Error" });
         }
+    }
+
+    async refuse(req, res) {
+        const productId = req.params.productId;
+        const { bidderId } = req.body;
+
+        if(!bidderId) {
+            return res.status(400).json({
+                message: "BidderId are required",
+            });
+        }
+
+        const product = await query(getProductById, [productId]);
+        console.log(product.rows[0]);
     }
 }
 
