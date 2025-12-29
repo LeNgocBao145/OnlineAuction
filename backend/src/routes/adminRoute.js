@@ -7,4 +7,5 @@ router.get('/accounts', AdminController.getUsers);
 router.post('/addAccount', AdminController.createUser);
 router.delete('/:accountId', AdminController.deleteUser);
 router.put('/:accountId', AdminController.updateUser);
+
 export default router;

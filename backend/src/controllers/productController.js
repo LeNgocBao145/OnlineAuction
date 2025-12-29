@@ -10,17 +10,22 @@ import {
 
 class ProductController {
     async listProducts(req, res) {
-        const { 
-            type = 'ENDING_SOON', 
-            order = 'ASC', 
-            limit = 5 
-        } = req.query;
-
-        const safeOrder = String(order).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
-
-        const queryP = getListProducts(type, safeOrder);
-        const result = await query(queryP, [limit]);
-        return res.status(200).json(result.rows);
+        try {
+            const { 
+                type = 'ENDING_SOON', 
+                order = 'ASC', 
+                limit = 5 
+            } = req.query;
+    
+            const safeOrder = String(order).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    
+            const queryP = getListProducts(type, safeOrder);
+            const result = await query(queryP, [limit]);
+            return res.status(200).json(result.rows);
+        } catch (error) {
+            console.error("[listProducts] Error: ", error);
+            res.status(500).json({ message: "Internal Server Error" });
+        }
     }
 
     async addProduct(req, res) {

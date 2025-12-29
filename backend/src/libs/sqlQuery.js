@@ -91,9 +91,29 @@ export const getListProducts = (type, order) => {
     }
     return query;
 }
+
 //Product descriptions
 export const createProductDescription = `INSERT INTO product_descriptions (product, description) VALUES ($1, $2) RETURNING *`;
 
 export const getProductDescription = `SELECT * FROM product_descriptions WHERE id = $1 AND product = $2`;
+
+//Category
+export const getListCategories =   `SELECT
+                                        p.id,
+                                        p.name,
+                                        COALESCE(
+                                            JSONB_AGG(
+                                            JSONB_BUILD_OBJECT('id', c.id, 'name', c.name)
+                                            ORDER BY c.name
+                                            ) FILTER (WHERE c.id IS NOT NULL),
+                                            '[]'::jsonb
+                                        ) AS children
+                                    FROM categories p
+                                    LEFT JOIN categories c
+                                    ON c.parent = p.id
+                                    WHERE p.parent IS NULL
+                                    GROUP BY p.id, p.name
+                                    ORDER BY p.name`;
+
 // Admin Queries
 

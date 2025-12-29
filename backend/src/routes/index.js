@@ -1,9 +1,11 @@
 import authRouter from './authRoute.js';
 import adminRouter from './adminRoute.js';
 import productRouter from './productRoute.js';
+import categoryRouter from './categoryRoute.js';
 
 export default function route(app) {
     app.use('/api/auth', authRouter);
     app.use('/api/admins', adminRouter);
     app.use('/api/products', productRouter);
+    app.use('/api/categories', categoryRouter);
 }
