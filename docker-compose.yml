@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  backend:
+    image: ${REGISTRY}/onlineauction-backend:${TAG}
+    container_name: onlineauction-backend
+    env_file:
+      - /opt/onlineauction/backend/.env
+    ports:
+      - "5555:5555"
+    restart: unless-stopped
+
+  frontend:
+    image: ${REGISTRY}/onlineauction-frontend:${TAG}
+    container_name: onlineauction-frontend
+    env_file:
+      - /opt/onlineauction/frontend/.env
+      - /opt/onlineauction/frontend/.env.production
+    ports:
+      - "80:80"
+    restart: unless-stopped
