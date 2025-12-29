@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Thay thế các biến VITE_* trong index.html từ env runtime
 for var in $(env | grep ^VITE_ | cut -d= -f1); do
