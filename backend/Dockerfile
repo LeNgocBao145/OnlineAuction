@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Cài dependencies cần thiết để build
 COPY package*.json ./
-RUN npm install --production
+RUN npm ci --production
 RUN npm install -g @vercel/ncc
 
 # Copy source code
@@ -22,6 +22,7 @@ RUN addgroup -S onlineauction && adduser -S onlineauction -G onlineauction
 
 # Copy file bundle từ stage builder
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./
 
 # Chuyển sang user non-root
 USER onlineauction
