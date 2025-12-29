@@ -14,6 +14,7 @@ services:
     image: ${REGISTRY}/onlineauction-frontend:${TAG}
     container_name: onlineauction-frontend
     env_file:
+      - /opt/onlineauction/frontend/.env
       - /opt/onlineauction/frontend/.env.production
     ports:
       - "80:80"
