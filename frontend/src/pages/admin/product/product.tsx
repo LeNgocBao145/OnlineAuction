@@ -2,17 +2,64 @@ import Nav from "@/components/ui/nav";
 import AdminHeader from "../adminHeader";
 
 import { MagnifyingGlassIcon } from "@heroicons/react/24/solid";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import productService from "@/services/productService";
+import adminService from "@/services/adminService";
+
+interface ProductItem {
+    id: number;
+    name: string;
+    category_name: string;
+    current_price: number;
+    instant_price: number;
+    seller_name: string;
+    winner_name: string | null;
+}
 
 export default function ProductManagementTab() {
-    const [productData, setProductData] = useState(
-        [
-            {id: 1, name: "Product A", category: "Electronics", curPrice: 150, instaPrice: 20, seller: "Seller1", winner: "Bidder1" },
-            {id: 2, name: "Product B", category: "Books", curPrice: 50, instaPrice: 10, seller: "Seller2", winner: "None" },
-            {id: 3, name: "Product C", category: "Fashion", curPrice: 80, instaPrice: 15, seller: "Seller3", winner: "Bidder2" },
-            {id: 4, name: "Product D", category: "Home", curPrice: 200, instaPrice: 25, seller: "Seller4", winner: "Bidder3" },
-            {id: 5, name: "Product E", category: "Toys", curPrice: 40, instaPrice: 5, seller: "Seller5", winner: "None" }
-        ]
+    const [productData, setProductData] = useState<ProductItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchKeyword, setSearchKeyword] = useState("");
+
+    const fetchProducts = async () => {
+        try {
+            setLoading(true);
+            const result = await productService.filterProducts({ limit: 100 });
+            const products = result.products.map(p => ({
+                id: p.id,
+                name: p.name,
+                category_name: p.category_name || "N/A",
+                current_price: p.current_price,
+                instant_price: p.instant_price || 0,
+                seller_name: p.seller_name || "N/A",
+                winner_name: p.winner_name || null
+            }));
+            setProductData(products);
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to fetch products");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchProducts();
+    }, []);
+
+    const handleDeleteProduct = async (productId: number) => {
+        if (!confirm("Are you sure you want to delete this product?")) return;
+        try {
+            await adminService.deleteProduct(productId);
+            toast.success("Product deleted successfully");
+            fetchProducts();
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to delete product");
+        }
+    };
+
+    const filteredProducts = productData.filter(product =>
+        product.name.toLowerCase().includes(searchKeyword.toLowerCase())
     );
 
     return (
@@ -22,7 +69,12 @@ export default function ProductManagementTab() {
                 <AdminHeader activeTab="product" />
                 <div className="p-4 border border-white/10 rounded-b-lg bg-(--third)">
                     <div className="relative lg:w-1/3 w-full">
-                        <input className="border border-white/10 text-white/60 bg-(--secondary) w-full h-10 p-2 rounded-md" placeholder="Search product by name..." />
+                        <input 
+                            className="border border-white/10 text-white/60 bg-(--secondary) w-full h-10 p-2 rounded-md" 
+                            placeholder="Search product by name..." 
+                            value={searchKeyword}
+                            onChange={(e) => setSearchKeyword(e.target.value)}
+                        />
                         <MagnifyingGlassIcon className="w-5 h-5 text-white/60 absolute right-2 top-2.5" />
                     </div>
                     <div className="bg-(--secondary) rounded-md p-4 mt-4">
@@ -39,19 +91,24 @@ export default function ProductManagementTab() {
                                     <p>Actions</p>
                                 </div>
                                 <ul>
-                                    {productData.length === 0 ? (
-                                        <p className="text-white/60">No users found.</p>
+                                    {loading ? (
+                                        <p className="text-white/60 py-4">Loading...</p>
+                                    ) : filteredProducts.length === 0 ? (
+                                        <p className="text-white/60 py-4">No products found.</p>
                                     ) : (
-                                    productData.map((product) => (
+                                    filteredProducts.map((product) => (
                                         <li key={product.id} className="h-20 border-b border-white/10 grid grid-cols-[1fr_2fr_1fr_1fr_1fr_2fr_2fr_1fr] items-center">
                                             <p className="text-white/60">{product.id}</p>
                                             <p className="text-white/60">{product.name}</p>
-                                            <p className="text-white/60">{product.category}</p>
-                                            <p className="text-(--primary)">{product.curPrice}</p>
-                                            <p className="text-(--primary)">{product.instaPrice}</p>
-                                            <p className="text-white/60">{product.seller}</p>
-                                            <p className="text-white/60">{product.winner}</p>
-                                            <button className="text-sm bg-red-500 text-white rounded-md px-2 py-1 hover:bg-red-500/10">Delete</button>
+                                            <p className="text-white/60">{product.category_name}</p>
+                                            <p className="text-(--primary)">${product.current_price}</p>
+                                            <p className="text-(--primary)">${product.instant_price}</p>
+                                            <p className="text-white/60">{product.seller_name}</p>
+                                            <p className="text-white/60">{product.winner_name || "None"}</p>
+                                            <button 
+                                                className="text-sm bg-red-500 text-white rounded-md px-2 py-1 hover:bg-red-500/10"
+                                                onClick={() => handleDeleteProduct(product.id)}
+                                            >Delete</button>
                                         </li>
                                     )))}
                                 </ul>

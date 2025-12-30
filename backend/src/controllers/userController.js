@@ -31,12 +31,19 @@ const otpStore = new Map();
 class UserController {
   async authMe(req, res, next) {
     try {
-      // Get user from authMiddleware
-      const user = req.user;
+      const userId = req.user?.id;
 
-      if (!user) {
+      if (!userId) {
         return res.status(404).json({ message: "Error in authMiddleware" });
       }
+
+      const result = await query(getUserById, [userId]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const user = result.rows[0];
+      delete user.hashed_password;
 
       return res.status(200).json({ user });
     } catch (error) {

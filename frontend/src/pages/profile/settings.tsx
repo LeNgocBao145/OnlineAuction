@@ -8,7 +8,7 @@ export default function ProfileSettingsBasicInfo() {
     return (
         <>
             <Nav />
-            <ProfileHeader profilePicture="path/to/picture.jpg" profileName="John Doe" profileEmail="john.doe@example.com" activePage="settings" />
+            <ProfileHeader activePage="settings" />
             <ChangeBasicInfo />
         </>
     );

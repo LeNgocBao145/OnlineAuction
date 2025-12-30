@@ -31,7 +31,7 @@ export default function AskQuestionModal(
 
         try {
             setIsSubmitting(true);
-            await askQuestion(productId, user.id, question);
+            await askQuestion(productId, question);
             toast.success("Question asked successfully!");
             setAskingQuestion(false);
         } catch (error: any) {

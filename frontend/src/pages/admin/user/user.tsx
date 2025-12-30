@@ -2,36 +2,68 @@ import Nav from "@/components/ui/nav";
 import AdminHeader from "../adminHeader";
 
 import { MagnifyingGlassIcon } from "@heroicons/react/24/solid";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import EditUserModal from "./editUserModal";
+import adminService, { type AdminUser } from "@/services/adminService";
 
 export default function UserManagementTab() {
     const [editingUser, setEditingUser] = useState(false);
-    const [editingUserData, setEditingUserData] = useState<{ fullName: string; email: string; dob: string }>({ fullName: "", email: "", dob: "" });
-    const [userData, setUserData] = useState(
-        [
-            {id: 1, fullName: "John Doe", email: "john.doe@example.com", dob: "1990-01-01", role: "Bidder", rating: 4.5, joinDate: "2023-01-15" },
-            {id: 2, fullName: "Jane Smith", email: "jane.smith@example.com", dob: "1985-05-20", role: "Seller", rating: 4.2, joinDate: "2022-11-30" },
-            {id: 3, fullName: "Alice Johnson", email: "alice.johnson@example.com", dob: "1992-07-15", role: "Seller", rating: 3.7, joinDate: "2023-03-22" },
-            {id: 4, fullName: "Bob Brown", email: "bob.brown@example.com", dob: "1988-12-05", role: "Bidder", rating: 3.9, joinDate: "2023-04-10" },
-            {id: 5, fullName: "Charlie Davis", email: "charlie.davis@example.com", dob: "1995-09-10", role: "Admin", rating: 4.8, joinDate: "2023-05-05" }
-        ]
+    const [editingUserData, setEditingUserData] = useState<AdminUser | null>(null);
+    const [userData, setUserData] = useState<AdminUser[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchKeyword, setSearchKeyword] = useState("");
+
+    const fetchUsers = async () => {
+        try {
+            setLoading(true);
+            const users = await adminService.getUsers();
+            setUserData(users);
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to fetch users");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    const handleDeleteUser = async (userId: number) => {
+        if (!confirm("Are you sure you want to delete this user?")) return;
+        try {
+            await adminService.deleteUser(userId);
+            toast.success("User deleted successfully");
+            fetchUsers();
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to delete user");
+        }
+    };
+
+    const filteredUsers = userData.filter(user => 
+        user.name.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchKeyword.toLowerCase())
     );
 
     return (
         <>
-            {editingUser && <EditUserModal 
+            {editingUser && editingUserData && <EditUserModal 
                 setEditingUser={setEditingUser}
-                username={editingUserData.fullName}
-                email={editingUserData.email}
-                dob={editingUserData.dob}
+                userData={editingUserData}
+                onUpdate={fetchUsers}
             />}
             <Nav />
             <div className="px-[10%]">
                 <AdminHeader activeTab="user" />
                 <div className="p-4 border border-white/10 rounded-b-lg bg-(--third)">
                     <div className="relative lg:w-1/3 w-full">
-                        <input className="border border-white/10 text-white/60 bg-(--secondary) w-full h-10 p-2 rounded-md" placeholder="Search users by name or email..." />
+                        <input 
+                            className="border border-white/10 text-white/60 bg-(--secondary) w-full h-10 p-2 rounded-md" 
+                            placeholder="Search users by name or email..."
+                            value={searchKeyword}
+                            onChange={(e) => setSearchKeyword(e.target.value)}
+                        />
                         <MagnifyingGlassIcon className="w-5 h-5 text-white/60 absolute right-2 top-2.5" />
                     </div>
                     <div className="bg-(--secondary) rounded-md p-4 mt-4">
@@ -47,17 +79,19 @@ export default function UserManagementTab() {
                                     <p>Actions</p>
                                 </div>
                                 <ul>
-                                    {userData.length === 0 ? (
-                                        <p className="text-white/60">No users found.</p>
+                                    {loading ? (
+                                        <p className="text-white/60 py-4">Loading...</p>
+                                    ) : filteredUsers.length === 0 ? (
+                                        <p className="text-white/60 py-4">No users found.</p>
                                     ) : (
-                                    userData.map((user) => (
+                                    filteredUsers.map((user) => (
                                         <li key={user.id} className="h-20 border-b border-white/10 grid grid-cols-[1fr_3fr_3fr_1fr_1fr_2fr_1fr] items-center">
                                             <p className="text-white/60">{user.id}</p>
-                                            <p className="text-white/60">{user.fullName}</p>
+                                            <p className="text-white/60">{user.name}</p>
                                             <p className="text-white/60">{user.email}</p>
                                             <p className={
-                                                user.role === "Bidder" ? "text-white/60" : 
-                                                user.role === "Seller" ? "text-(--primary)" :
+                                                user.role === "bidder" ? "text-white/60" : 
+                                                user.role === "seller" ? "text-(--primary)" :
                                                 "text-red-400"
                                             }>{user.role}</p>
                                             <p className={
@@ -65,19 +99,18 @@ export default function UserManagementTab() {
                                                 user.rating >= 4.0 ? "text-(--primary)" :
                                                 "text-red-400"
                                             }>{user.rating}</p>
-                                            <p className="text-white/60">{user.joinDate}</p>
+                                            <p className="text-white/60">{new Date(user.created_at).toLocaleDateString()}</p>
                                             <div>
                                                 <button className="text-sm bg-(--primary) text-black rounded-md px-2 py-1 mr-2 hover:bg-(--primary)/10"
                                                     onClick={() => {
+                                                        setEditingUserData(user);
                                                         setEditingUser(true);
-                                                        setEditingUserData({
-                                                            fullName: user.fullName,
-                                                            email: user.email,
-                                                            dob: user.dob
-                                                        });
                                                     }}
                                                 >Edit</button>
-                                                <button className="text-sm bg-red-500 text-white rounded-md px-2 py-1 hover:bg-red-500/10">Delete</button>
+                                                <button 
+                                                    className="text-sm bg-red-500 text-white rounded-md px-2 py-1 hover:bg-red-500/10"
+                                                    onClick={() => handleDeleteUser(user.id)}
+                                                >Delete</button>
                                             </div>
                                         </li>
                                     )))}

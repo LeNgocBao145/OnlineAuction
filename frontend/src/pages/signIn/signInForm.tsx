@@ -33,8 +33,7 @@ export default function SignInForm() {
     try {
       const { email, password } = data;
       await login(email, password);
-      // TODO: Navigate to user dashboard after login
-      // navigate("/");
+      navigate("/");
     } catch (error) {
       console.error(error);
     }

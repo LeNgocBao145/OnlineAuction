@@ -47,7 +47,7 @@ export default function PlaceBidModal(
         try {
             setIsSubmitting(true);
             console.log("Bid amount:", finalBidPrice);
-            await placeBid(productId, user.id, finalBidPrice);
+            await placeBid(productId, finalBidPrice);
             toast.success("Bid placed successfully!");
             setPlacingBid(false);
         } catch (error: any) {

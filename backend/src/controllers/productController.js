@@ -1,16 +1,10 @@
-import { create } from "domain";
 import query from "../libs/db.js";
 import {
-  getUserById,
   getProductDetailsById,
   getFilteredProductsQuery,
   createQuestion,
   updateQuestionAnswer,
   getBidRequestsByProductId,
-  getProductById,
-  getProductAndSellInfoById,
-  countUserRatings,
-  checkIsAllowedBidder,
   createBidRequest,
   getBidRequestByBidderAndProduct,
   updateBidRequestReset,
@@ -139,7 +133,8 @@ class ProductController {
 
   async askQuestion(req, res) {
     try {
-      const { productId, userId } = req.params;
+      const { productId } = req.params;
+      const userId = req.user.id;
       const { question } = req.body;
 
       const trimmedQuestion = question ? question.trim() : "";
@@ -198,7 +193,8 @@ class ProductController {
 
   async answerQuestion(req, res) {
     try {
-      const { productId, questionId, answererId } = req.params;
+      const { productId, questionId } = req.params;
+      const answererId = req.user.id;
       const { answer } = req.body;
 
       const trimmedAnswer = answer ? answer.trim() : "";
@@ -270,7 +266,8 @@ class ProductController {
 
   async askToBid(req, res) {
     try {
-      const { userId, productId } = req.params;
+      const { productId } = req.params;
+      const userId = req.user.id;
 
       const checkQuery = `
         SELECT
@@ -346,10 +343,6 @@ class ProductController {
   async getProductBidRequests(req, res) {
     try {
       const { productId } = req.params;
-      const checkProduct = await query(getProductById, [productId]);
-      if (checkProduct.rows.length === 0) {
-        return res.status(404).json({ message: "Product not found" });
-      }
 
       const keyword = req.query.keyword ? req.query.keyword.trim() : "";
       
@@ -388,6 +381,8 @@ class ProductController {
         offset,
       ]);
 
+      // Check if product exists by checking total_count - if no product, the query returns empty
+      // The getBidRequestsByProductId query already handles product validation via JOIN
       const totalItems = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
       const totalPages = Math.ceil(totalItems / limit);
 
@@ -416,14 +411,21 @@ class ProductController {
 
   async acceptBidRequest(req, res) {
     try {
-      const { requestId, productId, userId } = req.params;
+      const { requestId, productId } = req.params;
+      const userId = req.user.id;
 
+      // Combined query: check permission + get email data in one query
       const checkQuery = `
         SELECT
-          sp.seller
+          sp.seller,
+          br.state as request_state,
+          u.email as bidder_email,
+          p.name as product_name
         FROM bid_requests br
           JOIN sell_product sp ON sp.product = br.product
-        WHERE br.id = $1 AND  sp.product = $2
+          JOIN users u ON u.id = br.bidder
+          JOIN products p ON p.id = br.product
+        WHERE br.id = $1 AND sp.product = $2
       `;
 
       const checkResult = await query(checkQuery, [requestId, productId]);
@@ -431,8 +433,14 @@ class ProductController {
         return res.status(404).json({ message: "Bid request not found" });
       }
 
-      if (checkResult.rows[0].seller !== parseInt(userId, 10)) {
+      const requestData = checkResult.rows[0];
+
+      if (requestData.seller !== parseInt(userId, 10)) {
         return res.status(403).json({ message: "Only the seller can approve bid requests for their products" });
+      }
+
+      if (requestData.request_state !== "pending") {
+        return res.status(400).json({ message: "Request already processed" });
       }
 
       const result = await query(approveBidRequest, [requestId]);
@@ -440,23 +448,8 @@ class ProductController {
         return res.status(400).json({ message: "Request not found or already processed" });
       }
 
-      const emailDataQuery = `
-        SELECT
-          u.email as bidder_email,
-          p.name as product_name
-        FROM users u
-          JOIN bid_requests br ON br.bidder = u.id
-          JOIN products p ON p.id = br.product
-        WHERE
-          br.id = $1
-      `;
-
-      const emailData = await query(emailDataQuery, [requestId]);
-
-      if (emailData.rows.length > 0) {
-          sendBidResponseEmail(emailData.rows[0].bidder_email, emailData.rows[0].product_name , true)
-            .catch(err => console.error("Email error:", err));
-      }
+      sendBidResponseEmail(requestData.bidder_email, requestData.product_name, true)
+        .catch(err => console.error("Email error:", err));
 
       return res.status(200).json({ message: "Bid request approved successfully!" });
     } catch (error) {
@@ -467,13 +460,20 @@ class ProductController {
 
   async rejectBidRequest(req, res) {
     try {
-      const { requestId, productId, userId } = req.params;
+      const { requestId, productId } = req.params;
+      const userId = req.user.id;
+
       const checkQuery = `
         SELECT
-          sp.seller
+          sp.seller,
+          br.state as request_state,
+          u.email as bidder_email,
+          p.name as product_name
         FROM bid_requests br
-          JOIN sell_product sp ON sp.product = br.product 
-        WHERE br.id = $1 AND sp.product = $2;
+          JOIN sell_product sp ON sp.product = br.product
+          JOIN users u ON u.id = br.bidder
+          JOIN products p ON p.id = br.product
+        WHERE br.id = $1 AND sp.product = $2
       `;
 
       const checkResult = await query(checkQuery, [requestId, productId]);
@@ -481,8 +481,14 @@ class ProductController {
         return res.status(404).json({ message: "Bid request not found" });
       }
 
-      if (checkResult.rows[0].seller !== parseInt(userId, 10)) {
+      const requestData = checkResult.rows[0];
+
+      if (requestData.seller !== parseInt(userId, 10)) {
         return res.status(403).json({ message: "Only the seller can reject bid requests for their products" });
+      }
+
+      if (requestData.request_state !== "pending") {
+        return res.status(400).json({ message: "Request already processed" });
       }
 
       const result = await query(rejectBidRequest, [requestId]);
@@ -490,23 +496,8 @@ class ProductController {
         return res.status(400).json({ message: "Request not found or already processed" });
       }
 
-      const emailDataQuery = `
-        SELECT
-          u.email as bidder_email,
-          p.name as product_name
-        FROM users u
-          JOIN bid_requests br ON br.bidder = u.id
-          JOIN products p ON p.id = br.product
-        WHERE
-          br.id = $1
-      `;
-
-      const emailData = await query(emailDataQuery, [requestId]);
-
-     if (emailData.rows.length > 0) {
-          sendBidResponseEmail(emailData.rows[0].bidder_email, emailData.rows[0].product_name , false)
-            .catch(err => console.error("Email error:", err));
-      }
+      sendBidResponseEmail(requestData.bidder_email, requestData.product_name, false)
+        .catch(err => console.error("Email error:", err));
 
       return res.status(200).json({ message: "Bid request rejected successfully!" });
     } catch (error) {
@@ -517,7 +508,8 @@ class ProductController {
 
   async placeBid(req, res) {
     try {
-      const { userId, productId } = req.params;
+      const { productId } = req.params;
+      const userId = req.user.id;
       const { bidAmount } = req.body;
       const amount = parseFloat(bidAmount);
 
@@ -525,61 +517,77 @@ class ProductController {
         return res.status(400).json({ message: "Invalid bid amount" });
       }
 
-      const checkUser = await query(getUserById, [userId]);
-      if (checkUser.rows.length === 0) {
+      const combinedCheckQuery = `
+        SELECT
+          u.id as user_id,
+          u.email as user_email,
+          u.rating as user_rating,
+          p.id as product_id,
+          p.name as product_name,
+          p.current_price,
+          p.step_price,
+          p.instant_price,
+          p.state as product_state,
+          sp.seller,
+          sp.expired_at,
+          seller_user.email as seller_email,
+          (SELECT COUNT(*) FROM ratings WHERE rated_user = u.id) as rating_count,
+          (SELECT br.id FROM bid_requests br WHERE br.bidder = u.id AND br.product = p.id AND br.state = 'success' LIMIT 1) as bid_permission,
+          (SELECT bidder.email FROM bids b JOIN users bidder ON b.buyer = bidder.id WHERE b.product = p.id ORDER BY b.price DESC LIMIT 1) as prev_bidder_email
+        FROM users u
+          CROSS JOIN products p
+          LEFT JOIN sell_product sp ON sp.product = p.id
+          LEFT JOIN users seller_user ON seller_user.id = sp.seller
+        WHERE u.id = $1 AND p.id = $2
+      `;
+
+      const checkResult = await query(combinedCheckQuery, [userId, productId]);
+
+      if (checkResult.rows.length === 0) {
+        return res.status(404).json({ message: "User or product not found" });
+      }
+
+      const data = checkResult.rows[0];
+
+      if (!data.user_id) {
         return res.status(404).json({ message: "User not found" });
       }
-      const userData = checkUser.rows[0];
 
-      const checkProduct = await query(getProductAndSellInfoById, [productId]);
-      if (checkProduct.rows.length === 0) {
+      if (!data.product_id) {
         return res.status(404).json({ message: "Product not found" });
       }
-      const productData = checkProduct.rows[0];
 
-      if (productData.state !== "bidding" || new Date() > new Date(productData.expired_at)) {
+      if (data.product_state !== "bidding" || new Date() > new Date(data.expired_at)) {
         return res.status(403).json({ message: "Bidding is closed for this product" });
       }
 
-      if (userData.id === productData.seller) {
+      if (data.user_id === data.seller) {
         return res.status(403).json({ message: "Sellers cannot bid on their own products" });
       }
 
-      const countRatings = await query(countUserRatings, [userId]);
-      const isFirstBid = parseInt(countRatings.rows[0].total, 10) === 0;
+      const ratingCount = parseInt(data.rating_count, 10);
+      const isFirstBid = ratingCount === 0;
 
-      if (isFirstBid) {
-        const checkAllowedUserQuery = await query(checkIsAllowedBidder, [userId, productId]);
-        if (checkAllowedUserQuery.rows.length === 0) {
-          return res.status(403).json({ message: "New users with 0 ratings need permission to bid on this product" });
-        }
+      if (isFirstBid && !data.bid_permission) {
+        return res.status(403).json({ message: "New users with 0 ratings need permission to bid on this product" });
       }
 
-      if (!isFirstBid && userData.rating < 4) {
+      if (!isFirstBid && parseFloat(data.user_rating) < 4) {
         return res.status(403).json({ message: "User rating too low to place a bid" });
       }
 
-      const current_price = parseFloat(productData.current_price);
-      const step_price = parseFloat(productData.step_price);
-      const instant_price = parseFloat(productData.instant_price || 0);
+      const current_price = parseFloat(data.current_price);
+      const step_price = parseFloat(data.step_price);
+      const instant_price = parseFloat(data.instant_price || 0);
 
       if (amount < current_price + step_price) {
         return res.status(400).json({ message: `Bid amount must be at least $${(current_price + step_price).toFixed(2)}` });
       }
 
-      const previousBidderQuery = `
-         SELECT u.email 
-         FROM bids b JOIN users u ON b.buyer = u.id 
-         WHERE b.product = $1 
-         ORDER BY b.price DESC LIMIT 1
-      `;
-      const prevBidderResult = await query(previousBidderQuery, [productId]);
-
-      const sellerEmail = productData.email;
-      const currentBidderEmail = userData.email;
-      const previousHighestBidderEmail = prevBidderResult.rows.length > 0 ? prevBidderResult.rows[0].email : null;
-
-      const productName = productData.name;
+      const sellerEmail = data.seller_email;
+      const currentBidderEmail = data.user_email;
+      const previousHighestBidderEmail = data.prev_bidder_email;
+      const productName = data.product_name;
       const productUrl = `https://${process.env.FRONTEND_HOST}/products/${productId}`;
 
       const toList = [sellerEmail];

@@ -58,7 +58,7 @@ export default function SearchFilter() {
                 maxPrice: data.maxPrice ? parseFloat(data.maxPrice) : Number.MAX_SAFE_INTEGER,
                 states: states.length > 0 ? states : ["bidding"],
                 page: 1,
-                limit: 10,
+                limit: 9,
             });
         } catch (error) {
             console.error("Error applying filters:", error);

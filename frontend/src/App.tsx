@@ -7,6 +7,7 @@ import Landing from "./pages/landing/landing";
 import SignIn from "./pages/signIn/signIn";
 import SignUp from "./pages/signUp/signUp";
 import VerifyOTP from "./pages/signUp/verifyOTP";
+import ForgotPassword from "./pages/forgotPassword/forgotPassword";
 import SearchPage from "./pages/search/search";
 import ProductPage from "./pages/product/product";
 import ProfileSettingsBasicInfo from "./pages/profile/settings";
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/signIn" element={<SignIn />} />
           <Route path="/signUp" element={<SignUp />} />
           <Route path="/verify-otp" element={<VerifyOTP />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/*Route needing integration, putting it here for testing*/}
           <Route path="/admin/user" element={<UserManagementTab />} />
@@ -54,6 +56,7 @@ export default function App() {
             <Route path="/profile/bids" element={<ProfileMyBids />} />
             <Route path="/profile/reviews" element={<ProfileMyReviews />} />
             <Route path="/profile/favorites" element={<ProfileFavorites />} />
+            <Route path="/profile/sellings" element={<ProductSellerPage />} />
 
             {/* Seller Page */}
             <Route path="/productSeller" element={<ProductSellerPage />} />
