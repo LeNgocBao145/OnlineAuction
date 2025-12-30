@@ -5,8 +5,10 @@ import Hero from "./hero";
 import HighestPrice from "./highestPrice";
 import MostBids from "./mostBids";
 import useHomeStore from "@/stores/homeStore";
+import useAuthStore from "@/stores/authStore";
 
 export default function Landing() {
+    const {user} = useAuthStore();
     const { fetchHomeData, loading } = useHomeStore();
 
     useEffect(() => {
@@ -27,7 +29,7 @@ export default function Landing() {
     return (
         <>
             <Nav />
-            <Hero username="moron" />
+            <Hero username={user?.name || "Guest"} />
             <div className="w-8/10 grid grid-cols-[repeat(auto-fill,minmax(clamp(20rem,30dvw,24rem),1fr))] m-auto gap-4">
                 <EndingSoon />
                 <MostBids />

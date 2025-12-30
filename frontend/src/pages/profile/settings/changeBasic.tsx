@@ -9,7 +9,7 @@ import userService from "@/services/userService";
 import { useState, useEffect } from "react";
 
 export default function ChangeBasicInfo() {
-    const { user } = useAuthStore();
+    const { user, fetchMe } = useAuthStore();
     const { profile, loading, fetchProfile, updateProfile, changePassword } = useUserStore();
     const [upgradeLoading, setUpgradeLoading] = useState(false);
 
@@ -19,9 +19,15 @@ export default function ChangeBasicInfo() {
         }
     }, [user?.id, fetchProfile]);
 
-    const emailAndNameFormSchema = z.object({
+    const profileFormSchema = z.object({
         username: z.string().min(3, "Username must be at least 3 characters long"),
         email: z.string().email("Invalid email address"),
+        birthdate: z.string().transform(str => new Date(str))
+            .refine((date) => {
+                const age = new Date().getFullYear() - date.getFullYear();
+                return age >= 18;
+            }, "You must be at least 18 years old"),
+        address: z.string().min(10, "Address must be at least 10 characters long"),
     });
 
     const passwordFormSchema = z.object({
@@ -33,11 +39,13 @@ export default function ChangeBasicInfo() {
         path: ["confirmPassword"],
     });
 
-    const { register: registerEmailAndName, handleSubmit: handleSubmitEmailAndName, formState: { errors: emailAndNameErrors }, reset: resetEmailAndName } = useForm({
-        resolver: zodResolver(emailAndNameFormSchema),
+    const { register: registerProfile, handleSubmit: handleSubmitProfile, formState: { errors: profileErrors }, reset: resetProfile } = useForm({
+        resolver: zodResolver(profileFormSchema),
         defaultValues: {
             username: "",
-            email: ""
+            email: "",
+            birthdate: "",
+            address: ""
         }
     });
 
@@ -47,22 +55,28 @@ export default function ChangeBasicInfo() {
 
     useEffect(() => {
         if (profile) {
-            resetEmailAndName({
+            resetProfile({
                 username: profile.name || "",
-                email: profile.email || ""
+                email: profile.email || "",
+                birthdate: profile.birthdate ? profile.birthdate.split('T')[0] : "",
+                address: profile.address || ""
             });
         }
-    }, [profile, resetEmailAndName]);
+    }, [profile, resetProfile]);
 
-    const onSubmitEmailAndName = async (data: any) => {
+    const onSubmitProfile = async (data: any) => {
         try {
             await updateProfile(user?.id!, {
                 name: data.username,
                 email: data.email,
-                birthdate: profile?.birthdate || "",
-                address: profile?.address || ""
+                birthdate: new Date(data.birthdate).toISOString(),
+                address: data.address
             });
             toast.success("Profile updated successfully!");
+            // Fetch updated profile from userStore (public endpoint, no auth required)
+            await fetchProfile(user?.id!);
+            // Also update authStore with refreshed user data
+            await fetchMe();
         } catch (error: any) {
             toast.error(error?.response?.data?.message || "Failed to update profile");
             console.error(error);
@@ -109,7 +123,7 @@ export default function ChangeBasicInfo() {
                 )}
             </div>
             <form className="mt-6 flex flex-col gap-4"
-                onSubmit={handleSubmitEmailAndName(onSubmitEmailAndName)}
+                onSubmit={handleSubmitProfile(onSubmitProfile)}
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
                     <div className="flex flex-col">
@@ -119,9 +133,9 @@ export default function ChangeBasicInfo() {
                             id="username" 
                             className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" 
                             placeholder="Enter username"
-                            {...registerEmailAndName("username")}
+                            {...registerProfile("username")}
                         />
-                        {emailAndNameErrors.username && <p className="text-red-500">{emailAndNameErrors.username.message}</p>}
+                        {profileErrors.username && <p className="text-red-500">{profileErrors.username.message}</p>}
                     </div>
                     <div className="flex flex-col">
                         <label className="text-white mb-2" htmlFor="email">Email</label>
@@ -130,9 +144,31 @@ export default function ChangeBasicInfo() {
                             id="email" 
                             className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" 
                             placeholder="Enter email"
-                            {...registerEmailAndName("email")}
+                            {...registerProfile("email")}
                         />
-                        {emailAndNameErrors.email && <p className="text-red-500">{emailAndNameErrors.email.message}</p>}
+                        {profileErrors.email && <p className="text-red-500">{profileErrors.email.message}</p>}
+                    </div>
+                    <div className="flex flex-col">
+                        <label className="text-white mb-2" htmlFor="birthdate">Birthdate</label>
+                        <input 
+                            type="date" 
+                            id="birthdate" 
+                            className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" 
+                            placeholder="Enter birthdate"
+                            {...registerProfile("birthdate")}
+                        />
+                        {profileErrors.birthdate && <p className="text-red-500">{profileErrors.birthdate.message}</p>}
+                    </div>
+                    <div className="flex flex-col">
+                        <label className="text-white mb-2" htmlFor="address">Address</label>
+                        <input 
+                            type="text" 
+                            id="address" 
+                            className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" 
+                            placeholder="Enter address"
+                            {...registerProfile("address")}
+                        />
+                        {profileErrors.address && <p className="text-red-500">{profileErrors.address.message}</p>}
                     </div>
                 </div>
                 <button 

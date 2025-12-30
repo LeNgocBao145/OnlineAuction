@@ -98,8 +98,8 @@ class UserController {
         return res.status(400).json({ error: "Invalid email format." });
       }
 
-      // Validate address format
-      const addressRegex = /^[a-zA-Z0-9\s,.'-]{3,}$/;
+      // Validate address format (support Vietnamese characters)
+      const addressRegex = /^[\p{L}\p{N}\s,.'-]{3,}$/u;
       if (!addressRegex.test(address)) {
         return res.status(400).json({ error: "Invalid address format." });
       }
