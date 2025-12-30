@@ -10,7 +10,7 @@ const useSearchStore = create<SearchState>((set) => ({
   filterParams: {
     keyword: "",
     page: 1,
-    limit: 10,
+    limit: 9,
   },
 
   filterProducts: async (params: FilterParams) => {
@@ -43,7 +43,7 @@ const useSearchStore = create<SearchState>((set) => ({
       filterParams: {
         keyword: "",
         page: 1,
-        limit: 10,
+        limit: 9,
       },
       error: null,
     });

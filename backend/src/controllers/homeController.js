@@ -1,5 +1,5 @@
 import query from "../libs/db.js";
-import { getTop5EndingSoon, getTop5MostBids, getTop5HighestPrice } from "../libs/sqlQuery.js";
+import { getTop5EndingSoon, getTop5MostBids, getTop5HighestPrice, getCategories } from "../libs/sqlQuery.js";
 
 class HomeController {
   async getHomeData(req, res) {
@@ -20,6 +20,19 @@ class HomeController {
       });
     } catch (error) {
       console.error("Error fetching home data:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async getCategories(req, res) {
+    try {
+      const categories = await query(getCategories);
+      return res.status(200).json({
+        message: "Categories retrieved successfully",
+        data: categories.rows
+      });
+    } catch (error) {
+      console.error("Error fetching categories:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   }

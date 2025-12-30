@@ -2,14 +2,16 @@ import { FaUser } from "react-icons/fa";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import useAuthStore from "@/stores/authStore";
 import useUserStore from "@/stores/userStore";
+import userService from "@/services/userService";
 import { useState, useEffect } from "react";
 
 export default function ChangeBasicInfo() {
-    const { user } = useAuthStore();
+    const { user, fetchMe } = useAuthStore();
     const { profile, loading, fetchProfile, updateProfile, changePassword } = useUserStore();
-    const [message, setMessage] = useState("");
+    const [upgradeLoading, setUpgradeLoading] = useState(false);
 
     useEffect(() => {
         if (user?.id) {
@@ -17,9 +19,15 @@ export default function ChangeBasicInfo() {
         }
     }, [user?.id, fetchProfile]);
 
-    const emailAndNameFormSchema = z.object({
+    const profileFormSchema = z.object({
         username: z.string().min(3, "Username must be at least 3 characters long"),
         email: z.string().email("Invalid email address"),
+        birthdate: z.string().transform(str => new Date(str))
+            .refine((date) => {
+                const age = new Date().getFullYear() - date.getFullYear();
+                return age >= 18;
+            }, "You must be at least 18 years old"),
+        address: z.string().min(10, "Address must be at least 10 characters long"),
     });
 
     const passwordFormSchema = z.object({
@@ -28,60 +36,95 @@ export default function ChangeBasicInfo() {
         confirmPassword: z.string().min(6, "Confirm password must be at least 6 characters long"),
     }).refine((data) => data.newPassword === data.confirmPassword, {
         message: "Passwords do not match",
+        path: ["confirmPassword"],
     });
 
-    const { register: registerEmailAndName, handleSubmit: handleSubmitEmailAndName, formState: { errors: emailAndNameErrors } } = useForm({
-        resolver: zodResolver(emailAndNameFormSchema),
+    const { register: registerProfile, handleSubmit: handleSubmitProfile, formState: { errors: profileErrors }, reset: resetProfile } = useForm({
+        resolver: zodResolver(profileFormSchema),
         defaultValues: {
-            username: profile?.name || "",
-            email: profile?.email || ""
+            username: "",
+            email: "",
+            birthdate: "",
+            address: ""
         }
     });
 
-    const { register: registerPassword, handleSubmit: handleSubmitPassword, formState: { errors: passwordErrors }, reset } = useForm({
+    const { register: registerPassword, handleSubmit: handleSubmitPassword, formState: { errors: passwordErrors }, reset: resetPassword } = useForm({
         resolver: zodResolver(passwordFormSchema)
     });
 
-    const onSubmitEmailAndName = async (data: any) => {
+    useEffect(() => {
+        if (profile) {
+            resetProfile({
+                username: profile.name || "",
+                email: profile.email || "",
+                birthdate: profile.birthdate ? profile.birthdate.split('T')[0] : "",
+                address: profile.address || ""
+            });
+        }
+    }, [profile, resetProfile]);
+
+    const onSubmitProfile = async (data: any) => {
         try {
-            setMessage("");
             await updateProfile(user?.id!, {
                 name: data.username,
                 email: data.email,
-                birthdate: profile?.birthdate || "",
-                address: profile?.address || ""
+                birthdate: new Date(data.birthdate).toISOString(),
+                address: data.address
             });
-            setMessage("Profile updated successfully!");
-        } catch (error) {
-            setMessage("Failed to update profile");
+            toast.success("Profile updated successfully!");
+            // Fetch updated profile from userStore (public endpoint, no auth required)
+            await fetchProfile(user?.id!);
+            // Also update authStore with refreshed user data
+            await fetchMe();
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to update profile");
             console.error(error);
         }
     };
 
     const onSubmitPassword = async (data: any) => {
         try {
-            setMessage("");
             await changePassword(user?.id!, data.oldPassword, data.newPassword, data.confirmPassword);
-            setMessage("Password changed successfully!");
-        } catch (error) {
-            setMessage("Failed to change password");
+            toast.success("Password changed successfully!");
+            resetPassword();
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to change password");
             console.error(error);
         }
-    }
+    };
+
+    const handleUpgradeRequest = async () => {
+        if (!user?.id) return;
+        try {
+            setUpgradeLoading(true);
+            await userService.requestToBeSeller(user.id);
+            toast.success("Upgrade request sent! Please wait for admin approval.");
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to send upgrade request");
+        } finally {
+            setUpgradeLoading(false);
+        }
+    };
 
     return (
         <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-6">
             <div className="flex justify-between items-center">
                 <h1 className="font-bold text-(--primary) text-2xl">Change Account Information</h1>
-                <button className="p-4 bg-(--primary) text-black font-bold rounded-md">
-                    <FaUser className="inline mr-2" />
-                    Request Account Upgrade
-                </button>
+                {user?.role === "bidder" && (
+                    <button 
+                        onClick={handleUpgradeRequest}
+                        disabled={upgradeLoading}
+                        className="p-4 bg-(--primary) text-black font-bold rounded-md disabled:opacity-50"
+                    >
+                        <FaUser className="inline mr-2" />
+                        {upgradeLoading ? "Sending..." : "Request Account Upgrade"}
+                    </button>
+                )}
             </div>
             <form className="mt-6 flex flex-col gap-4"
-                onSubmit={handleSubmitEmailAndName(onSubmitEmailAndName)}
+                onSubmit={handleSubmitProfile(onSubmitProfile)}
             >
-                {message && <p className={message.includes("successfully") ? "text-green-500" : "text-red-500"}>{message}</p>}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
                     <div className="flex flex-col">
                         <label className="text-white mb-2" htmlFor="username">Username</label>
@@ -90,9 +133,9 @@ export default function ChangeBasicInfo() {
                             id="username" 
                             className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" 
                             placeholder="Enter username"
-                            {...registerEmailAndName("username")}
+                            {...registerProfile("username")}
                         />
-                        {emailAndNameErrors.username && <p className="text-red-500">{emailAndNameErrors.username.message}</p>}
+                        {profileErrors.username && <p className="text-red-500">{profileErrors.username.message}</p>}
                     </div>
                     <div className="flex flex-col">
                         <label className="text-white mb-2" htmlFor="email">Email</label>
@@ -101,9 +144,31 @@ export default function ChangeBasicInfo() {
                             id="email" 
                             className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" 
                             placeholder="Enter email"
-                            {...registerEmailAndName("email")}
+                            {...registerProfile("email")}
                         />
-                        {emailAndNameErrors.email && <p className="text-red-500">{emailAndNameErrors.email.message}</p>}
+                        {profileErrors.email && <p className="text-red-500">{profileErrors.email.message}</p>}
+                    </div>
+                    <div className="flex flex-col">
+                        <label className="text-white mb-2" htmlFor="birthdate">Birthdate</label>
+                        <input 
+                            type="date" 
+                            id="birthdate" 
+                            className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" 
+                            placeholder="Enter birthdate"
+                            {...registerProfile("birthdate")}
+                        />
+                        {profileErrors.birthdate && <p className="text-red-500">{profileErrors.birthdate.message}</p>}
+                    </div>
+                    <div className="flex flex-col">
+                        <label className="text-white mb-2" htmlFor="address">Address</label>
+                        <input 
+                            type="text" 
+                            id="address" 
+                            className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white" 
+                            placeholder="Enter address"
+                            {...registerProfile("address")}
+                        />
+                        {profileErrors.address && <p className="text-red-500">{profileErrors.address.message}</p>}
                     </div>
                 </div>
                 <button 
@@ -118,7 +183,6 @@ export default function ChangeBasicInfo() {
             <form className="flex flex-col gap-4"
                 onSubmit={handleSubmitPassword(onSubmitPassword)}
             >
-                {message && <p className={message.includes("successfully") ? "text-green-500" : "text-red-500"}>{message}</p>}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="flex flex-col">
                         <label className="text-white mb-2" htmlFor="old-password">Old password</label>

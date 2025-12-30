@@ -56,4 +56,5 @@ export interface UserSelling {
     seller_name: string;
     bid_price: string;
     rank: number;
+    highest_bidder: string | null;
 }

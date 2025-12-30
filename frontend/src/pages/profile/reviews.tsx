@@ -8,7 +8,7 @@ export default function ProfileMyReviews() {
     return (
         <>
             <Nav />
-            <ProfileHeader profilePicture="path/to/picture.jpg" profileName="John Doe" profileEmail="john.doe@example.com" activePage="reviews" />
+            <ProfileHeader activePage="reviews" />
             <ReviewsBody />
         </>
     );

@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router";
-import { useState, useEffect } from "react";
 import useHomeStore from "@/stores/homeStore";
 
 export default function MostBids() {

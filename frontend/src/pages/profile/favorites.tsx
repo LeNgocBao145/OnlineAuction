@@ -8,7 +8,7 @@ export default function ProfileFavorites() {
     return (
         <>
             <Nav />
-            <ProfileHeader profilePicture="path/to/picture.jpg" profileName="John Doe" profileEmail="john.doe@example.com" activePage="favorites" />
+            <ProfileHeader activePage="favorites" />
             <FavoritesBody />
         </>
     );

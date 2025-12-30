@@ -35,9 +35,10 @@ const useAuthStore = create<AuthState>()(
           toast.success(
             "OTP sent! Please check your email to verify your account."
           );
-        } catch (error) {
+        } catch (error: any) {
           console.error(error);
-          toast.error("Error sending OTP");
+          toast.error(error?.response?.data?.message || "Error sending OTP");
+          throw error;
         } finally {
           set({ loading: false });
         }

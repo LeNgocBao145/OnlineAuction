@@ -8,6 +8,10 @@ export interface Product {
   bid_count?: number;
   state?: string;
   image?: string;
+  category_name?: string;
+  instant_price?: number;
+  seller_name?: string;
+  winner_name?: string | null;
 }
 
 export interface ProductDescription {

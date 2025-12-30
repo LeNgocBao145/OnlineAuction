@@ -48,10 +48,11 @@ export default function SignUpForm() {
             const { register: registerAccount } = useAuthStore.getState();
             await registerAccount(email, username, password, birthdate, address, captchaToken);
             navigate('/verify-otp', { 
-                state: { username, email, password, birthdate, address } 
+                state: { email } 
             });
         } catch (error) {
             console.error(error);
+            recaptchaRef.current?.reset();
         }
     };
 

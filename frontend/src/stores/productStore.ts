@@ -24,10 +24,10 @@ const useProductStore = create<ProductState>((set) => ({
     }
   },
 
-  placeBid: async (productId: string | number, userId: string | number, bidAmount: number) => {
+  placeBid: async (productId: string | number, bidAmount: number) => {
     try {
       set({ loading: true, error: null });
-      await productService.placeBid(productId, userId, bidAmount);
+      await productService.placeBid(productId, bidAmount);
       // Refresh product data to get updated bid information
       const product = await productService.getProductById(productId);
       set({ product });
@@ -43,10 +43,10 @@ const useProductStore = create<ProductState>((set) => ({
     }
   },
 
-  askQuestion: async (productId: string | number, userId: string | number, question: string) => {
+  askQuestion: async (productId: string | number, question: string) => {
     try {
       set({ loading: true, error: null });
-      await productService.askQuestion(productId, userId, question);
+      await productService.askQuestion(productId, question);
       // Refresh product data to get updated Q&A
       const product = await productService.getProductById(productId);
       set({ product });

@@ -36,12 +36,19 @@ const otpStore = new Map();
 class UserController {
   async authMe(req, res, next) {
     try {
-      // Get user from authMiddleware
-      const user = req.user;
+      const userId = req.user?.id;
 
-      if (!user) {
+      if (!userId) {
         return res.status(404).json({ message: "Error in authMiddleware" });
       }
+
+      const result = await query(getUserById, [userId]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const user = result.rows[0];
+      delete user.hashed_password;
 
       return res.status(200).json({ user });
     } catch (error) {
@@ -96,8 +103,8 @@ class UserController {
         return res.status(400).json({ error: "Invalid email format." });
       }
 
-      // Validate address format
-      const addressRegex = /^[a-zA-Z0-9\s,.'-]{3,}$/;
+      // Validate address format (support Vietnamese characters)
+      const addressRegex = /^[\p{L}\p{N}\s,.'-]{3,}$/u;
       if (!addressRegex.test(address)) {
         return res.status(400).json({ error: "Invalid address format." });
       }

@@ -249,10 +249,17 @@ export const getSessionByRefreshToken = `SELECT * FROM sessions WHERE refresh_to
 
 export const deleteSessionByRefreshToken = `DELETE FROM sessions WHERE refresh_token = $1`;
 
-// ----------------------------
-// |     Category Queries     |
-// ----------------------------
-export const getCategories = `SELECT * FROM categories`;
+// Category Queries
+export const getCategories = `
+  SELECT 
+    c.id,
+    c.name,
+    c.parent,
+    p.name AS parent_name
+  FROM categories c
+  LEFT JOIN categories p ON c.parent = p.id
+  ORDER BY COALESCE(c.parent, c.id), c.parent NULLS FIRST, c.name
+`;
 
 export const createCategory = `INSERT INTO categories (name) VALUES ($1) RETURNING *`;
 

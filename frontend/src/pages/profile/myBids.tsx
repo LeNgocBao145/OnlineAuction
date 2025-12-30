@@ -6,7 +6,7 @@ export default function ProfileMyBids() {
     return (
         <>
             <Nav />
-            <ProfileHeader profilePicture="path/to/picture.jpg" profileName="John Doe" profileEmail="john.doe@example.com" activePage="bids" />
+            <ProfileHeader activePage="bids" />
             <BidsBody />
         </>
     );
