@@ -45,6 +45,9 @@ export default function App() {
           <Route path="/transactions/bidder/:id" element={<BidderTransactionPage />} />
           <Route path="/transactions/seller/:id" element={<SellerTransactionPage />} />
 
+          {/*Testing Routes*/}
+          {/*None*/}
+
           {/* protected route */}
           <Route element={<ProtectedRoute />}>
             <Route path="/search" element={<SearchPage />} />

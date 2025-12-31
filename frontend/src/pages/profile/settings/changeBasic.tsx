@@ -7,11 +7,14 @@ import useAuthStore from "@/stores/authStore";
 import useUserStore from "@/stores/userStore";
 import userService from "@/services/userService";
 import { useState, useEffect } from "react";
+import OTPModal from "@/components/modals/OTPModal";
 
 export default function ChangeBasicInfo() {
     const { user, fetchMe } = useAuthStore();
     const { profile, loading, fetchProfile, updateProfile, changePassword } = useUserStore();
     const [upgradeLoading, setUpgradeLoading] = useState(false);
+    const [OTPModalOpen, setOTPModalOpen] = useState(false);
+    const [OTPVerified, setOTPVerified] = useState(false);
 
     useEffect(() => {
         if (user?.id) {
@@ -108,6 +111,10 @@ export default function ChangeBasicInfo() {
     };
 
     return (
+        <>
+        {OTPModalOpen && (
+            <OTPModal setModalOpen={setOTPModalOpen} setSuccess={setOTPVerified} />
+        )}
         <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-6">
             <div className="flex justify-between items-center">
                 <h1 className="font-bold text-(--primary) text-2xl">Change Account Information</h1>
@@ -227,5 +234,6 @@ export default function ChangeBasicInfo() {
                 </button>
             </form>
         </div>
+        </>
     );
 }

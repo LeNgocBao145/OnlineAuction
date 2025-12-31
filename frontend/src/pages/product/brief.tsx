@@ -8,8 +8,10 @@ import { formatCurrency } from "@/utils/numberUtils";
 import { getRemainingTime } from "@/utils/timeUtils";
 import { getHighestBidder } from "@/utils/productUtils";
 import { formatDate } from "@/utils/dateUtils";
+import { useNavigate } from "react-router-dom";
 
 export default function ProductBrief() {
+  const navigate = useNavigate();
   const [placingBid, setPlacingBid] = useState(false);
   const [favorited, setFavorited] = useState(false);
   const product = useProductStore((state) => state.product);
@@ -133,17 +135,46 @@ export default function ProductBrief() {
             <p className="text-white/60">End time</p>
           </div>
         </div>
-        <div>
-          <button
-            className="w-full h-20 bg-(--primary) text-black rounded-lg mb-4 font-bold"
-            onClick={() => setPlacingBid(!placingBid)}
-          >
-            Place bid
-          </button>
-          <button className="w-full h-20 bg-white/10 text-white rounded-lg">
-            Buy now
-          </button>
-        </div>
+        {!user ? (
+          <div>
+            <button
+              className="w-full h-40 bg-white/10 text-white rounded-lg mb-4 font-bold"
+              onClick={() => navigate("/login")}
+            >
+              Login to place bid
+            </button>
+          </div>
+        ) : product.state === "ended" && user.isSeller ? ( // user object add another check if this user is the seller/bidder of the current product
+          <div>
+            <button
+              className="w-full h-40 bg-white/10 text-white rounded-lg mb-4 font-bold"
+              onClick={() => navigate("/transactions/seller/:id")} // call another API for the transaction id
+            >
+              Auction ended - Proceed to transaction
+            </button>
+          </div>
+        ) : product.state === "ended" && !user.isBidder ? (
+          <div>
+            <button
+              className="w-full h-40 bg-white/10 text-white rounded-lg mb-4 font-bold"
+              onClick={() => navigate("/transactions/bidder/:id")} // call another API for the transaction id
+            >
+              Auction ended - Proceed to transaction
+            </button>
+          </div>
+        ) : (
+          <div>
+            <button
+              className="w-full h-20 bg-(--primary) text-black rounded-lg mb-4 font-bold"
+              onClick={() => setPlacingBid(!placingBid)}
+            >
+              Place bid
+            </button>
+            <button className="w-full h-20 bg-white/10 text-white rounded-lg">
+              Buy now
+            </button>
+          </div>
+        )}
       </div>
     </>
   );
