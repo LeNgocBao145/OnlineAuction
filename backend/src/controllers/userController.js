@@ -22,7 +22,10 @@ import {
   bidderSubmission,
   sellerConfirmation,
   bidderConfirmation,
-  tradeCancel
+  tradeCancel,
+  getWinner,
+  getRoleFromTrade,
+  rating
 } from "../libs/sqlQuery.js";
 import query from "../libs/db.js";
 import crypto from "crypto";
@@ -892,11 +895,21 @@ class UserController {
     }
   }
 
+  async getWinner(req, res) {
+    try {
+      const productId = req.params.productId;
+      const result = await query(getWinner, [productId]);
+      return res.status(200).json(result.rows);
+    } catch (error) {
+      console.error("[Winner] Error: ", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
   async bidderSubmission(req, res) {
     try {
       const productId = req.params.productId;
       const { deliveryAddress, invoiceImage } = req.body;
-
       if(!deliveryAddress || !invoiceImage) {
         return res
           .status(400)
@@ -947,6 +960,23 @@ class UserController {
       return res.status(200).json(result.rows);
     } catch (error) {
       console.error("[Cancel Trade] Error: ", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async rating(req, res) {
+    try {
+      const userId = req.user.id;
+      const productId = req.params.productId;
+      const { liked, content } = req.body;
+      const result = await query(getRoleFromTrade, [productId]);
+      const isBidder = result.rows[0].bidder === userId;
+      const toUser = isBidder ? result.rows[0].seller : result.rows[0].bidder;
+      console.log(productId, userId, toUser, liked, content);
+      const resultRate = await query(rating, [productId, userId, toUser, liked, content]);
+      return res.status(200).json(resultRate.rows);
+    } catch (error) {
+      console.error("[Rating] Error: ", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   }

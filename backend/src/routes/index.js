@@ -10,5 +10,5 @@ export default function route(app) {
     app.use('/api/auth', authRouter);
     app.use('/api/products', productRouter);
     app.use('/api/admins', authenticateToken, adminRouter);
-    app.use('/api/users', authenticateToken, userRouter);
+    app.use('/api/users', userRouter);
 }

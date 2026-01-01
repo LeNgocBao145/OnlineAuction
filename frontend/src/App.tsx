@@ -42,8 +42,8 @@ export default function App() {
           <Route path="/admin/product" element={<ProductManagementTab />} />
           <Route path="/admin/category" element={<CategoryManagementTab />} />
           <Route path="/admin/requests" element={<RequestsManagementTab />} />
-          <Route path="/transactions/bidder/:id" element={<BidderTransactionPage />} />
-          <Route path="/transactions/seller/:id" element={<SellerTransactionPage />} />
+          <Route path="/transactions/:id/bidder" element={<BidderTransactionPage />} />
+          <Route path="/transactions/:id/seller" element={<SellerTransactionPage />} />
 
           {/* protected route */}
           <Route element={<ProtectedRoute />}>

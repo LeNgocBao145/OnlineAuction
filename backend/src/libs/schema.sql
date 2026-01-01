@@ -6,7 +6,15 @@ CREATE TYPE product_state AS ENUM ('incoming', 'bidding', 'sold');
 
 CREATE TYPE state AS ENUM ('pending', 'failed', 'success');
 
-CREATE TYPE message_type AS ENUM ('text', 'image');
+CREATE TYPE trade_state AS ENUM(
+    'pending_payment', 
+    'pending_seller_confirm', 
+    'pending_bidder_confirm',
+    'completed',
+    'failed'
+);
+
+CREATE TYPE message_type AS ENUM ('text', 'image', 'text_and_image');
 
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
@@ -143,17 +151,11 @@ CREATE TABLE sell_product (
     seller INTEGER NOT NULL,
     init_price REAL NOT NULL,
     step_price REAL NOT NULL,
-<<<<<<< HEAD
     instant_price REAL,
     starting_at TIMESTAMP NOT NULL,
     isExtent BOOLEAN NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT now(),    
     expired_at TIMESTAMP NOT NULL
-=======
-    created_at TIMESTAMP NOT NULL,
-    expired_at TIMESTAMP NOT NULL,
-    instant_price REAL
->>>>>>> 4fbde67245e3958d2957bf2aefda675524704008
 );
 
 CREATE TABLE trade_verifications (
@@ -162,11 +164,9 @@ CREATE TABLE trade_verifications (
     seller INTEGER NOT NULL,
     delivery_address VARCHAR(100),
     invoice_image VARCHAR(100),
-    receipt_image VARCHAR(100),
-    delivery_invoice_image VARCHAR(100),
     sell_accept BOOLEAN NOT NULL DEFAULT 'false',
     bidder_accept BOOLEAN NOT NULL DEFAULT 'false',
-    state state NOT NULL DEFAULT 'pending'
+    state trade_state NOT NULL DEFAULT 'pending_payment'
 );
 
 -- CHECK KEY CONSTRAINTS
