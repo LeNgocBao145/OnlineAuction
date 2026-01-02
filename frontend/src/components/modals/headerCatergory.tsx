@@ -56,7 +56,8 @@ export default function HeaderCategory() {
                     parentCategories.map((category) => (
                         <div 
                             key={category.id} 
-                            className={`text-white/80 hover:bg-(--primary) hover:text-black h-10 rounded-lg mb-1 cursor-pointer flex justify-between items-center px-3 transition-colors ${selectedParent === category.id ? 'bg-(--primary) text-black' : ''}`}
+                            className={`h-10 rounded-lg mb-1 cursor-pointer flex justify-between items-center px-3 transition-colors 
+                                ${selectedParent === category.id ? 'bg-(--primary) text-black' : 'text-white/80'}`}
                             onMouseEnter={() => setSelectedParent(category.id)}
                             onClick={() => handleCategoryClick(category)}
                         >
@@ -76,7 +77,7 @@ export default function HeaderCategory() {
                             {childCategories.map((category) => (
                                 <div 
                                     key={category.id} 
-                                    className='text-white/80 hover:text-(--primary) cursor-pointer py-2 px-2 rounded transition-colors'
+                                    className='text-white/80 hover:text-(--black) hover:bg-(--primary) cursor-pointer py-2 px-2 rounded transition-colors'
                                     onClick={() => handleCategoryClick(category)}
                                 >
                                     {category.name}
