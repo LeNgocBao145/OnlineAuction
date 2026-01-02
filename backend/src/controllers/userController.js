@@ -18,6 +18,14 @@ import {
   getRequestByBidder,
   createRequest,
   updateRequestReset,
+  getTradeVerification,
+  bidderSubmission,
+  sellerConfirmation,
+  bidderConfirmation,
+  tradeCancel,
+  getWinner,
+  getRoleFromTrade,
+  rating
 } from "../libs/sqlQuery.js";
 import query from "../libs/db.js";
 import crypto from "crypto";
@@ -872,6 +880,103 @@ class UserController {
         .json({ message: "Request updated and resubmitted successfully" });
     } catch (error) {
       console.error("Error when requesting to be seller", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async tradeVerification(req, res) {
+    try {
+      const productId = req.params.productId;
+      const result = await query(getTradeVerification, [productId]);
+      return res.status(200).json(result.rows);
+    } catch (error) {
+      console.error("[Trade verification] Error: ", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async getWinner(req, res) {
+    try {
+      const productId = req.params.productId;
+      const result = await query(getWinner, [productId]);
+      return res.status(200).json(result.rows);
+    } catch (error) {
+      console.error("[Winner] Error: ", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async bidderSubmission(req, res) {
+    try {
+      const productId = req.params.productId;
+      const { deliveryAddress, invoiceImage } = req.body;
+      if(!deliveryAddress || !invoiceImage) {
+        return res
+          .status(400)
+          .json({ message: "Delivery address and invoice image are required" });
+      }
+      const result = await query(bidderSubmission, [deliveryAddress, invoiceImage, productId]);
+      return res.status(200).json(result.rows);
+    } catch (error) {
+      console.error("[Bidder Submit] Error: ", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async sellerConfirmation(req, res) {
+    try {
+      const productId = req.params.productId;
+      const deliveryInvoiceImage = req.body;
+
+      if(!deliveryInvoiceImage) {
+        return res
+          .status(400)
+          .json({ message: "Delivery invoice image is required" });
+      }
+
+      const result = await query(sellerConfirmation, [deliveryInvoiceImage, productId]);
+      return res.status(200).json(result.rows);
+    } catch (error) {
+      console.error("[Seller Confirmation] Error: ", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async bidderConfirmation(req, res) {
+    try {
+      const productId = req.params.productId;
+      const result = await query(bidderConfirmation, [productId]);
+      return res.status(200).json(result.rows);
+    } catch (error) {
+      console.error("[Bidder Confirmation] Error: ", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async tradeCancellation(req, res) {
+    try {
+      const productId = req.params.productId;
+      const result = await query(tradeCancel, [productId]);
+      return res.status(200).json(result.rows);
+    } catch (error) {
+      console.error("[Cancel Trade] Error: ", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async rating(req, res) {
+    try {
+      const userId = req.user.id;
+      const productId = req.params.productId;
+      const { liked, content } = req.body;
+      const result = await query(getRoleFromTrade, [productId]);
+      const isBidder = result.rows[0].bidder === userId;
+      const toUser = isBidder ? result.rows[0].seller : result.rows[0].bidder;
+      console.log(productId, userId, toUser, liked, content);
+      const resultRate = await query(rating, [productId, userId, toUser, liked, content]);
+      return res.status(200).json(resultRate.rows);
+    } catch (error) {
+      console.error("[Rating] Error: ", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   }

@@ -1,10 +1,11 @@
 import express from 'express';
 import UserController from '../controllers/userController.js';
+import { authenticateToken } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
 // Specific routes first to avoid conflict with :userId
-router.get('/me', UserController.authMe);
+router.get('/me', authenticateToken, UserController.authMe);
 
 // Dynamic routes
 router.get('/:userId', UserController.getUser);
@@ -20,5 +21,12 @@ router.post('/:userId/request-to-be-seller', UserController.requestToBeSeller);
 router.post('/:userId/rate-seller/:productId', UserController.rateSeller);
 router.post('/:userId/favorites/:productId', UserController.markFavorite);
 router.delete('/:userId/favorites/:productId', UserController.unmarkFavorite);
+router.get('/trade-verifications/:productId', UserController.tradeVerification);
+router.get('/trade-verifications/:productId/winner', UserController.getWinner);
+router.patch('/trade-verifications/:productId/bidder-submit', UserController.bidderSubmission);
+router.patch('/trade-verifications/:productId/seller-confirm', UserController.sellerConfirmation);
+router.patch('/trade-verifications/:productId/bidder-confirm', UserController.bidderConfirmation);
+router.patch('/trade-verifications/:productId/cancel', UserController.tradeCancellation);
+router.post('/trade-verifications/:productId/review', UserController.rating);
 
 export default router;

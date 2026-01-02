@@ -7,7 +7,8 @@ const router = express.Router();
 router.get('/', ProductController.filterProducts);
 router.get('/filter', ProductController.filterProducts);
 router.get('/:productId', ProductController.getProductDetails);
-
+router.post('/add', ProductController.addProduct);
+router.post('/:productId/add/description', ProductController.addDescription);
 router.post('/:productId/ask', authenticateToken, ProductController.askQuestion);
 router.post('/:productId/ask-to-bid', authenticateToken, ProductController.askToBid);
 router.get('/:productId/bid-requests', authenticateToken, ProductController.getProductBidRequests);

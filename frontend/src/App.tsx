@@ -2,6 +2,11 @@ import "./App.css";
 
 import { BrowserRouter, Route, Routes } from "react-router";
 import { Toaster } from "sonner";
+<<<<<<< HEAD
+=======
+import { useEffect } from "react";
+import useAuthStore from "./stores/authStore";
+>>>>>>> c46e0db9a330a97c3badd20fe063b55337c8a7c2
 
 import Landing from "./pages/landing/landing";
 import SignIn from "./pages/signIn/signIn";
@@ -25,6 +30,16 @@ import BidderTransactionPage from "./pages/transaction/transactionBidder";
 import SellerTransactionPage from "./pages/transaction/transactionSeller";
 
 export default function App() {
+<<<<<<< HEAD
+=======
+  const { user, refresh } = useAuthStore();
+
+  useEffect(() => {
+    if (user && !useAuthStore.getState().accessToken) {
+      refresh();
+    }
+  }, []);
+>>>>>>> c46e0db9a330a97c3badd20fe063b55337c8a7c2
   return (
     <>
       <Toaster position="top-right" richColors />
@@ -42,11 +57,16 @@ export default function App() {
           <Route path="/admin/product" element={<ProductManagementTab />} />
           <Route path="/admin/category" element={<CategoryManagementTab />} />
           <Route path="/admin/requests" element={<RequestsManagementTab />} />
+<<<<<<< HEAD
           <Route path="/transactions/bidder/:id" element={<BidderTransactionPage />} />
           <Route path="/transactions/seller/:id" element={<SellerTransactionPage />} />
 
           {/*Testing Routes*/}
           {/*None*/}
+=======
+          <Route path="/transactions/:id/bidder" element={<BidderTransactionPage />} />
+          <Route path="/transactions/:id/seller" element={<SellerTransactionPage />} />
+>>>>>>> c46e0db9a330a97c3badd20fe063b55337c8a7c2
 
           {/* protected route */}
           <Route element={<ProtectedRoute />}>
