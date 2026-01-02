@@ -1,11 +1,9 @@
-import Nav from "../../components/ui/nav";
 import SignUpForm from "./signUpForm";
 
 export default function SignUp() {
     return (
-        <>
-            <Nav/>
-            <SignUpForm/>
-        </>
+        <div className="flex-grow flex items-center justify-center">
+            <SignUpForm />
+        </div>
     );
 }

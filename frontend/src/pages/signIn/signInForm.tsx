@@ -40,7 +40,7 @@ export default function SignInForm() {
   };
 
   return (
-    <div className="w-1/2 h-[800px] bg-(--third) rounded-lg m-auto mt-[50px] p-4">
+    <div className="w-1/2 h-[800px] bg-(--third) rounded-lg p-4">
       <h1 className="text-(--primary) text-center text-5xl font-bold font-inter mt-8">
         Sign In
       </h1>

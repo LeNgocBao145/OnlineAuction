@@ -43,7 +43,7 @@ export default function MyProducts() {
 
     if (loading) {
         return (
-            <div className="w-8/10 m-auto mt-6 flex justify-center items-center py-20">
+            <div className="w-8/10 m-auto mt-0 flex justify-center items-center py-20">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-(--primary)"></div>
             </div>
         );
@@ -51,7 +51,7 @@ export default function MyProducts() {
 
     if (error) {
         return (
-            <div className="w-8/10 m-auto mt-6">
+            <div className="w-8/10 m-auto mt-0">
                 <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 text-red-300">
                     <p>Error: {error}</p>
                 </div>
@@ -60,28 +60,28 @@ export default function MyProducts() {
     }
 
     return (
-        <div className="w-8/10 m-auto mt-6 justify-center flex flex-col">
+        <div className="w-8/10 m-auto mt-0 justify-center flex flex-col">
             <h1 className="text-(--primary) text-2xl font-bold">Your Auctions and Products</h1>
             <div className="flex flex-wrap items-center justify-between gap-4 mt-4 p-4 w-full">
                 <div className="flex items-center gap-4">
                     <p className="text-white/60">Filter by</p>
                     <div className="grid lg:grid-cols-4 grid-cols-2 gap-2">
                         <button className={`bg-(--bgc) border border-white/10 p-2 rounded-md ${statusFilter === 1 ? "bg-(--primary) text-black" : "text-white"}`}
-                        onClick={() => { setStatusFilter(1); setPage(1); }}>
-                        Incoming</button>
+                            onClick={() => { setStatusFilter(1); setPage(1); }}>
+                            Incoming</button>
                         <button className={`bg-(--bgc) border border-white/10 p-2 rounded-md ${statusFilter === 2 ? "bg-(--primary) text-black" : "text-white"}`}
-                        onClick={() => { setStatusFilter(2); setPage(1); }}>
-                        Bidding</button>
+                            onClick={() => { setStatusFilter(2); setPage(1); }}>
+                            Bidding</button>
                         <button className={`bg-(--bgc) border border-white/10 p-2 rounded-md ${statusFilter === 3 ? "bg-(--primary) text-black" : "text-white"}`}
-                        onClick={() => { setStatusFilter(3); setPage(1); }}>
-                        Sold</button>
+                            onClick={() => { setStatusFilter(3); setPage(1); }}>
+                            Sold</button>
                         <button className={`bg-(--bgc) border border-white/10 p-2 rounded-md ${statusFilter === 5 ? "bg-(--primary) text-black" : "text-white"}`}
-                        onClick={() => { setStatusFilter(5); setPage(1); }}>
-                        View All</button>
+                            onClick={() => { setStatusFilter(5); setPage(1); }}>
+                            View All</button>
                     </div>
                 </div>
                 <button className="bg-(--primary) text-black p-2 rounded-md flex justify-between items-center h-full m-auto lg:m-0"
-                onClick={() => navigate('/createProduct')}>
+                    onClick={() => navigate('/createProduct')}>
                     <FaPlus className="inline mr-2" />
                     Create New Auction
                 </button>
@@ -118,20 +118,19 @@ export default function MyProducts() {
                                         <p className="text-white/60">{product.state === "incoming" ? "Open In" : product.state === "bidding" ? "Time Left" : "Ended"}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className={`w-3 h-3 rounded-full ${
-                                            product.state === "incoming"
-                                                ? "bg-yellow-400"
-                                                : product.state === "bidding"
+                                        <span className={`w-3 h-3 rounded-full ${product.state === "incoming"
+                                            ? "bg-yellow-400"
+                                            : product.state === "bidding"
                                                 ? "bg-green-400"
                                                 : "bg-purple-500"
                                             }`}
                                         ></span>
                                         <p className="text-white/60">
                                             {product.state === "incoming"
-                                            ? "Incoming"
-                                            : product.state === "bidding"
-                                            ? "Active"
-                                            : "Sold"
+                                                ? "Incoming"
+                                                : product.state === "bidding"
+                                                    ? "Active"
+                                                    : "Sold"
                                             }
                                         </p>
                                     </div>
@@ -139,14 +138,14 @@ export default function MyProducts() {
                             </div>
                             <div className="flex flex-col justify-center items-center">
                                 {product.state !== "sold" && <button className="bg-blue-400 text-black p-2 rounded-md mt-4 w-9/10 hover:cursor-pointer"
-                                onClick={(e) => {e.stopPropagation(); navigate(`/product/${product.id}/edit`)}}>
-                                Edit Auction</button>}
+                                    onClick={(e) => { e.stopPropagation(); navigate(`/product/${product.id}/edit`) }}>
+                                    Edit Auction</button>}
                                 {product.state === "bidding" && <button className="bg-red-400 text-black p-2 rounded-md mt-4 w-9/10 hover:cursor-pointer"
-                                onClick={(e) => {e.stopPropagation();}}>
-                                Close Auction</button>}
+                                    onClick={(e) => { e.stopPropagation(); }}>
+                                    Close Auction</button>}
                                 <button className={`bg-white/10 text-white p-2 rounded-md mt-4 w-9/10 ${product.state !== 'bidding' ? '' : 'opacity-10 cursor-not-allowed'}`}
-                                onClick={(e) => { e.stopPropagation();}}>
-                                Remove Auction</button>
+                                    onClick={(e) => { e.stopPropagation(); }}>
+                                    Remove Auction</button>
                             </div>
                         </li>
                     ))) : (
@@ -155,12 +154,12 @@ export default function MyProducts() {
                 </ul>
                 {totalPages > 1 && (
                     <div className="flex justify-center items-center gap-4 mt-6">
-                        <button 
+                        <button
                             className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50"
                             onClick={() => setPage(1)}
                             disabled={page === 1}
                         >First</button>
-                        <button 
+                        <button
                             className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50"
                             onClick={() => setPage(page > 1 ? page - 1 : 1)}
                             disabled={page === 1}
@@ -168,12 +167,12 @@ export default function MyProducts() {
                         <span className="text-white">
                             Page <span className="text-(--primary) font-bold">{page}</span> of <span className="text-(--primary) font-bold">{totalPages}</span>
                         </span>
-                        <button 
+                        <button
                             className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50"
                             onClick={() => setPage(page < totalPages ? page + 1 : totalPages)}
                             disabled={page === totalPages}
                         >Next</button>
-                        <button 
+                        <button
                             className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50"
                             onClick={() => setPage(totalPages)}
                             disabled={page === totalPages}

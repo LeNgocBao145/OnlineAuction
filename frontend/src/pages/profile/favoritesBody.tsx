@@ -21,7 +21,7 @@ export default function FavoritesBody() {
 
     if (error) {
         return (
-            <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-6">
+            <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-0">
                 <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 text-red-300">
                     <p>Error: {error}</p>
                 </div>
@@ -31,7 +31,7 @@ export default function FavoritesBody() {
 
     if (loading) {
         return (
-            <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-6 flex justify-center items-center py-20">
+            <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-0 flex justify-center items-center py-20">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-(--primary)"></div>
             </div>
         );
@@ -59,23 +59,23 @@ export default function FavoritesBody() {
     }
 
     return (
-        <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-6 flex flex-col justify-center">
+        <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-0 flex flex-col justify-center">
             <h1 className="font-bold text-2xl text-(--primary)">Favorited Auctions</h1>
             <div className="flex items-center gap-4 mt-4 w-full">
                 <p className="text-white/60">Filter by</p>
                 <div className="grid lg:grid-cols-4 grid-cols-2 gap-2">
                     <button className={`bg-(--bgc) border border-white/10 p-2 rounded-md ${statusFilter === 1 ? "bg-(--primary) text-black" : "text-white"}`}
-                    onClick={() => setStatusFilter(1)}>
-                    Incoming</button>
+                        onClick={() => setStatusFilter(1)}>
+                        Incoming</button>
                     <button className={`bg-(--bgc) border border-white/10 p-2 rounded-md ${statusFilter === 2 ? "bg-(--primary) text-black" : "text-white"}`}
-                    onClick={() => setStatusFilter(2)}>
-                    Bidding</button>
+                        onClick={() => setStatusFilter(2)}>
+                        Bidding</button>
                     <button className={`bg-(--bgc) border border-white/10 p-2 rounded-md ${statusFilter === 3 ? "bg-(--primary) text-black" : "text-white"}`}
-                    onClick={() => setStatusFilter(3)}>
-                    Sold</button>
+                        onClick={() => setStatusFilter(3)}>
+                        Sold</button>
                     <button className={`bg-(--bgc) border border-white/10 p-2 rounded-md ${statusFilter === 4 ? "bg-(--primary) text-black" : "text-white"}`}
-                    onClick={() => setStatusFilter(4)}>
-                    View All</button>
+                        onClick={() => setStatusFilter(4)}>
+                        View All</button>
                 </div>
             </div>
             <ul className="grid grid-cols-1 lg:grid-cols-2 mt-4 gap-4 w-full">
@@ -83,14 +83,14 @@ export default function FavoritesBody() {
                     <li key={product.id} className="border border-white/10 rounded-lg bg-(--secondary) p-4 cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => navigate(`/product/${product.id}`)}>
                         <div className="grid grid-cols-[1fr_2fr] gap-4">
                             <div>
-                                <img src={product.image || "/placeholder.jpg"} alt={product.name} className="rounded-md border border-white/10 aspect-square h-full object-cover"/>
+                                <img src={product.image || "/placeholder.jpg"} alt={product.name} className="rounded-md border border-white/10 aspect-square h-full object-cover" />
                             </div>
                             <div className="flex flex-col">
                                 <div>
                                     <div className="flex justify-between items-center">
                                         <h2 className="text-white font-bold text-xl">{product.name.length > 20 ? product.name.substring(0, 20) + "..." : product.name}</h2>
-                                        <button onClick={(e) => {e.stopPropagation(); handleRemoveFavorite(product.id);}}>
-                                            <FaStar className="inline w-4 h-4 text-yellow-400 mr-2"/>
+                                        <button onClick={(e) => { e.stopPropagation(); handleRemoveFavorite(product.id); }}>
+                                            <FaStar className="inline w-4 h-4 text-yellow-400 mr-2" />
                                         </button>
                                     </div>
                                 </div>
@@ -107,20 +107,19 @@ export default function FavoritesBody() {
                                     </div>
                                     <div className="flex flex-col">
                                         <div className="flex items-center gap-2">
-                                            <span className={`w-3 h-3 rounded-full ${
-                                                product.state === "incoming"
-                                                    ? "bg-yellow-400"
-                                                    : product.state === "bidding"
+                                            <span className={`w-3 h-3 rounded-full ${product.state === "incoming"
+                                                ? "bg-yellow-400"
+                                                : product.state === "bidding"
                                                     ? "bg-green-400"
                                                     : "bg-red-500"
                                                 }`}
                                             ></span>
                                             <p className="text-white/60">
                                                 {product.state === "incoming"
-                                                ? "Incoming"
-                                                : product.state === "bidding"
-                                                ? "Bidding"
-                                                : "Sold"}
+                                                    ? "Incoming"
+                                                    : product.state === "bidding"
+                                                        ? "Bidding"
+                                                        : "Sold"}
                                             </p>
                                         </div>
                                     </div>
@@ -132,8 +131,8 @@ export default function FavoritesBody() {
             </ul>
             {filteredProducts.length > visibleCount && (
                 <button className="bg-(--primary) text-black p-2 rounded-md mt-4 w-3/10 m-auto"
-                onClick={() => setVisibleCount(visibleCount + 5)}>
-                Load More</button>
+                    onClick={() => setVisibleCount(visibleCount + 5)}>
+                    Load More</button>
             )}
         </div>
     );

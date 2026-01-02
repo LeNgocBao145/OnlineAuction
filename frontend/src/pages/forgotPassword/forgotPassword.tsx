@@ -1,11 +1,9 @@
-import Nav from "../../components/ui/nav";
 import ForgotPasswordForm from "./forgotPasswordForm";
 
 export default function ForgotPassword() {
     return (
-        <>
-            <Nav />
+        <div className="flex-grow flex items-center justify-center">
             <ForgotPasswordForm />
-        </>
+        </div>
     );
 }

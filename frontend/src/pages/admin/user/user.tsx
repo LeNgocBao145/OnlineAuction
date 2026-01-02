@@ -1,4 +1,3 @@
-import Nav from "@/components/ui/nav";
 import AdminHeader from "../adminHeader";
 
 import { MagnifyingGlassIcon, ChevronUpIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
@@ -74,7 +73,7 @@ export default function UserManagementTab() {
                 userData={editingUserData}
                 onUpdate={fetchUsers}
             />}
-            <Nav />
+
             <div className="px-[10%]">
                 <AdminHeader activeTab="user" />
                 <div className="p-4 border border-white/10 rounded-b-lg bg-(--third)">

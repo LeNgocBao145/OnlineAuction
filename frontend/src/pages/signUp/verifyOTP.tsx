@@ -11,14 +11,14 @@ export default function VerifyOTP() {
     const location = useLocation();
     const navigate = useNavigate();
     const { verifyOTP: verifyOTPAccount, sendOTP } = useAuthStore();
-    
+
     const { email } = location.state || {};
 
     useEffect(() => {
-    if (!email) {
-      navigate('/signUp');
-    }
-  }, [email, navigate]);
+        if (!email) {
+            navigate('/signUp');
+        }
+    }, [email, navigate]);
 
     useEffect(() => {
         if (otpRemainTime > 0) {
@@ -52,7 +52,7 @@ export default function VerifyOTP() {
     };
 
     return (
-        <div className='w-1/2 h-[600px] bg-(--third) rounded-lg m-auto mt-[100px] p-8'>
+        <div className='w-1/2 h-auto bg-(--third) rounded-lg m-auto p-8'>
             <h1 className='text-(--primary) text-center text-5xl font-bold font-inter'>Verify OTP</h1>
             <p className='text-white/60 text-center mt-4'>
                 We've sent a verification code to <span className='text-white'>{email}</span>
@@ -76,11 +76,10 @@ export default function VerifyOTP() {
                         required
                     />
                     <PaperAirplaneIcon
-                        className={`w-6 h-6 absolute right-4 top-[52px] rotate-330 cursor-pointer ${
-                            pressedResend || otpRemainTime > 0
+                        className={`w-6 h-6 absolute right-4 top-[52px] rotate-330 cursor-pointer ${pressedResend || otpRemainTime > 0
                                 ? 'text-white/30'
                                 : 'text-white/60 hover:text-(--primary)'
-                        }`}
+                            }`}
                         onClick={handleResendOTP}
                     />
                 </div>
