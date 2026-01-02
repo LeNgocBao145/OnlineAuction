@@ -82,8 +82,15 @@ export default function SearchBody() {
             ) : (
                 <>
                     <div className="w-full grid grid-cols-[repeat(auto-fill,minmax(clamp(15rem,30dvw,20rem),1fr))] m-auto gap-4">
-                        {itemsData.map((item) => (
-                            <div key={item.id} className="border border-white/10 rounded-xl bg-(--third) p-4 flex flex-col hover:scale-[1.02] transition-transform duration-200 cursor-pointer"
+                        {itemsData.map((item) => {
+                            const addedRecently = (() => {
+                                const THIRTY_MIN_MS = 30 * 60 * 1000;
+                                const addedDate = new Date(item.createdAt).getTime();
+                                const now = Date.now();
+                                return (now - addedDate) <= THIRTY_MIN_MS;
+                            })();
+                            return <div key={item.id} className={`border border-white/10 rounded-xl bg-(--third) p-4 flex flex-col 
+                            hover:scale-[1.02] transition-transform duration-200 cursor-pointer ${addedRecently ? "ring-2 ring-(--primary)" : ""}`}
                                 onClick={() => navigate(`/product/${item.id}`)}
                             >
                                 <img src={item.image || "/placeholder.jpg"} alt={item.name} className="w-full h-48 object-cover rounded-lg mb-4 bg-(--secondary) flex items-center justify-center text-white"/>
@@ -124,7 +131,7 @@ export default function SearchBody() {
                                     </div>
                                 </div>
                             </div>
-                        ))}
+                        })}
                     </div>
 
                     {pagination && pagination.totalPages > 1 && (

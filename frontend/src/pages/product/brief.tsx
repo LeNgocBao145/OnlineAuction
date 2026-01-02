@@ -118,7 +118,7 @@ export default function ProductBrief() {
           </div>
           <div className="flex flex-col text-right">
             <p className="text-[20px] text-white">{highestBid.name}</p>
-            <p className="text-white/60">Highest bidder</p>
+            <p className="text-white/60">{product.state === "ended" ? "Winner" : "Highest bidder"}</p>
           </div>
         </div>
         <div className="flex justify-between mb-4">
@@ -144,7 +144,7 @@ export default function ProductBrief() {
               Login to place bid
             </button>
           </div>
-        ) : product.state === "ended" && user.isSeller ? ( // user object add another check if this user is the seller/bidder of the current product
+        ) : product.state === "ended" && user.relation === "seller" ? ( // user object add another check if this user is the seller/bidder of the current product
           <div>
             <button
               className="w-full h-40 bg-white/10 text-white rounded-lg mb-4 font-bold"
@@ -153,13 +153,22 @@ export default function ProductBrief() {
               Auction ended - Proceed to transaction
             </button>
           </div>
-        ) : product.state === "ended" && !user.isBidder ? (
+        ) : product.state === "ended" && user.relation === "winner" ? (
           <div>
             <button
               className="w-full h-40 bg-white/10 text-white rounded-lg mb-4 font-bold"
               onClick={() => navigate("/transactions/bidder/:id")} // call another API for the transaction id
             >
               Auction ended - Proceed to transaction
+            </button>
+          </div>
+        ) : product.state === "ended" && user.relation === "other" ? (
+          <div>
+            <button
+              className="w-full h-40 bg-white/10 text-white rounded-lg mb-4 font-bold"
+              disabled
+            >
+              Auction ended
             </button>
           </div>
         ) : (
