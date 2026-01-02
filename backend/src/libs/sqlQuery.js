@@ -273,7 +273,7 @@ export const getCategories = (sortLogic) => `
   LIMIT $1 OFFSET $2
 `;
 
-export const createCategory = `INSERT INTO categories (name) VALUES ($1) RETURNING *`;
+export const createCategory = `INSERT INTO categories (name, parent) VALUES ($1, $2) RETURNING *`;
 
 export const getAdminProducts = (sortLogic) => `
   SELECT 
@@ -297,7 +297,7 @@ export const getAdminProducts = (sortLogic) => `
   LIMIT $1 OFFSET $2
 `;
 
-export const updateCategoryById = `UPDATE categories SET name = $1 WHERE id = $2 RETURNING *`;
+export const updateCategoryById = `UPDATE categories SET name = $1, parent = $2 WHERE id = $3 RETURNING *`;
 
 export const deleteCategoryById = `DELETE FROM categories WHERE id = $1`;
 
