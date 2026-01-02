@@ -5,28 +5,55 @@ import Step1Box from "./bidder/step1";
 import Step2Box from "./bidder/step2";
 import Step3Box from "./bidder/step3";
 import Step4Box from "./bidder/step4";
+import { useEffect, useMemo, useState } from "react";
+import transactionService, { type Transaction } from "@/services/transactionService";
+import { toast } from "sonner";
+import { useParams } from "react-router-dom";
 
-import { useState } from "react";
+const STEP = {
+  pending_payment: 1,
+  pending_seller_confirm: 2,
+  pending_bidder_confirm: 3,
+  completed: 4,
+  failed: 5,
+};
 
 export default function BidderTransactionPage() {
-    const [currentStep, setCurrentStep] = useState(4); //fetch current step from backend
+  const { id } = useParams<{ id: string }>();
+  const productId = useMemo(() => Number(id), [id]);
+  const [currentStep, setCurrentStep] = useState<number | null>(null);
+  const [transaction, setTransaction] = useState<Transaction | null>(null);
+  const refetch = async () => {
+    if (!id || Number.isNaN(productId)) return;
+    try {
+      const tx = await transactionService.getTransaction(productId);
+      setTransaction(tx);
+      setCurrentStep(STEP[tx.state]);
+    } catch {
+      toast.error("Failed to fetch transaction");
+    }
+  };
+  useEffect(() => {
+    refetch();
+  }, [id, productId]);
+
   return (
     <>
-        <Nav />
-        <div className="lg:px-[10%] px-4 pb-10">
-            <h1 className="text-(--primary) text-3xl font-bold mt-6">Complete Order</h1>
-            <p className="text-white/60">Finalize your transaction with the seller.</p>
-            <div className="mt-6 grid lg:grid-cols-[2fr_1fr] grid-cols-1 gap-6 items-start">
-                <div className="grid gap-6">
-                    <TransactionInfoCard currentStep={currentStep} />
-                    {currentStep === 1 && <Step1Box />}
-                    {currentStep === 2 && <Step2Box />}
-                    {currentStep === 3 && <Step3Box />}
-                </div>
-                <Chatbox sideCalling="bidder" />
+      <Nav />
+      <div className="lg:px-[10%] px-4 pb-10">
+      <h1 className="text-(--primary) text-3xl font-bold mt-6">Complete Order</h1>
+        <p className="text-white/60">Finalize your transaction with the buyer.</p>
+        <div className="mt-6 grid lg:grid-cols-[2fr_1fr] grid-cols-1 gap-6 items-start">
+            <div className="grid gap-6">
+                <TransactionInfoCard currentStep={currentStep ?? 0} transaction={transaction ?? null}/>
+                {currentStep === 1 && <Step1Box productId={productId} transaction={transaction} onSuccess={refetch}/>}
+                {currentStep === 2 && <Step2Box productId={productId} transaction={transaction} onSuccess={refetch}/>}
+                {currentStep === 3 && <Step3Box productId={productId} transaction={transaction} onSuccess={refetch}/>}
             </div>
-            {currentStep === 4 && <Step4Box />}
+            <Chatbox sideCalling="bidder" productId={productId} recipientId={transaction?.seller} />
         </div>
+        {currentStep === 4 && <Step4Box productId={productId} transaction={transaction} onSuccess={refetch}/>}
+      </div>
     </>
   );
 }

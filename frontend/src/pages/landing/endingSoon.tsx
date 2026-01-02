@@ -6,8 +6,6 @@ export default function EndingSoon() {
     const navigate = useNavigate();
     const {endingSoon} = useHomeStore();
 
-    console.log('endingSoon data:', endingSoon);
-
     return (
         <div className="border border-white/10 rounded-lg w-full bg-(--third) p-4">
             <h1 className="text-(--primary) font-sans font-bold text-2xl text-center">Top 5 Auction Ending Soon</h1>

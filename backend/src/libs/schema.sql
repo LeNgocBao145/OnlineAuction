@@ -6,7 +6,15 @@ CREATE TYPE product_state AS ENUM ('incoming', 'bidding', 'sold');
 
 CREATE TYPE state AS ENUM ('pending', 'failed', 'success');
 
-CREATE TYPE message_type AS ENUM ('text', 'image');
+CREATE TYPE trade_state AS ENUM(
+    'pending_payment', 
+    'pending_seller_confirm', 
+    'pending_bidder_confirm',
+    'completed',
+    'failed'
+);
+
+CREATE TYPE message_type AS ENUM ('text', 'image', 'text_and_image');
 
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
@@ -52,7 +60,7 @@ CREATE TABLE products (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL,
     current_price REAL NOT NULL,
-    image VARCHAR(100) NOT NULL,
+    image VARCHAR(500) NOT NULL,
     state product_state DEFAULT 'incoming' NOT NULL
 );
 
@@ -112,7 +120,7 @@ CREATE TABLE refuse (
 
 CREATE TABLE product_images (
     product INTEGER PRIMARY KEY,
-    image_path VARCHAR(100)[] NOT NULL
+    image_path VARCHAR(500)[] NOT NULL
 );
 
 CREATE TABLE product_descriptions (
@@ -143,9 +151,17 @@ CREATE TABLE sell_product (
     seller INTEGER NOT NULL,
     init_price REAL NOT NULL,
     step_price REAL NOT NULL,
+<<<<<<< HEAD
     created_at TIMESTAMP NOT NULL,
     expired_at TIMESTAMP NOT NULL,
     instant_price REAL
+=======
+    instant_price REAL,
+    starting_at TIMESTAMP NOT NULL,
+    isExtent BOOLEAN NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT now(),    
+    expired_at TIMESTAMP NOT NULL
+>>>>>>> c46e0db9a330a97c3badd20fe063b55337c8a7c2
 );
 
 CREATE TABLE trade_verifications (
@@ -154,11 +170,9 @@ CREATE TABLE trade_verifications (
     seller INTEGER NOT NULL,
     delivery_address VARCHAR(100),
     invoice_image VARCHAR(100),
-    receipt_image VARCHAR(100),
-    delivery_invoice_image VARCHAR(100),
     sell_accept BOOLEAN NOT NULL DEFAULT 'false',
     bidder_accept BOOLEAN NOT NULL DEFAULT 'false',
-    state state NOT NULL DEFAULT 'pending'
+    state trade_state NOT NULL DEFAULT 'pending_payment'
 );
 
 -- CHECK KEY CONSTRAINTS
@@ -176,10 +190,8 @@ ADD CONSTRAINT chk_requests_created_at
 CHECK (created_at <= CURRENT_DATE);
 
 ALTER TABLE sell_product
-ADD CONSTRAINT chk_sell_product_created_at
-CHECK (created_at <= NOW()),
 ADD CONSTRAINT chk_sell_product_expired_at
-CHECK (expired_at > created_at),
+CHECK (expired_at > starting_at),
 ADD CONSTRAINT chk_sell_product_init_price
 CHECK (init_price > 0),
 ADD CONSTRAINT chk_sell_product_step_price
