@@ -1,4 +1,3 @@
-import Nav from "@/components/ui/nav";
 import AdminHeader from "../adminHeader";
 
 import { MagnifyingGlassIcon } from "@heroicons/react/24/solid";
@@ -72,15 +71,15 @@ export default function RequestsManagementTab() {
 
     return (
         <>
-            <Nav />
+
             <div className="px-[10%]">
                 <AdminHeader activeTab="requests" />
                 <div className="p-4 border border-white/10 rounded-b-lg bg-(--third)">
                     <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
                         <div className="relative lg:w-2/3 w-full flex gap-4">
-                            <input 
-                                className="border border-white/10 text-white/60 bg-(--secondary) w-full h-10 p-2 rounded-md" 
-                                placeholder="Search users by name or email..." 
+                            <input
+                                className="border border-white/10 text-white/60 bg-(--secondary) w-full h-10 p-2 rounded-md"
+                                placeholder="Search users by name or email..."
                                 value={searchKeyword}
                                 onChange={(e) => setSearchKeyword(e.target.value)}
                             />
@@ -112,49 +111,49 @@ export default function RequestsManagementTab() {
                                     ) : requestsData.length === 0 ? (
                                         <p className="text-white/60 py-4">No requests found.</p>
                                     ) : (
-                                    requestsData.map((request) => (
-                                        <li key={request.id} className="h-20 border-b border-white/10 grid grid-cols-[1fr_3fr_3fr_1fr_2fr_2fr] items-center">
-                                            <p className="text-white/60">{request.id}</p>
-                                            <p className="text-white/60">{request.name}</p>
-                                            <p className="text-white/60">{request.email}</p>
-                                            <p className="text-(--primary)">{request.rating}</p>
-                                            <p className="text-white/60">{new Date(request.created_at).toLocaleDateString()}</p>
-                                            {request.state === "success" ? <p className="text-green-400">{getStatusDisplay(request.state)}</p> :
-                                            request.state === "failed" ? <p className="text-red-400">{getStatusDisplay(request.state)}</p> :
-                                            <div className="flex gap-2">
-                                                <button 
-                                                    className="text-sm bg-green-500 text-black rounded-md px-2 py-1 hover:bg-green-500/10"
-                                                    onClick={() => handleApprove(request.id)}
-                                                >Accept</button>
-                                                <button 
-                                                    className="text-sm bg-red-500 text-white rounded-md px-2 py-1 hover:bg-red-500/10"
-                                                    onClick={() => handleReject(request.id)}
-                                                >Deny</button>
-                                            </div>
-                                            }
-                                        </li>
-                                    )))}
+                                        requestsData.map((request) => (
+                                            <li key={request.id} className="h-20 border-b border-white/10 grid grid-cols-[1fr_3fr_3fr_1fr_2fr_2fr] items-center">
+                                                <p className="text-white/60">{request.id}</p>
+                                                <p className="text-white/60">{request.name}</p>
+                                                <p className="text-white/60">{request.email}</p>
+                                                <p className="text-(--primary)">{request.rating}</p>
+                                                <p className="text-white/60">{new Date(request.created_at).toLocaleDateString()}</p>
+                                                {request.state === "success" ? <p className="text-green-400">{getStatusDisplay(request.state)}</p> :
+                                                    request.state === "failed" ? <p className="text-red-400">{getStatusDisplay(request.state)}</p> :
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                className="text-sm bg-green-500 text-black rounded-md px-2 py-1 hover:bg-green-500/10"
+                                                                onClick={() => handleApprove(request.id)}
+                                                            >Accept</button>
+                                                            <button
+                                                                className="text-sm bg-red-500 text-white rounded-md px-2 py-1 hover:bg-red-500/10"
+                                                                onClick={() => handleReject(request.id)}
+                                                            >Deny</button>
+                                                        </div>
+                                                }
+                                            </li>
+                                        )))}
                                 </ul>
                             </div>
                         </div>
                         <div>
                             <div className="flex justify-center items-center space-x-2 mt-8">
-                                <button 
+                                <button
                                     className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
                                     First
                                 </button>
-                                <button 
+                                <button
                                     className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
                                     Previous
                                 </button>
                                 <span className="text-white">
                                     Page <span className="text-(--primary) font-bold">1</span> of <span className="text-(--primary) font-bold">N</span>
                                 </span>
-                                <button 
+                                <button
                                     className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
                                     Next
                                 </button>
-                                <button 
+                                <button
                                     className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
                                     Last
                                 </button>

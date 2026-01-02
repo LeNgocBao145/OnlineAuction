@@ -1,4 +1,3 @@
-import Nav from "@/components/ui/nav";
 import Chatbox from "./chatbox";
 import TransactionInfoCard from "./infoCard";
 import Step1Box from "./bidder/step1";
@@ -38,22 +37,19 @@ export default function BidderTransactionPage() {
   }, [id, productId]);
 
   return (
-    <>
-      <Nav />
-      <div className="lg:px-[10%] px-4 pb-10">
+    <div className="lg:px-[10%] px-4 pb-10">
       <h1 className="text-(--primary) text-3xl font-bold mt-6">Complete Order</h1>
-        <p className="text-white/60">Finalize your transaction with the buyer.</p>
-        <div className="mt-6 grid lg:grid-cols-[2fr_1fr] grid-cols-1 gap-6 items-start">
-            <div className="grid gap-6">
-                <TransactionInfoCard currentStep={currentStep ?? 0} transaction={transaction ?? null}/>
-                {currentStep === 1 && <Step1Box productId={productId} transaction={transaction} onSuccess={refetch}/>}
-                {currentStep === 2 && <Step2Box productId={productId} transaction={transaction} onSuccess={refetch}/>}
-                {currentStep === 3 && <Step3Box productId={productId} transaction={transaction} onSuccess={refetch}/>}
-            </div>
-            <Chatbox sideCalling="bidder" productId={productId} recipientId={transaction?.seller} />
+      <p className="text-white/60">Finalize your transaction with the buyer.</p>
+      <div className="mt-6 grid lg:grid-cols-[2fr_1fr] grid-cols-1 gap-6 items-start">
+        <div className="grid gap-6">
+          <TransactionInfoCard currentStep={currentStep ?? 0} transaction={transaction ?? null} />
+          {currentStep === 1 && <Step1Box productId={productId} transaction={transaction} onSuccess={refetch} />}
+          {currentStep === 2 && <Step2Box productId={productId} transaction={transaction} onSuccess={refetch} />}
+          {currentStep === 3 && <Step3Box productId={productId} transaction={transaction} onSuccess={refetch} />}
         </div>
-        {currentStep === 4 && <Step4Box productId={productId} transaction={transaction} onSuccess={refetch}/>}
+        <Chatbox sideCalling="bidder" productId={productId} recipientId={transaction?.seller} />
       </div>
-    </>
+      {currentStep === 4 && <Step4Box productId={productId} transaction={transaction} onSuccess={refetch} />}
+    </div>
   );
 }

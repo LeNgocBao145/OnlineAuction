@@ -723,22 +723,16 @@ export const createProductDescription = `INSERT INTO product_descriptions (produ
 export const getProductDescription = `SELECT * FROM product_descriptions WHERE id = $1 AND product = $2`;
 
 //Category
-export const getListCategories =   `SELECT
-                                        p.id,
-                                        p.name,
-                                        COALESCE(
-                                            JSONB_AGG(
-                                            JSONB_BUILD_OBJECT('id', c.id, 'name', c.name)
-                                            ORDER BY c.name
-                                            ) FILTER (WHERE c.id IS NOT NULL),
-                                            '[]'::jsonb
-                                        ) AS children
-                                    FROM categories p
-                                    LEFT JOIN categories c
-                                    ON c.parent = p.id
-                                    WHERE p.parent IS NULL
-                                    GROUP BY p.id, p.name
-                                    ORDER BY p.name`;
+export const getListCategories = `
+    SELECT 
+        c.id, 
+        c.name, 
+        c.parent,
+        p.name AS parent_name
+    FROM categories c
+    LEFT JOIN categories p ON c.parent = p.id
+    ORDER BY c.name
+`;
 
 // Admin Queries
 export const getRequests = (sortLogic) => `
@@ -914,7 +908,7 @@ export const getTradeVerification = `SELECT t.product,
                                     JOIN products p ON p.id = t.product
                                     JOIN sell_product sp ON sp.product = t.product
                                     WHERE t.product = $1`;
-                        
+
 export const bidderSubmission = `UPDATE trade_verifications
                                  SET
                                     delivery_address = $1,
@@ -939,20 +933,20 @@ export const bidderConfirmation = `UPDATE trade_verifications
                                     state = 'completed'
                                    WHERE product = $1
                                    AND state = 'pending_bidder_confirm'
-                                   RETURNING *`;          
-                                   
+                                   RETURNING *`;
+
 export const tradeCancel = `UPDATE trade_verifications
                             SET
                                 state = 'failed'
                             WHERE product = $1
                             AND state IN ('pending_payment', 'pending_seller_confirm', 'pending_bidder_confirm', 'completed')
-                            RETURNING *`; 
+                            RETURNING *`;
 
 export const getWinner = `SELECT u.*
                           FROM trade_verifications t
                           JOIN users u ON u.id = t.bidder
                           WHERE t.product = $1`
-                          
+
 export const getRoleFromTrade = `SELECT product, bidder, seller
                                 FROM trade_verifications
                                 WHERE product = $1`

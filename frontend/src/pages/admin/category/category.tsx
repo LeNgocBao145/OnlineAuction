@@ -1,4 +1,3 @@
-import Nav from "@/components/ui/nav";
 import AdminHeader from "../adminHeader";
 import AddCategoryModal from "./addCategoryModal";
 
@@ -76,7 +75,7 @@ export default function CategoryManagementTab() {
                 categoryData={editingCategoryData}
                 onUpdate={fetchCategories}
             />}
-            <Nav />
+
             <div className="px-[10%]">
                 <AdminHeader activeTab="category" />
                 <div className="p-4 border border-white/10 rounded-b-lg bg-(--third)">
