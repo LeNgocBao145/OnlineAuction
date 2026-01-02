@@ -1,10 +1,4 @@
 import pg from 'pg';
-<<<<<<< HEAD
-=======
-import dotenv from 'dotenv'
-
-dotenv.config();
->>>>>>> c46e0db9a330a97c3badd20fe063b55337c8a7c2
 
 const requiredEnvVars = [
     'PG_HOST',
