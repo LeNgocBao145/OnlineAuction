@@ -1,0 +1,58 @@
+import pg from 'pg';
+
+const requiredEnvVars = [
+    'PG_HOST',
+    'PG_DATABASE',
+    'PG_USER',
+    'PG_PASSWORD',
+    'PG_PORT',
+    'PG_SSL',
+];
+
+requiredEnvVars.forEach((envVar) => {
+    if (!process.env[envVar]) {
+        throw new Error(`Missing required environment variable: ${envVar}`);
+    }
+});
+
+const db = new pg.Pool({
+    host: process.env.PG_HOST,
+    database: process.env.PG_DATABASE,
+    user: process.env.PG_USER,
+    password: process.env.PG_PASSWORD,
+    port: parseInt(process.env.PG_PORT, 10),
+    ssl: process.env.PG_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
+});
+
+// Test connection
+db.query('SELECT NOW()')
+    .then(() => {
+        console.log("Connect successfully with postgres database!")
+    })
+    .catch((err) => { 
+        console.log("Couldn't connect to database", err) 
+        // Don't exit, allow server to start
+    });
+
+db.on('error', (err) => {
+    console.error('Unexpected error on idle client', err);
+    // Don't exit process, just log the error
+});
+
+const query = async (text, params) => {
+    const client = await db.connect();
+    try {
+        const result = await client.query(text, params);
+        return result;
+    } catch (error) {
+        console.error('Database query error:', error);
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+export default query;
