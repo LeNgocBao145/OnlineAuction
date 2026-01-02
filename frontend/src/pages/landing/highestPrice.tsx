@@ -8,11 +8,11 @@ export default function HighestPrice() {
     const { highestPrice } = useHomeStore();
 
     return (
-        <div className="border border-white/10 rounded-lg w-full lg:w-1/2 lg:m-auto lg:col-span-full col-span-1 bg-(--third) p-4">
+        <div className="border border-white/10 rounded-lg w-full bg-(--third) p-4">
             <h1 className="text-(--primary) font-sans font-bold text-2xl text-center">Top 5 Highest-Priced Auctions</h1>
             <ul className="flex flex-col items-center gap-4 mt-4">
                 {highestPrice.map((item) => (
-                    <li key={item.id} className="bg-(--secondary) w-9/10 h-[100px] rounded-lg \
+                    <li key={item.id} className="bg-(--secondary) w-full rounded-lg \
                                          border border-white/5 grid grid-cols-[1fr_3fr_1fr] items-center \
                                          transform hover:scale-105 transition-transform cursor-pointer"
                         onClick={() => navigate(`/product/${item.id}`)}
@@ -31,7 +31,7 @@ export default function HighestPrice() {
                             )}
                         </div>
                         <div className="flex flex-col justify-center ml-4">
-                            <h2 className="text-white font-sans font-bold text-lg">{item.name.length > 15 ? item.name.slice(0, 15) + "..." : item.name}</h2>
+                            <h2 className="text-white font-sans font-bold lg:text-lg text-md">{item.name.length > 15 ? item.name.slice(0, 15) + "..." : item.name}</h2>
                             <p className="text-white/60">{item.bid_count} • {formatTimeLeft(item.time_left || 0)}</p>
                         </div>
                         <div>

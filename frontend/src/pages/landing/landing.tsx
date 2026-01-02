@@ -30,7 +30,7 @@ export default function Landing() {
         <>
             <Nav />
             <Hero username={user?.name || "Guest"} />
-            <div className="w-8/10 grid lg:grid-cols-2 grid-cols-1 m-auto gap-4">
+            <div className="w-95/100 grid lg:grid-cols-3 grid-cols-1 m-auto gap-4">
                 <EndingSoon />
                 <MostBids />
                 <HighestPrice />
