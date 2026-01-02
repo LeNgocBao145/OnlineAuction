@@ -1,6 +1,7 @@
 import express from 'express';
 import UserController from '../controllers/userController.js';
 import { authenticateToken } from '../middlewares/authMiddleware.js';
+import { transactionMiddleware } from '../middlewares/transactionMiddleware.js';
 
 const router = express.Router();
 
@@ -21,12 +22,12 @@ router.post('/:userId/request-to-be-seller', UserController.requestToBeSeller);
 router.post('/:userId/rate-seller/:productId', UserController.rateSeller);
 router.post('/:userId/favorites/:productId', UserController.markFavorite);
 router.delete('/:userId/favorites/:productId', UserController.unmarkFavorite);
-router.get('/trade-verifications/:productId', UserController.tradeVerification);
-router.get('/trade-verifications/:productId/winner', UserController.getWinner);
-router.patch('/trade-verifications/:productId/bidder-submit', UserController.bidderSubmission);
-router.patch('/trade-verifications/:productId/seller-confirm', UserController.sellerConfirmation);
-router.patch('/trade-verifications/:productId/bidder-confirm', UserController.bidderConfirmation);
-router.patch('/trade-verifications/:productId/cancel', UserController.tradeCancellation);
-router.post('/trade-verifications/:productId/review', UserController.rating);
+router.get('/trade-verifications/:productId', transactionMiddleware, UserController.tradeVerification);
+router.get('/trade-verifications/:productId/winner', transactionMiddleware, UserController.getWinner);
+router.patch('/trade-verifications/:productId/bidder-submit', transactionMiddleware, UserController.bidderSubmission);
+router.patch('/trade-verifications/:productId/seller-confirm', transactionMiddleware, UserController.sellerConfirmation);
+router.patch('/trade-verifications/:productId/bidder-confirm', transactionMiddleware, UserController.bidderConfirmation);
+router.patch('/trade-verifications/:productId/cancel', transactionMiddleware, UserController.tradeCancellation);
+router.post('/trade-verifications/:productId/review', transactionMiddleware, UserController.rating);
 
 export default router;
