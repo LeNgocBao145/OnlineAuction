@@ -2,6 +2,8 @@ import "./App.css";
 
 import { BrowserRouter, Route, Routes } from "react-router";
 import { Toaster } from "sonner";
+import { useEffect } from "react";
+import useAuthStore from "./stores/authStore";
 
 import Landing from "./pages/landing/landing";
 import SignIn from "./pages/signIn/signIn";
@@ -25,6 +27,13 @@ import BidderTransactionPage from "./pages/transaction/transactionBidder";
 import SellerTransactionPage from "./pages/transaction/transactionSeller";
 
 export default function App() {
+  const { user, refresh } = useAuthStore();
+
+  useEffect(() => {
+    if (user && !useAuthStore.getState().accessToken) {
+      refresh();
+    }
+  }, []);
   return (
     <>
       <Toaster position="top-right" richColors />

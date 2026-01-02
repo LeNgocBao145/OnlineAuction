@@ -146,7 +146,7 @@ class AuthController {
 
       // Create new access token
       const accessToken = jwt.sign(
-        { userId: session.userId },
+        { userId: session.rows[0].user_id },
         process.env.ACCESS_TOKEN_SECRET,
         {
           expiresIn: ACCESS_TOKEN_TTL,

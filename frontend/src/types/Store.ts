@@ -104,11 +104,11 @@ export interface UserProfileState {
 
 export interface ChatState {
   messages: Record<string, MessageThread>;
-  activeProductId: string | null;
+  activeProductId: number | string | null;
   messageLoading: boolean;
 
-  setActiveProductId: (id: string | null) => void;
-  fetchMessages: (productId: string) => Promise<void>;
+  setActiveProductId: (id: number | string | null) => void;
+  fetchMessages: (productId: string | number) => Promise<void>;
   sendMessage: (recipientId: string, content: string, image?: string) => Promise<void>;
   addMessage: (message: Message) => Promise<void>;
   reset: () => void;

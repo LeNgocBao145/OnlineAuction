@@ -9,7 +9,11 @@ class MessageController {
   async sendMessage(req, res, next) {
     try {
       const { recipientId, content, productId, image } = req.body;
-      const senderId = req.user.id;
+      const senderId = req.user?.id;
+
+      if (!senderId) {
+        return res.status(401).json({ message: "Unauthorized - User ID not found" });
+      }
 
       // Validate required fields
       if (!content && !image) {
@@ -26,17 +30,9 @@ class MessageController {
         messageType = 'image';
       }
 
-      // Check if recipient exists
-      const user = await query(getUserById, [recipientId]);
-      if (!user) {
-        return res.status(404).json({
-          message: "The user that you sent message to is not existed!!",
-        });
-      }
-
       // Check if product exists
       const product = await query(getProductById, [productId]); 
-      if (!product) {
+      if (!product || product.rows.length === 0) {
         return res.status(404).json({ message: "The product that you buy is not existed!!" });
       }
 
@@ -56,7 +52,7 @@ class MessageController {
       const messageData = message.rows[0];
 
       // Emit message to all users in the product room
-      emitNewMessage(io, product, messageData);
+      emitNewMessage(io, product.rows[0], messageData);
 
       return res
         .status(200)

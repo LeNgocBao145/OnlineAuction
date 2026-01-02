@@ -10,7 +10,7 @@ const limit = 20;
 
 const chatService = {  
   fetchMessages: async (
-    productId: string,
+    productId: string | number,
     offset: number = 0
   ): Promise<FetchMessageProps> => {
     try {
@@ -27,7 +27,7 @@ const chatService = {
   sendMessage: async (
     recipientId: string,
     content: string,
-    productId: string,
+    productId: string | number,
     image?: string
   ) => {
     try {

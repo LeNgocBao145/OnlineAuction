@@ -48,7 +48,7 @@ export default function SellerTransactionPage() {
                     {currentStep === 2 && <Step1And2Box productId={productId} transaction={transaction} onSuccess={refetch}/>}
                     {currentStep === 3 && <Step3Box productId={productId} transaction={transaction} onSuccess={refetch}/>}
                 </div>
-                {/* <Chatbox sideCalling="seller" /> */}
+                <Chatbox sideCalling="seller" productId={productId} recipientId={transaction?.bidder} />
             </div>
             {currentStep === 4 && <Step4Box productId={productId} transaction={transaction} onSuccess={refetch}/>}
         </div>

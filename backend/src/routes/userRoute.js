@@ -1,10 +1,11 @@
 import express from 'express';
 import UserController from '../controllers/userController.js';
+import { authenticateToken } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
 // Specific routes first to avoid conflict with :userId
-router.get('/me', UserController.authMe);
+router.get('/me', authenticateToken, UserController.authMe);
 
 // Dynamic routes
 router.get('/:userId', UserController.getUser);

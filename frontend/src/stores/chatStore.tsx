@@ -3,7 +3,7 @@ import type { ChatState } from "@/types/Store";
 import { persist } from "zustand/middleware";
 import chatService from "@/services/chatService";
 import useAuthStore from "./authStore";
-import type { Conversation, Message } from "@/types/Chat";
+import type { Message } from "@/types/Chat";
 
 const useChatStore = create<ChatState>()(
   persist(
@@ -19,7 +19,7 @@ const useChatStore = create<ChatState>()(
         });
       },
 
-      setActiveProductId: (id: string | null) => {
+      setActiveProductId: (id: string | number | null) => {
         set({ activeProductId: id });
       },      
       fetchMessages: async (productId) => {
@@ -46,10 +46,11 @@ const useChatStore = create<ChatState>()(
           
           set((state) => {
             const prevMessages = state.messages?.[currentProductId]?.items ?? [];
-            const mergedMessages =
-              prevMessages.length > 0
-                ? [...prevMessages, ...processedMessages]
-                : processedMessages;
+            
+            // If offset is 0, replace; otherwise append
+            const mergedMessages = offset === 0
+              ? processedMessages
+              : [...prevMessages, ...processedMessages];
             
             return {
               messages: {
@@ -74,19 +75,50 @@ const useChatStore = create<ChatState>()(
       ) => {
         try {
           const { activeProductId } = get();
-          if (!activeProductId) {
-            console.error("No active product ID");
+          const { user } = useAuthStore.getState();
+          if (!activeProductId || !user) {
+            console.error("No active product ID or user");
             return;
           }
 
+          // Optimistic update: Add message immediately
+          const tempMessage: Message = {
+            id: Date.now(), // Temporary ID
+            product: Number(activeProductId),
+            sender: user.id,
+            sender_name: user.name,
+            content: content || null,
+            image: image || null,
+            type: image ? (content ? 'text_and_image' : 'image') : 'text',
+            created_at: new Date().toISOString(),
+            isOwn: true,
+          };
+
+          set((state) => {
+            const prevMessages = state.messages?.[activeProductId]?.items ?? [];
+            // Backend trả DESC, message mới nhất ở đầu mảng
+            const updatedMessages = [tempMessage, ...prevMessages];
+            return {
+              messages: {
+                ...state.messages,
+                [activeProductId]: {
+                  items: updatedMessages,
+                  hasMore: state.messages?.[activeProductId]?.hasMore ?? true,
+                },
+              },
+            };
+          });
+
+          // Send to server
           await chatService.sendMessage(
             recipientId,
             content,
-            activeProductId,
+            activeProductId.toString(),
             image
           );
         } catch (error) {
           console.error("Error when sending message!!", error);
+          // TODO: Remove optimistic message on error
         }
       },      
       addMessage: async (message: Message) => {
@@ -107,7 +139,8 @@ const useChatStore = create<ChatState>()(
           set((state) => {
             if (prevMessages.some((m) => m.id === message.id)) return state;
             
-            const mergedMessages = [...prevMessages, message];
+            // Backend trả DESC, thêm message mới vào đầu
+            const mergedMessages = [message, ...prevMessages];
             return {
               messages: {
                 ...state.messages,
@@ -124,7 +157,11 @@ const useChatStore = create<ChatState>()(
       },      
     }),
     {
-      name: "chat-storage",      
+      name: "chat-storage",
+      partialize: (state) => ({
+        // Chỉ lưu activeProductId, không lưu messages
+        activeProductId: state.activeProductId,
+      }),
     }
   )
 );

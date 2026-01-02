@@ -3,6 +3,7 @@ import adminRouter from './adminRoute.js';
 import productRouter from './productRoute.js';
 import userRouter from './userRoute.js';
 import homeRouter from './homeRoute.js';
+import messageRouter from './messageRoute.js';
 import { authenticateToken } from '../middlewares/authMiddleware.js'
 
 export default function route(app) {
@@ -11,4 +12,5 @@ export default function route(app) {
     app.use('/api/products', productRouter);
     app.use('/api/admins', authenticateToken, adminRouter);
     app.use('/api/users', userRouter);
+    app.use('/api/messages', authenticateToken, messageRouter);
 }
