@@ -18,7 +18,9 @@ import ProfileMyReviews from "./pages/profile/reviews";
 import ProfileFavorites from "./pages/profile/favorites";
 import ProductSellerPage from "./pages/profile/selling/productSeller";
 import CreateAuction from "./pages/profile/selling/createProdForSell";
+import EditAuction from "./pages/profile/selling/editProdForSell";
 import ProtectedRoute from "./pages/ProtectedRoute";
+
 import UserManagementTab from "./pages/admin/user/user";
 import ProductManagementTab from "./pages/admin/product/product";
 import CategoryManagementTab from "./pages/admin/category/category";
@@ -79,7 +81,9 @@ export default function App() {
               {/* Seller Page */}
               <Route path="/productSeller" element={<ProductSellerPage />} />
               <Route path="/createProduct" element={<CreateAuction />} />
+              <Route path="/product/:id/edit" element={<EditAuction />} />
             </Route>
+
 
             {/* Catch all Error Page*/}
           </Routes>

@@ -3,6 +3,9 @@ import { FaPlus } from "react-icons/fa";
 import { useNavigate } from "react-router";
 import useUserStore from "@/stores/userStore";
 import useAuthStore from "@/stores/authStore";
+import productService from "@/services/productService";
+import { toast } from "sonner";
+
 
 export default function MyProducts() {
     const navigate = useNavigate();
@@ -30,7 +33,30 @@ export default function MyProducts() {
     const totalPages = Math.ceil(filteredProducts.length / visibleProductsCount) || 1;
     const visibleProducts = filteredProducts.slice((page - 1) * visibleProductsCount, page * visibleProductsCount);
 
+    const handleCloseAuction = async (productId: number) => {
+        if (!confirm("Are you sure you want to close this auction?")) return;
+        try {
+            await productService.closeProduct(productId);
+            toast.success("Auction closed successfully");
+            if (user?.id) fetchSellings(user.id, 1, 50);
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to close auction");
+        }
+    };
+
+    const handleRemoveAuction = async (productId: number) => {
+        if (!confirm("Are you sure you want to remove this auction? This will delete the product.")) return;
+        try {
+            await productService.deleteProduct(productId);
+            toast.success("Auction removed successfully");
+            if (user?.id) fetchSellings(user.id, 1, 50);
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to remove auction");
+        }
+    };
+
     // Format time left from seconds
+
     const formatTime = (seconds: number) => {
         if (!seconds || seconds <= 0) return "Ended";
         const days = Math.floor(seconds / 86400);
@@ -141,10 +167,10 @@ export default function MyProducts() {
                                     onClick={(e) => { e.stopPropagation(); navigate(`/product/${product.id}/edit`) }}>
                                     Edit Auction</button>}
                                 {product.state === "bidding" && <button className="bg-red-400 text-black p-2 rounded-md mt-4 w-9/10 hover:cursor-pointer"
-                                    onClick={(e) => { e.stopPropagation(); }}>
+                                    onClick={(e) => { e.stopPropagation(); handleCloseAuction(product.id); }}>
                                     Close Auction</button>}
-                                <button className={`bg-white/10 text-white p-2 rounded-md mt-4 w-9/10 ${product.state !== 'bidding' ? '' : 'opacity-10 cursor-not-allowed'}`}
-                                    onClick={(e) => { e.stopPropagation(); }}>
+                                <button className={`bg-white/10 text-white p-2 rounded-md mt-4 w-9/10 ${product.state === 'bidding' ? 'opacity-10 cursor-not-allowed' : 'hover:cursor-pointer'}`}
+                                    onClick={(e) => { e.stopPropagation(); if (product.state !== 'bidding') handleRemoveAuction(product.id); }}>
                                     Remove Auction</button>
                             </div>
                         </li>

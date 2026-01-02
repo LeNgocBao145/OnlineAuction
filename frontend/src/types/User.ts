@@ -6,6 +6,8 @@ export type User = {
     birthdate: string;
     role: string;
     rating: number;
+    rating_count: number;
+    relation?: "seller" | "winner" | "bidder" | "other";
     avatar?: string;
 }
 

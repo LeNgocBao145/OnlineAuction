@@ -24,13 +24,14 @@ const useProductStore = create<ProductState>((set) => ({
     }
   },
 
-  placeBid: async (productId: string | number, bidAmount: number) => {
+  placeBid: async (productId: string | number, data: { bidAmount?: number; maxPrice?: number }) => {
     try {
       set({ loading: true, error: null });
-      await productService.placeBid(productId, bidAmount);
+      const result = await productService.placeBid(productId, data);
       // Refresh product data to get updated bid information
       const product = await productService.getProductById(productId);
       set({ product });
+      return result;
     } catch (err: any) {
       const message =
         err?.response?.data?.message ||
@@ -55,6 +56,61 @@ const useProductStore = create<ProductState>((set) => ({
         err?.response?.data?.message ||
         err?.message ||
         "Failed to ask question!";
+      set({ error: message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  askToBid: async (productId: string | number) => {
+    try {
+      set({ loading: true, error: null });
+      await productService.askToBid(productId);
+      // Refresh product data to updated user_bid_request_state
+      const product = await productService.getProductById(productId);
+      set({ product });
+    } catch (err: any) {
+      const message = err?.response?.data?.message || err?.message || "Failed to request permission!";
+      set({ error: message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  fetchBidRequests: async (productId: string | number, params?: any) => {
+    try {
+      set({ loading: true, error: null });
+      return await productService.getBidRequests(productId, params);
+    } catch (err: any) {
+      const message = err?.response?.data?.message || err?.message || "Failed to fetch bid requests!";
+      set({ error: message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  acceptBidRequest: async (productId: string | number, requestId: number) => {
+    try {
+      set({ loading: true, error: null });
+      await productService.acceptBidRequest(productId, requestId);
+    } catch (err: any) {
+      const message = err?.response?.data?.message || err?.message || "Failed to accept bid request!";
+      set({ error: message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  rejectBidRequest: async (productId: string | number, requestId: number) => {
+    try {
+      set({ loading: true, error: null });
+      await productService.rejectBidRequest(productId, requestId);
+    } catch (err: any) {
+      const message = err?.response?.data?.message || err?.message || "Failed to reject bid request!";
       set({ error: message });
       throw err;
     } finally {

@@ -9,7 +9,9 @@ import {
   createCategory,
   updateCategoryById,
   deleteCategoryById,
+  getCategoryProductCount,
   getAdminProducts,
+
   getProductById,
   deleteProductById,
   getRequests,
@@ -141,12 +143,11 @@ class AdminController {
         !email ||
         !birthdate ||
         !address ||
-        !role ||
-        rating === undefined
+        !role
       ) {
         return res.status(400).json({
           message:
-            "Name, email, birthdate, address, role, and rating are required",
+            "Name, email, birthdate, address, and role are required",
         });
       }
       const user = await query(getUserById, [userId]);
@@ -159,7 +160,6 @@ class AdminController {
         birthdate,
         address,
         role,
-        rating,
         userId,
       ]);
       return res.status(200).json({ message: "User updated successfully!" });
@@ -343,6 +343,17 @@ class AdminController {
       if (!categoryId) {
         return res.status(400).json({ message: "Category ID is required" });
       }
+
+      // Check if there are any products in this category (including subcategories via trigger)
+      const countResult = await query(getCategoryProductCount, [categoryId]);
+      const productCount = parseInt(countResult.rows[0].count, 10);
+
+      if (productCount > 0) {
+        return res.status(400).json({
+          message: "Cannot delete category because it contains products. Please remove all products first."
+        });
+      }
+
       await query(deleteCategoryById, [categoryId]);
       return res.status(200).json({ message: "Delete category successfully!" });
     } catch (error) {
@@ -350,6 +361,7 @@ class AdminController {
       return res.status(500).json({ message: "Internal server error" });
     }
   }
+
 
   async getBidderRequests(req, res) {
     try {

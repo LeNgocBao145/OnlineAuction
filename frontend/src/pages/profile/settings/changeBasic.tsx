@@ -11,10 +11,12 @@ import OTPModal from "@/components/modals/OTPModal";
 
 export default function ChangeBasicInfo() {
     const { user, fetchMe } = useAuthStore();
-    const { profile, loading, fetchProfile, updateProfile, changePassword } = useUserStore();
+    const { profile, loading, fetchProfile, updateProfile, changePassword, sendOTP, verifyOTP } = useUserStore();
     const [upgradeLoading, setUpgradeLoading] = useState(false);
     const [OTPModalOpen, setOTPModalOpen] = useState(false);
     const [OTPVerified, setOTPVerified] = useState(false);
+    const [pendingProfileData, setPendingProfileData] = useState<any>(null);
+    const [newEmail, setNewEmail] = useState<string>("");
 
     useEffect(() => {
         if (user?.id) {
@@ -68,21 +70,39 @@ export default function ChangeBasicInfo() {
     }, [profile, resetProfile]);
 
     const onSubmitProfile = async (data: any) => {
-        try {
-            await updateProfile(user?.id!, {
-                name: data.username,
-                email: data.email,
-                birthdate: new Date(data.birthdate).toISOString(),
-                address: data.address
-            });
-            toast.success("Profile updated successfully!");
-            // Fetch updated profile from userStore (public endpoint, no auth required)
-            await fetchProfile(user?.id!);
-            // Also update authStore with refreshed user data
-            await fetchMe();
-        } catch (error: any) {
-            toast.error(error?.response?.data?.message || "Failed to update profile");
-            console.error(error);
+        const emailChanged = profile?.email !== data.email;
+
+        if (emailChanged) {
+            try {
+                setPendingProfileData({
+                    name: data.username,
+                    email: data.email,
+                    birthdate: new Date(data.birthdate).toISOString(),
+                    address: data.address
+                });
+                setNewEmail(data.email);
+                await sendOTP(user?.id!, data.email);
+                toast.success("OTP sent to your new email address!");
+                setOTPModalOpen(true);
+            } catch (error: any) {
+                toast.error(error?.response?.data?.message || "Failed to send OTP");
+                console.error(error);
+            }
+        } else {
+            try {
+                await updateProfile(user?.id!, {
+                    name: data.username,
+                    email: data.email,
+                    birthdate: new Date(data.birthdate).toISOString(),
+                    address: data.address
+                });
+                toast.success("Profile updated successfully!");
+                await fetchProfile(user?.id!);
+                await fetchMe();
+            } catch (error: any) {
+                toast.error(error?.response?.data?.message || "Failed to update profile");
+                console.error(error);
+            }
         }
     };
 
@@ -110,10 +130,38 @@ export default function ChangeBasicInfo() {
         }
     };
 
+    const handleVerifyOTP = async (otp: string) => {
+        try {
+            await verifyOTP(user?.id!, newEmail, otp);
+            toast.success("Email verified and profile updated successfully!");
+            await fetchProfile(user?.id!);
+            await fetchMe();
+            setPendingProfileData(null);
+            setNewEmail("");
+        } catch (error: any) {
+            throw error;
+        }
+    };
+
+    const handleResendOTP = async () => {
+        try {
+            await sendOTP(user?.id!, newEmail);
+            toast.success("OTP resent! Please check your email.");
+        } catch (error: any) {
+            throw error;
+        }
+    };
+
     return (
         <>
             {OTPModalOpen && (
-                <OTPModal setModalOpen={setOTPModalOpen} setSuccess={setOTPVerified} />
+                <OTPModal
+                    setModalOpen={setOTPModalOpen}
+                    setSuccess={setOTPVerified}
+                    email={newEmail}
+                    onVerify={handleVerifyOTP}
+                    onResend={handleResendOTP}
+                />
             )}
             <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-10">
                 <div className="flex justify-between items-center">

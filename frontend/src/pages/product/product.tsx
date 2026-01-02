@@ -23,9 +23,9 @@ export default function ProductPage() {
 
     return (
         <div className="px-[10%] mt-6 text-white pb-20">
-            {loading && <p>Loading product...</p>}
+            {loading && !product && <p>Loading product...</p>}
             {error && <p className="text-red-400">{error}</p>}
-            {!loading && !error && product && <ProductBody />}
+            {product && <ProductBody />}
         </div>
     );
 }

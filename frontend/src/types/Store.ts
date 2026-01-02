@@ -51,8 +51,12 @@ export interface ProductState {
   loading: boolean;
   error: string | null;
   fetchProduct: (id: string | number) => Promise<void>;
-  placeBid: (productId: string | number, bidAmount: number) => Promise<void>;
+  placeBid: (productId: string | number, data: { bidAmount?: number; maxPrice?: number }) => Promise<{ message: string; currentPrice?: number; isWinning?: boolean } | void>;
   askQuestion: (productId: string | number, question: string) => Promise<void>;
+  askToBid: (productId: string | number) => Promise<void>;
+  fetchBidRequests: (productId: string | number, params?: any) => Promise<any>;
+  acceptBidRequest: (productId: string | number, requestId: number) => Promise<void>;
+  rejectBidRequest: (productId: string | number, requestId: number) => Promise<void>;
 }
 
 export interface SearchState {
@@ -60,7 +64,7 @@ export interface SearchState {
   loading: boolean;
   error: string | null;
   filterParams: FilterParams;
-  
+
   filterProducts: (params: FilterParams) => Promise<void>;
   setFilterParams: (params: FilterParams) => void;
   clearSearch: () => void;
@@ -73,7 +77,7 @@ export interface UserProfileState {
   sellings: UserSelling[];
   wons: UserBidding[];
   favorites: FilteredProductsResponse | null;
-  
+
   loading: boolean;
   error: string | null;
 
@@ -85,6 +89,7 @@ export interface UserProfileState {
     address: string;
   }) => Promise<void>;
   changePassword: (userId: string | number, oldPassword: string, newPassword: string, confirmPassword: string) => Promise<void>;
+  sendOTP: (userId: string | number, email: string) => Promise<void>;
   verifyOTP: (userId: string | number, email: string, otp: string) => Promise<void>;
 
   fetchRatings: (userId: string | number, page?: number, limit?: number) => Promise<void>;

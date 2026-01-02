@@ -85,7 +85,18 @@ CREATE TABLE bids (
     product INTEGER NOT NULL,
     buyer INTEGER NOT NULL,
     bid_date TIMESTAMP NOT NULL,
-    price NUMERIC(12,2) NOT NULL
+    price NUMERIC(12,2) NOT NULL,
+    max_price NUMERIC(12,2)
+);
+
+CREATE TABLE auto_bids (
+    product INTEGER NOT NULL,
+    bidder INTEGER NOT NULL,
+    max_price NUMERIC(12,2) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (product, bidder),
+    FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (bidder) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE bid_requests (
@@ -157,7 +168,9 @@ CREATE TABLE sell_product (
     init_price REAL NOT NULL,
     step_price REAL NOT NULL,
     instant_price REAL,
-    created_at TIMESTAMP NOT NULL,
+    starting_at TIMESTAMP NOT NULL DEFAULT now(),
+    isExtent BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP NOT NULL DEFAULT now(),    
     expired_at TIMESTAMP NOT NULL
 );
 
@@ -258,7 +271,9 @@ FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE;
 
 ALTER TABLE bidder_winner
 ADD CONSTRAINT fk_bidder_winner_product
-FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE;
+FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE,
+ADD CONSTRAINT fk_bidder_winner_bidder
+FOREIGN KEY (bidder) REFERENCES users(id) ON DELETE CASCADE;
 
 ALTER TABLE messages
 ADD CONSTRAINT fk_messages_product
@@ -287,6 +302,8 @@ ADD CONSTRAINT fk_sell_product_product
 FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE,
 ADD CONSTRAINT fk_sell_product_seller
 FOREIGN KEY (seller) REFERENCES users(id) ON DELETE CASCADE;
+
+-- === TRIGGERS ===
 
 CREATE OR REPLACE FUNCTION fn_add_product_to_parent_categories()
 RETURNS TRIGGER AS $$
@@ -327,6 +344,26 @@ CREATE TRIGGER trg_product_category_add_parent
 AFTER INSERT ON product_categories
 FOR EACH ROW
 EXECUTE FUNCTION fn_add_product_to_parent_categories();
+
+CREATE OR REPLACE FUNCTION delete_seller_products()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Xóa tất cả products mà user này là seller
+    DELETE FROM products
+    WHERE id IN (
+        SELECT product 
+        FROM sell_product 
+        WHERE seller = OLD.id
+    );
+    
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_delete_seller_products
+BEFORE DELETE ON users
+FOR EACH ROW
+EXECUTE FUNCTION delete_seller_products();
 
 -- 1. Insert Users
 INSERT INTO users (name, address, email, hashed_password, birthdate, role, rating)

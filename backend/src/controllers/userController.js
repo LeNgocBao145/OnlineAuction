@@ -146,6 +146,47 @@ class UserController {
     }
   }
 
+  async sendOTP(req, res) {
+    try {
+      const userId = req.params.userId;
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      // Get user from database
+      const user = await query(getUserById, [userId]);
+      if (user.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Generate OTP
+      const otp = crypto.randomInt(100000, 999999).toString();
+      const expiredAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+      // Store OTP with userId for verification
+      otpStore.set(email, { otp, expiredAt, userId });
+
+      // Send OTP email
+      await sendOTPEmail(email, otp);
+
+      return res.status(200).json({
+        message: "OTP sent to email successfully",
+        email,
+      });
+    } catch (error) {
+      console.error("Error when sending OTP!", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
   async verifyOTP(req, res) {
     try {
       const userId = req.params.userId;
@@ -173,11 +214,22 @@ class UserController {
         return res.status(400).json({ message: "Invalid OTP" });
       }
 
+      // Verify userId matches
+      if (otpRecord.userId && otpRecord.userId != userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
       // Remove OTP from memory
       otpStore.delete(email);
 
-      // Update user information using stored data
-      const { name, birthdate, address } = otpRecord;
+      // Get current user data
+      const user = await query(getUserById, [userId]);
+      if (user.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Update user email
+      const { name, birthdate, address } = user.rows[0];
       const updatedUser = await query(updateUserInformationById, [
         name,
         email,
@@ -187,7 +239,7 @@ class UserController {
       ]);
 
       return res.status(200).json({
-        message: "Update user information successfully!",
+        message: "Email verified and updated successfully!",
         updatedUser,
       });
     } catch (error) {

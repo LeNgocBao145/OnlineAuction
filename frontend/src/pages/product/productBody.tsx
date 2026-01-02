@@ -7,21 +7,24 @@ import ProductQuestions from "./questions";
 
 export default function ProductBody() {
     return (
-        <div className="flex flex-col justify-around items-center px-[10%] gap-4 mt-4 pb-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <ProductImages/>
-                <ProductBrief/>
+        <div className="flex flex-col justify-around items-center gap-4 mt-4 pb-8 w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-4 w-full">
+
+                <ProductImages />
+                <ProductBrief />
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 items-start">
-                <div className="flex flex-col justify-start items-center w-full">
-                    <ProductDescription/>
-                    <ProductQuestions/>
+            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-4 items-start w-full">
+
+                <div className="flex flex-col justify-start items-center w-full gap-4">
+                    <ProductDescription />
+                    <ProductQuestions />
                 </div>
-                <div className="flex flex-col justify-start items-center w-full">
-                    <BidHistory/>
-                    <AuctionInfo/>
+                <div className="flex flex-col justify-start items-center w-full gap-4">
+                    <BidHistory />
                 </div>
             </div>
+            <AuctionInfo />
         </div>
+
     );
 }

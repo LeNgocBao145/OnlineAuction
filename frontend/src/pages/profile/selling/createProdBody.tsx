@@ -2,34 +2,96 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from "react";
+import productService from "@/services/productService";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import useAuthStore from "@/stores/authStore";
 
-export default function CreateAuctionBody() {
+
+
+export default function CreateAuctionBody({ productId }: { productId?: string | number }) {
+    const isEditing = !!productId;
+
     const [imageFiles, setImageFiles] = useState<{ file: File, url: string, name: string }[]>([]);
     const [description, setDescription] = useState<string>("");
 
     const formSchema = z.object({
         productName: z.string().min(1, "Product name is required"),
+        category: z.string().min(1, "Category is required"),
         startingBid: z.number().min(1, "Starting bid must be at least $1"),
         images: z.array(z.instanceof(File)).min(3, "At least 3 images are required").max(10, "No more than 10 images are allowed"),
         bidStep: z.number().min(1, "Bid step must be at least $1"),
-        instantBuy: z.number().min(0).optional(),
+        instantBuy: z.number().nullable().optional(),
         productDescription: z.string().min(1, "Product description is required").max(500, "Description cannot exceed 500 characters"),
         startTime: z.string().min(1, "Start time is required"),
         endTime: z.string().min(1, "End time is required"),
         autoExtend: z.boolean().optional()
     });
 
+
     const { register, handleSubmit, formState: { errors }, reset, trigger, setValue } = useForm({
         resolver: zodResolver(formSchema),
         defaultValues: { images: [] }
     });
 
+    const [categories, setCategories] = useState<any[]>([]);
+    const [submitting, setSubmitting] = useState(false);
+    const { user } = useAuthStore();
+    const navigate = useNavigate();
+
+
     useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const data = await productService.getCategories();
+                setCategories(data);
+            } catch (error) {
+                console.error("Failed to fetch categories", error);
+            }
+        };
+        fetchCategories();
+
+        const fetchProductData = async () => {
+            if (!productId) return;
+            try {
+                const product = await productService.getProductById(productId);
+                if (product) {
+                    reset({
+                        productName: product.name,
+                        category: product.categories?.[0]?.id?.toString() || "",
+                        startingBid: product.current_price,
+                        bidStep: product.step_price || 0,
+                        instantBuy: product.instant_price,
+                        productDescription: product.descriptions?.[0]?.description || "",
+                        startTime: product.starting_at ? new Date(product.starting_at).toISOString().slice(0, 16) : "",
+                        endTime: product.expired_at ? new Date(product.expired_at).toISOString().slice(0, 16) : "",
+                        autoExtend: product.isExtent
+                    });
+                    setDescription(product.descriptions?.[0]?.description || "");
+                    // For images, we just show placeholders since we don't have the original Files
+                    const allImages = [product.image, ...(product.additional_images || [])].filter(Boolean);
+                    if (allImages.length > 0) {
+                        setImageFiles(allImages.map((url: string, i: number) => ({
+                            file: new File([], `image-${i}.jpg`), // Dummy file
+                            url,
+                            name: `Existing Image ${i + 1}`
+                        })));
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch product for editing", error);
+                toast.error("Failed to load product details");
+            }
+        };
+        fetchProductData();
+
         // clean up image url to prevent leaks
         return () => {
             imageFiles.forEach(img => URL.revokeObjectURL(img.url));
         };
-    }, [imageFiles]);
+    }, [productId]);
+
+
 
     const maxImages = 10;
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,22 +112,77 @@ export default function CreateAuctionBody() {
         }
     };
 
-    const onSubmit = (data: any) => {
-        console.log("Form Data:", data);
+    const onSubmit = async (data: any) => {
+        if (!user) {
+            toast.error("You must be logged in to create an auction");
+            return;
+        }
+
+        try {
+            setSubmitting(true);
+
+            // Mock image URLs for now since there's no upload service
+            // In a real app, you'd upload them to S3/Cloudinary first
+            const mockImages = data.images.map((_: any, index: number) =>
+                `https://picsum.photos/seed/${data.productName.replace(/\s+/g, '')}${index}/300`
+            );
+
+            const payload = {
+                seller: user.id,
+                name: data.productName,
+                category: parseInt(data.category, 10),
+                images: mockImages,
+                init_price: data.startingBid,
+                step_price: data.bidStep,
+                instant_price: data.instantBuy || null,
+                start_at: new Date(data.startTime).toISOString(),
+                expired_at: new Date(data.endTime).toISOString(),
+                description: data.productDescription,
+                isExtent: !!data.autoExtend
+            };
+
+            if (isEditing) {
+                const result = await productService.updateProduct(productId, payload);
+                toast.success(result.message || "Auction updated successfully!");
+            } else {
+                const result = await productService.addProduct(payload);
+                toast.success(result.message || "Auction created successfully!");
+            }
+            navigate("/profile/sellings");
+
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to create auction");
+        } finally {
+            setSubmitting(false);
+        }
     }
+
 
     return (
         <form className="px-[10%] py-8" onSubmit={handleSubmit(onSubmit)}>
-            <h1 className="text-3xl font-bold text-(--primary)">Create New Auction</h1>
+            <h1 className="text-3xl font-bold text-(--primary)">{isEditing ? `Edit Auction #${productId}` : "Create New Auction"}</h1>
+
             <div className="mt-6 border border-white/10 rounded-lg p-6 bg-(--third)">
                 <h2 className="text-2xl text-white text-bold">Basic Product Information</h2>
-                <div className="mt-4">
-                    <label htmlFor="productName" className="text-white/80">Product Name<span className="text-red-500">*</span></label>
-                    <input type="text" id="productName" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white" 
-                    placeholder="Enter product name" {...register("productName")}/>
-
-                    {errors.productName && <p className="text-red-400 text-sm mt-1">{errors.productName.message}</p>}
+                <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="productName" className="text-white/80">Product Name<span className="text-red-500">*</span></label>
+                        <input type="text" id="productName" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white"
+                            placeholder="Enter product name" {...register("productName")} />
+                        {errors.productName && <p className="text-red-400 text-sm mt-1">{errors.productName.message as any}</p>}
+                    </div>
+                    <div>
+                        <label htmlFor="category" className="text-white/80">Category<span className="text-red-500">*</span></label>
+                        <select id="category" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white h-10" {...register("category")}>
+                            <option value="">Select a category</option>
+                            {categories.map((cat: any) => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
+                        </select>
+                        {errors.category && <p className="text-red-400 text-sm mt-1">{errors.category.message as any}</p>}
+                    </div>
                 </div>
+
                 <div className="mt-4">
                     <label className="text-white/80">Product Images (At least 3. Up to 10)</label>
                     <label htmlFor="productImages" className="mt-4 text-white/80 border border-white/10 w-full h-30 flex flex-col justify-center items-center rounded-md"
@@ -118,18 +235,20 @@ export default function CreateAuctionBody() {
                 <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <div>
                         <label htmlFor="startingBid" className="text-white/80">Starting Bid Price<span className="text-red-500">*</span></label>
-                        <input type="number" id="startingBid" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white" 
-                        placeholder="Enter starting bid price" {...register("startingBid")} />
+                        <input type="number" id="startingBid" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white"
+                            placeholder="Enter starting bid price" {...register("startingBid", { valueAsNumber: true })} />
 
-                        {errors.startingBid && <p className="text-red-400 text-sm mt-1">{errors.startingBid.message}</p>}
+
+                        {errors.startingBid && <p className="text-red-400 text-sm mt-1">{errors.startingBid.message as any}</p>}
                     </div>
                     <div>
                         <label htmlFor="bidStep" className="text-white/80">Bid Step Price<span className="text-red-500">*</span></label>
-                        <input type="number" id="bidStep" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white" 
-                        placeholder="Enter starting bid price" {...register("bidStep")} />
+                        <input type="number" id="bidStep" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white"
+                            placeholder="Enter bid step price" {...register("bidStep", { valueAsNumber: true })} />
 
-                        {errors.bidStep && <p className="text-red-400 text-sm mt-1">{errors.bidStep.message}</p>}
+                        {errors.bidStep && <p className="text-red-400 text-sm mt-1">{errors.bidStep.message as any}</p>}
                     </div>
+
                     <div>
                         <label htmlFor="instantBuy" className="text-white/80">Instant Buy Price (Optional)</label>
                         <input type="number" id="instantBuy" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white"
@@ -141,8 +260,8 @@ export default function CreateAuctionBody() {
                 <h2 className="text-2xl text-white text-bold">Product Description</h2>
                 <div className="mt-4">
                     <label htmlFor="productDescription" className="text-white/80">Description<span className="text-red-500">*</span></label>
-                    <textarea id="productDescription" rows={6} className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white resize-none" 
-                    placeholder="Enter product description" maxLength={500} {...register("productDescription")} onChange={(e) => setDescription(e.target.value)}
+                    <textarea id="productDescription" rows={6} className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white resize-none"
+                        placeholder="Enter product description" maxLength={500} {...register("productDescription")} onChange={(e) => setDescription(e.target.value)}
                     ></textarea>
                     <div className="flex justify-between items-center">
                         <p className="text-white/60 text-left text-sm mt-4">{description.length} / 500</p>
@@ -157,14 +276,15 @@ export default function CreateAuctionBody() {
                         <label htmlFor="startTime" className="text-white/80">Auction Start Time<span className="text-red-500">*</span></label>
                         <input type="datetime-local" id="startTime" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white" {...register("startTime")} />
 
-                        {errors.startTime && <p className="text-red-400 text-sm mt-1">{errors.startTime.message}</p>}
+                        {errors.startTime && <p className="text-red-400 text-sm mt-1">{errors.startTime.message as any}</p>}
                     </div>
                     <div>
                         <label htmlFor="endTime" className="text-white/80">Auction End Time<span className="text-red-500">*</span></label>
                         <input type="datetime-local" id="endTime" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white" {...register("endTime")} />
 
-                        {errors.endTime && <p className="text-red-400 text-sm mt-1">{errors.endTime.message}</p>}
+                        {errors.endTime && <p className="text-red-400 text-sm mt-1">{errors.endTime.message as any}</p>}
                     </div>
+
                     <div className="lg:col-span-2 mt-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-white text-lg font-semibold">Auction Auto-Extend (Optional)</h3>
@@ -200,9 +320,12 @@ export default function CreateAuctionBody() {
                 >
                     Cancel
                 </button>
-                <button className="bg-(--primary) text-black w-full px-6 py-2 rounded-md hover:scale-101 transition-transform">
-                    Create Auction
+                <button className="bg-(--primary) text-black w-full px-6 py-2 rounded-md hover:scale-101 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={submitting}>
+                    {submitting ? (isEditing ? "Updating..." : "Creating...") : (isEditing ? "Update Auction" : "Create Auction")}
                 </button>
+
+
             </div>
         </form>
     );

@@ -13,12 +13,24 @@ import {
   handleInstantBuyQuery,
   placeBidTransaction,
   createProduct,
+  createProductCategory,
   getProductById,
   getProductImagesById,
   createProductImages,
   createProductDescription,
-  createSellProduct
+  createSellProduct,
+  upsertAutoBid,
+  getTopAutoBidsForProduct,
+  insertBidRecord,
+  updateProductPrice,
+  getCurrentLeaderBid,
+  updateProductById,
+  updateProductStateById,
+  updateSellProductById,
+  closeSellProductById,
+  deleteProductById
 } from "../libs/sqlQuery.js";
+
 import {
   sendQuestionAskedEmail,
   sendQuestionAnsweredEmail,
@@ -33,14 +45,15 @@ import {
 class ProductController {
   async addProduct(req, res) {
     try {
-      const { seller, name, images, init_price, step_price, instant_price, start_at, expired_at, description, isExtent } = req.body;
+      const { seller, name, images, init_price, step_price, instant_price, start_at, expired_at, description, isExtent, category } = req.body;
 
 
-      if (!seller || !name || !images || !init_price || !step_price || !start_at || !expired_at || !description || typeof (isExtent) !== 'boolean') {
+      if (!seller || !name || !images || !init_price || !step_price || !start_at || !expired_at || !description || typeof (isExtent) !== 'boolean' || !category) {
         return res.status(400).json({
-          message: "Seller id, name, images, init_price, step_price, description and isExtent are required"
+          message: "Seller id, name, images, init_price, step_price, description, isExtent and category are required"
         });
       }
+
 
 
       if (!Array.isArray(images) || images.length < 3) {
@@ -70,8 +83,10 @@ class ProductController {
       await Promise.all([
         query(createProductImages, [productId, images]),
         query(createProductDescription, [productId, description]),
+        query(createProductCategory, [productId, category]),
         query(createSellProduct, [productId, seller, init_price, step_price, instant_price || null, start_at, expired_at, isExtent])
       ]);
+
 
 
       return res.status(201).json({ message: "Product created successfully!", productId });
@@ -125,14 +140,13 @@ class ProductController {
         return res.status(400).json({ message: "Invalid product ID" });
       }
 
-      const result = await query(getProductDetailsById, [productId]);
+      const userId = req.user?.id || null;
+      const result = await query(getProductDetailsById, [productId, userId]);
       if (result.rows.length === 0) {
         return res.status(404).json({ message: "Product not found" });
       }
 
       const productData = result.rows[0];
-
-      console.log(productData);
 
       return res.status(200).json({
         message: "Product details retrieved successfully",
@@ -601,134 +615,208 @@ class ProductController {
     }
   }
 
-  async placeBid(req, res) {
+  // --- START: Helpers for placeBid ---
+
+  _checkBidPermissions = (data, userId) => {
+
+    if (data.product_state !== "bidding" || new Date() > new Date(data.expired_at)) return "Bidding is closed for this product";
+    if (data.user_id === data.seller) return "Sellers cannot bid on their own products";
+    const isNew = parseInt(data.rating_count, 10) === 0;
+    if (isNew && !data.bid_permission) return "New users with 0 ratings need permission to bid on this product";
+    if (!isNew && parseFloat(data.user_rating) < 0.8) return "User rating too low to place a bid";
+    return null;
+  }
+
+  _processManualBid = async (res, userId, productId, amount, instP, minNext, data, productUrl, notifyList, userEmail) => {
+
+    if (instP > 0 && amount >= instP) {
+      const result = await query(handleInstantBuyQuery, [userId, productId, amount]);
+      if (result.rowCount === 0) return res.status(409).json({ message: "Product was just sold to someone else" });
+      this._notifySuccess(userEmail, data.product_name, amount, productUrl, notifyList, true);
+      return res.status(200).json({ message: "Instant buy successful!" });
+    }
+
+    const leaderResult = await query(getCurrentLeaderBid, [productId]);
+    const leader = leaderResult.rows[0];
+    if (leader && leader.bidder_id !== userId && amount <= parseFloat(leader.bid_price)) {
+      return res.status(409).json({ message: `Someone else bid higher. Current: ${parseFloat(leader.bid_price).toFixed(0)}` });
+    }
+
+    const topAuto = (await query(getTopAutoBidsForProduct, [productId])).rows[0];
+    if (topAuto && topAuto.bidder !== userId && amount <= parseFloat(topAuto.max_price)) {
+      const outbidPrice = Math.min(amount + parseFloat(data.step_price), parseFloat(topAuto.max_price));
+      await query(insertBidRecord, [userId, productId, amount, null]);
+      await this._finalizeBid(topAuto.bidder, productId, outbidPrice, parseFloat(topAuto.max_price));
+      this._notifySuccess(userEmail, data.product_name, amount, productUrl, [], false);
+      this._notifySuccess(topAuto.bidder_email, data.product_name, outbidPrice, productUrl, notifyList, false);
+      return res.status(201).json({ message: "Outbid by auto-bidding", currentPrice: outbidPrice, isWinning: false });
+    }
+
+    await this._finalizeBid(userId, productId, amount, null);
+    this._notifySuccess(userEmail, data.product_name, amount, productUrl, notifyList, false);
+    return res.status(201).json({ message: "Bid placed successfully", currentPrice: amount, isWinning: true });
+  }
+
+  _processAutoBid = async (res, userId, productId, maxPrice, currP, stepP, minNext, data, productUrl, notifyList, userEmail) => {
+
+    const leader = (await query(getCurrentLeaderBid, [productId])).rows[0];
+    const leaderId = leader ? parseInt(leader.bidder_id, 10) : null;
+    const leaderPrice = leader ? parseFloat(leader.bid_price) : currP;
+
+    await query(upsertAutoBid, [productId, userId, maxPrice]);
+    if (leaderId === userId) return res.status(200).json({ message: "Auto-bid updated. Still leading.", currentPrice: leaderPrice, isWinning: true });
+
+    const topBids = (await query(getTopAutoBidsForProduct, [productId])).rows;
+    const [first, second] = topBids;
+    const m1 = parseFloat(first.max_price), m2 = second ? parseFloat(second.max_price) : 0;
+    const winnerId = first.bidder;
+    const finalPrice = Math.max(minNext, topBids.length > 1 ? (m1 > m2 ? Math.min(m2 + stepP, m1) : m1) : (leaderPrice + stepP));
+
+    await this._finalizeBid(winnerId, productId, finalPrice, winnerId === userId ? maxPrice : m1);
+    this._notifySuccess(winnerId === userId ? userEmail : first.bidder_email, data.product_name, finalPrice, productUrl, notifyList, false);
+
+    return res.status(winnerId === userId ? 201 : 200).json({
+      message: winnerId === userId ? "Auto-bid active. You win!" : "Outbid by higher auto-bid",
+      currentPrice: finalPrice,
+      isWinning: winnerId === userId
+    });
+  }
+
+  _finalizeBid = async (bidderId, productId, price, maxPrice) => {
+
+    await query(insertBidRecord, [bidderId, productId, price, maxPrice]);
+    await query(updateProductPrice, [price, productId]);
+  }
+
+  _notifySuccess = (winnerEmail, productName, price, url, others, isInstant) => {
+
+    const [sendWinner, sendOthers] = isInstant ? [sendSuccessfullyInstantBuyEmail, sendInstantBuyEmail] : [sendBidSuccessfullyEmail, sendPriceUpdateEmail];
+    sendWinner(winnerEmail, productName, price, url).catch(e => console.error("Email error:", e));
+    others.forEach(email => sendOthers(email, productName, price, winnerEmail, url).catch(e => console.error("Email error:", e)));
+  }
+
+  _getBidCheckQuery = () => {
+
+    return `
+      SELECT u.id as user_id, u.email as user_email, u.rating as user_rating,
+             p.id as product_id, p.name as product_name, p.current_price, p.state as product_state,
+             sp.step_price, sp.instant_price, sp.seller, sp.expired_at,
+             seller_user.email as seller_email,
+             (SELECT COUNT(*) FROM reviews WHERE ratee = u.id) as rating_count,
+             (SELECT br.id FROM bid_requests br WHERE br.bidder = u.id AND br.product = p.id AND br.state = 'success' LIMIT 1) as bid_permission,
+             (SELECT b.email FROM bids b2 JOIN users b ON b2.buyer = b.id WHERE b2.product = p.id ORDER BY b2.price DESC, b2.bid_date ASC LIMIT 1) as prev_bidder_email
+      FROM users u CROSS JOIN products p
+      LEFT JOIN sell_product sp ON sp.product = p.id
+      LEFT JOIN users seller_user ON seller_user.id = sp.seller
+      WHERE u.id = $1 AND p.id = $2`;
+  }
+
+  // --- END: Helpers for placeBid ---
+
+  placeBid = async (req, res) => {
+
     try {
       const { productId } = req.params;
-      const userId = req.user.id;
-      const { bidAmount } = req.body;
-      const amount = parseFloat(bidAmount);
+      const { id: userId, email: userEmail } = req.user;
+      const { bidAmount, maxPrice: autoMax } = req.body;
 
-      if (isNaN(amount) || amount <= 0) {
-        return res.status(400).json({ message: "Invalid bid amount" });
-      }
+      const amount = bidAmount ? parseFloat(bidAmount) : null;
+      const maxPrice = autoMax ? parseFloat(autoMax) : null;
 
-      const combinedCheckQuery = `
-        SELECT
-          u.id as user_id,
-          u.email as user_email,
-          u.rating as user_rating,
-          p.id as product_id,
-          p.name as product_name,
-          p.current_price,
-          sp.step_price,
-          sp.instant_price,
-          p.state as product_state,
-          sp.seller,
-          sp.expired_at,
-          seller_user.email as seller_email,
-          (SELECT COUNT(*) FROM reviews WHERE ratee = u.id) as rating_count,
-          (SELECT br.id FROM bid_requests br WHERE br.bidder = u.id AND br.product = p.id AND br.state = 'success' LIMIT 1) as bid_permission,
-          (SELECT bidder.email FROM bids b JOIN users bidder ON b.buyer = bidder.id WHERE b.product = p.id ORDER BY b.price DESC LIMIT 1) as prev_bidder_email
-        FROM users u
-          CROSS JOIN products p
-          LEFT JOIN sell_product sp ON sp.product = p.id
-          LEFT JOIN users seller_user ON seller_user.id = sp.seller
-        WHERE u.id = $1 AND p.id = $2
-      `;
+      if (!amount === !maxPrice) return res.status(400).json({ message: "Provide either bidAmount OR maxPrice" });
+      if (isNaN(amount || maxPrice) || (amount || maxPrice) <= 0) return res.status(400).json({ message: "Invalid amount" });
 
-      const checkResult = await query(combinedCheckQuery, [userId, productId]);
-
-      if (checkResult.rows.length === 0) {
-        return res.status(404).json({ message: "User or product not found" });
-      }
-
+      const checkResult = await query(this._getBidCheckQuery(), [userId, productId]);
       const data = checkResult.rows[0];
+      if (!data) return res.status(404).json({ message: "User or product not found" });
 
-      if (!data.user_id) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      const permissionError = this._checkBidPermissions(data, userId);
+      if (permissionError) return res.status(403).json({ message: permissionError });
 
-      if (!data.product_id) {
-        return res.status(404).json({ message: "Product not found" });
-      }
+      const [currP, stepP, instP] = [data.current_price, data.step_price, data.instant_price || 0].map(parseFloat);
+      const minNext = currP + stepP;
+      if ((amount || maxPrice) < minNext) return res.status(400).json({ message: `Minimum bid is ${minNext.toFixed(0)}` });
 
-      if (data.product_state !== "bidding" || new Date() > new Date(data.expired_at)) {
-        return res.status(403).json({ message: "Bidding is closed for this product" });
-      }
+      const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
+      const notifyList = [data.seller_email, data.prev_bidder_email && data.prev_bidder_email !== userEmail && data.prev_bidder_email].filter(Boolean);
 
-      if (data.user_id === data.seller) {
-        return res.status(403).json({ message: "Sellers cannot bid on their own products" });
-      }
-
-      const ratingCount = parseInt(data.rating_count, 10);
-      const isFirstBid = ratingCount === 0;
-
-      if (isFirstBid && !data.bid_permission) {
-        return res.status(403).json({ message: "New users with 0 ratings need permission to bid on this product" });
-      }
-
-      if (!isFirstBid && parseFloat(data.user_rating) < 0.8) {
-        return res.status(403).json({ message: "User rating too low to place a bid" });
-      }
-
-      const current_price = parseFloat(data.current_price);
-      const step_price = parseFloat(data.step_price);
-      const instant_price = parseFloat(data.instant_price || 0);
-
-      if (amount < current_price + step_price) {
-        return res.status(400).json({ message: `Bid amount must be at least $${(current_price + step_price).toFixed(2)}` });
-      }
-
-      const sellerEmail = data.seller_email;
-      const currentBidderEmail = data.user_email;
-      const previousHighestBidderEmail = data.prev_bidder_email;
-      const productName = data.product_name;
-      const productUrl = `https://${process.env.FRONTEND_HOST}/products/${productId}`;
-
-      const toList = [sellerEmail];
-      if (previousHighestBidderEmail && previousHighestBidderEmail !== currentBidderEmail) {
-        toList.push(previousHighestBidderEmail);
-      }
-
-      if (instant_price > 0 && amount >= instant_price) {
-        const instantResult = await query(handleInstantBuyQuery, [userId, productId, amount]);
-
-        if (instantResult.rowCount === 0) {
-          return res.status(409).json({ message: "Product was just sold to someone else" });
-        }
-
-        sendSuccessfullyInstantBuyEmail(currentBidderEmail, productName, amount, productUrl)
-          .catch(err => console.error("Error sending instant buy email to buyer:", err));
-
-        for (const recipient of toList) {
-          sendInstantBuyEmail(recipient, productName, amount, currentBidderEmail, productUrl)
-            .catch(err => console.error("Error sending instant buy email to others:", err));
-        }
-
-        return res.status(200).json({ message: "Instant buy successful! You have purchased the product." });
-      }
-
-      const bidResult = await query(placeBidTransaction, [userId, productId, amount]);
-
-      if (bidResult.rowCount === 0) {
-        return res.status(409).json({ message: "Someone else has placed a higher bid. Please try again with a higher amount." });
-      }
-
-      sendBidSuccessfullyEmail(currentBidderEmail, productName, amount, productUrl)
-        .catch(err => console.error("Error sending bid success email to bidder:", err));
-
-      for (const recipient of toList) {
-        sendPriceUpdateEmail(recipient, productName, amount, currentBidderEmail, productUrl)
-          .catch(err => console.error("Error sending price update email to others:", err));
-      }
-
-      return res.status(201).json({ message: "Bid placed successfully" });
+      if (amount) return this._processManualBid(res, userId, productId, amount, instP, minNext, data, productUrl, notifyList, userEmail);
+      return this._processAutoBid(res, userId, productId, maxPrice, currP, stepP, minNext, data, productUrl, notifyList, userEmail);
     } catch (error) {
-      console.error("Error when placing bid", error);
+      console.error("Error placing bid:", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   }
+
+  async updateProduct(req, res) {
+    try {
+      const { productId } = req.params;
+      const userId = req.user.id;
+      const { name, init_price, step_price, instant_price, start_at, expired_at, description, isExtent, category } = req.body;
+
+      const check = await query(`SELECT seller FROM sell_product WHERE product = $1`, [productId]);
+      if (check.rows.length === 0 || check.rows[0].seller !== userId) {
+        return res.status(403).json({ message: "Unauthorized." });
+      }
+
+      await Promise.all([
+        query(updateProductById, [name, init_price, req.body.image || '', productId]),
+        query(updateSellProductById, [init_price, step_price, instant_price || null, start_at, expired_at, isExtent, productId]),
+        query(`UPDATE product_descriptions SET description = $1 WHERE product = $2`, [description, productId]),
+        query(`UPDATE product_categories SET category = $1 WHERE product = $2`, [category, productId])
+      ]);
+
+      return res.status(200).json({ message: "Product updated successfully!" });
+    } catch (error) {
+      console.error("[updateProduct] Error: ", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
+
+  async closeAuction(req, res) {
+    try {
+      const { productId } = req.params;
+      const userId = req.user.id;
+
+      const check = await query(`SELECT seller FROM sell_product WHERE product = $1`, [productId]);
+      if (check.rows.length === 0 || check.rows[0].seller !== userId) {
+        return res.status(403).json({ message: "Unauthorized." });
+      }
+
+      await query(updateProductStateById, ['sold', productId]);
+      await query(closeSellProductById, [productId]);
+
+      return res.status(200).json({ message: "Auction closed successfully!" });
+    } catch (error) {
+      console.error("[closeAuction] Error: ", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
+
+  async deleteProduct(req, res) {
+    try {
+      const { productId } = req.params;
+      const userId = req.user.id;
+
+      const check = await query(`SELECT seller FROM sell_product WHERE product = $1`, [productId]);
+      if (check.rows.length === 0 || check.rows[0].seller !== userId) {
+        return res.status(403).json({ message: "Unauthorized." });
+      }
+
+      const bidCheck = await query(`SELECT COUNT(*) FROM bids WHERE product = $1`, [productId]);
+      if (parseInt(bidCheck.rows[0].count) > 0) {
+        return res.status(400).json({ message: "Cannot delete product that has bids." });
+      }
+
+      await query(deleteProductById, [productId]);
+      return res.status(200).json({ message: "Product deleted successfully!" });
+    } catch (error) {
+      console.error("[deleteProduct] Error: ", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
 }
+
 
 const productController = new ProductController();
 export default productController;

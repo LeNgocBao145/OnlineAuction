@@ -75,7 +75,6 @@ const adminService = {
     birthdate: string;
     address: string;
     role: string;
-    rating: number;
   }): Promise<void> {
     await api.put(`/admins/accounts/${userId}`, data, { withCredentials: true });
   },

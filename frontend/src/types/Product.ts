@@ -26,6 +26,7 @@ export interface ProductBid {
 }
 
 export interface ProductQA {
+  id: number;
   question: string;
   questioner_name: string;
   answer?: string | null;
@@ -48,11 +49,16 @@ export interface ProductDetail {
   seller_name: string;
   created_at: string;
   expired_at: string;
-  categories: string[];
+  starting_at?: string;
+  isExtent?: boolean;
+  categories: any[];
   additional_images: string[];
   descriptions: ProductDescription[];
+
   bids: ProductBid[];
   qa: ProductQA[];
+  user_bid_request_state?: "pending" | "success" | "failed" | null;
+  user_relation?: "seller" | "winner" | "bidder" | "other";
 }
 
 // Filter products parameters

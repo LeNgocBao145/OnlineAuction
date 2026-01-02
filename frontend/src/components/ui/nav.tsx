@@ -49,7 +49,8 @@ export default function Nav() {
   };
 
   return (
-    <nav className="relative lg:h-[100px] h-[150px] w-full grid lg:grid-cols-[1fr_1fr_1fr_3fr] grid-cols-3 bg-(--bgc) border-b border-white/10 shadow-lg">
+    <nav className="relative lg:h-[100px] h-[150px] w-full grid lg:grid-cols-[1fr_1fr_1fr_3fr] grid-cols-3 bg-(--bgc) border-b border-white/10 shadow-lg z-50">
+
       <Link to="/" className="w-full flex justify-center items-center gap-2 group">
         <img src={Icon} className="flex-none aspect-auto h-10 transition-transform group-hover:scale-110" alt="Logo" />
         <p className="font-sans font-bold text-(--primary) text-lg">AUCTIONIFY</p>

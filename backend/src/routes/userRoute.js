@@ -11,6 +11,7 @@ router.get('/me', authenticateToken, UserController.authMe);
 // Dynamic routes
 router.get('/:userId', UserController.getUser);
 router.patch('/:userId', UserController.updateUser);
+router.post('/:userId/send-otp', UserController.sendOTP);
 router.patch('/:userId/verify-otp', UserController.verifyOTP);
 router.patch('/:userId/change-password', UserController.changePassword);
 router.get('/:userId/favorites', UserController.getFavorites);
