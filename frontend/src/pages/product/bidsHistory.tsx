@@ -6,6 +6,11 @@ export default function BidHistory() {
   const { product } = useProductStore();
   const bids = product?.bids || [];
 
+  const maskName = (name: string) => {
+    const parts = name.trim().split(" ");
+    return parts.length === 1 ? parts[0] : `****${parts.at(-1)}`;
+  };
+
   return (
     <div className="w-full p-4 bg-(--third) border border-white/10 rounded-xl">
       <h1 className="text-(--primary) text-2xl font-bold mb-4">Bids History</h1>
@@ -20,7 +25,7 @@ export default function BidHistory() {
             <div className="flex flex-col">
               <p className="text-white font-bold text-sm">{formatDate(bid.bid_time)}</p>
             </div>
-            <p className="text-white text-md">{bid.bidder_name}</p>
+            <p className="text-white text-md">{maskName(bid.bidder_name)}</p>
             <p className="text-(--primary) font-bold">
               {formatCurrency(bid.amount)}
             </p>
