@@ -76,7 +76,7 @@ export default function EditCategoryModal({
                             disabled={isLoadingCategories}
                         >
                             <option value="">-- None (Root Category) --</option>
-                            {categories.map((cat) => (
+                            {categories.filter(c => c.parent === null).map((cat) => (
                                 <option key={cat.id} value={cat.id}>
                                     {cat.name}
                                 </option>

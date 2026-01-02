@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { ChevronRightIcon } from "@heroicons/react/24/solid";
 import api from "@/lib/axios";
@@ -11,14 +11,10 @@ interface Category {
     parent_name: string | null;
 }
 
-interface TreeCategory extends Category {
-    children: TreeCategory[];
-}
-
 export default function HeaderCategory() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activePath, setActivePath] = useState<number[]>([]);
+    const [selectedParent, setSelectedParent] = useState<number | null>(null);
     const navigate = useNavigate();
     const { filterProducts } = useSearchStore();
 
@@ -36,18 +32,8 @@ export default function HeaderCategory() {
         fetchCategories();
     }, []);
 
-    // Build recursive tree structure
-    const categoryTree = useMemo(() => {
-        const buildTree = (parentId: number | null = null): TreeCategory[] => {
-            return categories
-                .filter(c => c.parent === parentId)
-                .map(c => ({
-                    ...c,
-                    children: buildTree(c.id)
-                }));
-        };
-        return buildTree(null);
-    }, [categories]);
+    const parentCategories = categories.filter(c => c.parent === null);
+    const childCategories = categories.filter(c => c.parent === selectedParent && selectedParent !== null);
 
     const handleCategoryClick = async (category: Category) => {
         await filterProducts({
@@ -58,90 +44,82 @@ export default function HeaderCategory() {
         navigate("/search");
     };
 
-    const handleMouseEnter = (level: number, id: number) => {
-        const newPath = activePath.slice(0, level);
-        newPath[level] = id;
-        setActivePath(newPath);
-    };
-
-    // Render a column of categories at a specific level
-    const renderCategoryColumn = (level: number, currentChildren: TreeCategory[]): React.ReactNode => {
-        if (!currentChildren || currentChildren.length === 0) return null;
-
-        const activeId = activePath[level];
-        const nextChildren = currentChildren.find(c => c.id === activeId)?.children || [];
-
-        return (
-            <>
-                <div className="flex-1 p-4 border-r border-white/10 min-w-[200px] max-h-[500px] overflow-y-auto custom-scrollbar">
-                    <h3 className="text-(--primary) text-xs font-bold uppercase tracking-wider mb-4 px-2 opacity-50">
-                        {level === 0 ? "Categories" : "Subcategories"}
-                    </h3>
-                    {currentChildren.map((category) => (
+    return (
+        <div className='absolute top-[100px] mt-1 lg:left-[10%] left-[3%] lg:w-[80%] w-[94%] h-[500px] bg-(--secondary) z-9999 flex rounded-xl border border-white/10 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200'>
+            {/* Left Column: Parent Categories */}
+            <div className="lg:w-1/4 w-2/5 p-4 border-r border-white/10 overflow-y-auto custom-scrollbar bg-black/5">
+                <h3 className="text-(--primary) text-xs font-bold uppercase tracking-wider mb-4 px-2 opacity-50">Categories</h3>
+                {loading ? (
+                    <div className="text-white/40 px-2 flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-(--primary)"></div>
+                        Loading...
+                    </div>
+                ) : parentCategories.length === 0 ? (
+                    <div className="text-white/40 px-2 italic">No categories</div>
+                ) : (
+                    parentCategories.map((category) => (
                         <div
                             key={category.id}
-                            className={`group h-10 rounded-md mb-1 cursor-pointer flex justify-between items-center px-3 transition-all duration-200
-                                ${activeId === category.id
-                                    ? 'bg-(--primary) text-black font-bold'
-                                    : 'text-white/70 hover:bg-white/5 hover:text-white'}`}
-                            onMouseEnter={() => handleMouseEnter(level, category.id)}
+                            className={`h-11 rounded-lg mb-1 cursor-pointer flex justify-between items-center px-4 transition-all duration-200
+                                ${selectedParent === category.id ? 'bg-(--primary) text-black font-bold scale-[1.02]' : 'text-white/70 hover:bg-white/5 hover:text-white'}`}
+                            onMouseEnter={() => setSelectedParent(category.id)}
                             onClick={() => handleCategoryClick(category)}
                         >
                             <span className="truncate">{category.name}</span>
-                            {category.children.length > 0 && (
-                                <ChevronRightIcon className={`w-4 h-4 transition-transform ${activeId === category.id ? 'translate-x-1' : 'opacity-40'}`} />
-                            )}
+                            <ChevronRightIcon className={`w-4 h-4 transition-transform ${selectedParent === category.id ? 'translate-x-1' : 'opacity-40'}`} />
                         </div>
-                    ))}
-                </div>
-                {nextChildren.length > 0 && renderCategoryColumn(level + 1, nextChildren)}
-            </>
-        );
-    };
+                    ))
+                )}
+            </div>
 
-    return (
-        <div
-            className='absolute top-[100px] mt-1 lg:left-[10%] left-[3%] lg:w-[80%] w-[94%] bg-(--secondary) z-9999 flex rounded-xl border border-white/10 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200'
-            onMouseLeave={() => setActivePath([])}
-        >
-            {loading ? (
-                <div className="w-full h-40 flex items-center justify-center text-white/40">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-(--primary) mr-3"></div>
-                    Loading categories...
-                </div>
-            ) : categoryTree.length === 0 ? (
-                <div className="w-full h-40 flex items-center justify-center text-white/40 italic">
-                    No categories found
-                </div>
-            ) : (
-                <div className="flex w-full h-[500px]">
-                    {renderCategoryColumn(0, categoryTree)}
-
-                    {/* Placeholder content for when no subcategories are hovered in later levels */}
-                    {activePath.length === 0 && (
-                        <div className="flex-grow flex flex-col items-center justify-center text-white/20 p-8 text-center bg-black/10">
-                            <div className="mb-4 text-4xl">📁</div>
-                            <p className="text-sm font-medium">Explore our vast collection of products</p>
-                            <p className="text-xs">Hover over a category to see more details</p>
-                        </div>
-                    )}
-
-                    {activePath.length > 0 && !categoryTree.find(c => c.id === activePath[0])?.children.length && (
-                        <div className="flex-grow flex flex-col items-center justify-center text-white/20 p-8 text-center bg-black/10">
-                            <p className="text-sm italic">No further subcategories</p>
+            {/* Right Column: Subcategories */}
+            <div className="flex-grow p-6 overflow-y-auto custom-scrollbar">
+                {selectedParent ? (
+                    <>
+                        <div className="flex justify-between items-center mb-6 pb-2 border-b border-white/5">
+                            <h3 className="text-xl font-bold text-white">
+                                {parentCategories.find(c => c.id === selectedParent)?.name}
+                            </h3>
                             <button
-                                className="mt-4 text-(--primary) hover:underline text-sm font-bold"
-                                onClick={() => {
-                                    const cat = categoryTree.find(c => c.id === activePath[0]);
-                                    if (cat) handleCategoryClick(cat);
-                                }}
+                                className="text-(--primary) hover:underline text-sm font-medium"
+                                onClick={() => handleCategoryClick(parentCategories.find(c => c.id === selectedParent)!)}
                             >
-                                View all {categoryTree.find(c => c.id === activePath[0])?.name}
+                                View all items
                             </button>
                         </div>
-                    )}
-                </div>
-            )}
+
+                        {childCategories.length > 0 ? (
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                                {childCategories.map((category) => (
+                                    <div
+                                        key={category.id}
+                                        className='group bg-white/2 border border-white/5 text-white/80 hover:text-black hover:bg-(--primary) hover:border-(--primary) cursor-pointer py-4 px-4 rounded-xl transition-all duration-200 flex items-center justify-between shadow-sm'
+                                        onClick={() => handleCategoryClick(category)}
+                                    >
+                                        <span className="font-medium">{category.name}</span>
+                                        <ChevronRightIcon className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="h-full flex flex-col items-center justify-center text-white/20 text-center py-20">
+                                <p className="text-lg italic">No subcategories found</p>
+                                <p className="text-sm">This category doesn't have any specific sub-groups yet.</p>
+                            </div>
+                        )}
+                    </>
+                ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-white/20 text-center space-y-4">
+                        <div className="p-4 bg-white/5 rounded-full">
+                            <ChevronRightIcon className="w-12 h-12 rotate-180 opacity-20" />
+                        </div>
+                        <div>
+                            <p className="text-lg font-bold">Welcome to Categories</p>
+                            <p className="text-sm">Hover over a category on the left to see more details.</p>
+                        </div>
+                    </div>
+                )}
+            </div>
 
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar {
