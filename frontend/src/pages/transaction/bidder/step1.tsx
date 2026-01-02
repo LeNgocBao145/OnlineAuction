@@ -2,10 +2,11 @@ import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import transactionService, { type StepBoxProps } from "@/services/transactionService";
+import { toast } from "sonner";
 
-export default function Step1Box() {
+export default function Step1Box({ productId, transaction, onSuccess }: StepBoxProps) {
     const [uploadedData, setUploadedData] = useState<File>();
-
     const paymentInfoSchema = z.object({
         paymentProof: z
             .custom<File>()
@@ -15,10 +16,7 @@ export default function Step1Box() {
             ),
         shippingAddress: z
             .string()
-            .min(10, "Shipping address must be at least 10 characters long."),
-        contactNumber: z
-            .string()
-            .min(7, "Contact number must be at least 7 characters long."),
+            .min(10, "Shipping address must be at least 10 characters long.")
     });
 
     const { register, handleSubmit, formState: { errors }, setValue } = useForm({
@@ -35,9 +33,23 @@ export default function Step1Box() {
         }
     };
 
-    const submitPaymentInfo = (data: any) => {
-        console.log("Payment Information Submitted:", data);
+    const submitPaymentInfo = async (data: any) => {
+        try {
+          const { paymentProof: invoiceImage, shippingAddress: deliveryAddress } = data;
+          const res = await transactionService.bidderSubmit(productId, {
+            deliveryAddress,
+            invoiceImage: invoiceImage.name,
+          });
+          if(res) {
+            toast.success("Send payment information to seller successfully");
+            await onSuccess();
+          }
+        } catch (error) {
+            console.error("SubmitPaymentInfo error:", error);
+            toast.error("Send payment information failed");
+        }
     };
+      
 
     return (
         <div className="border border-white/10 rounded-lg p-4 bg-(--third)">
@@ -61,7 +73,7 @@ export default function Step1Box() {
                         {uploadedData && uploadedData.type === "application/pdf" ? (
                             <embed type="application/pdf" className="text-white w-full h-full" src={URL.createObjectURL(uploadedData)} />
                         ) : (
-                            <img className="text-white" src={uploadedData ? URL.createObjectURL(uploadedData) : ""} alt="Your uploaded proof of payment." />
+                            <img className="text-white" src={uploadedData ? URL.createObjectURL(uploadedData) : undefined} alt="Your uploaded proof of payment." />
                         )}
                     </div>
                     {}{errors.paymentProof && <p className="text-red-500 text-sm">{errors.paymentProof.message}</p>}
@@ -70,11 +82,6 @@ export default function Step1Box() {
                     <label className="text-white/80 mt-4">Your shipping address <span className="text-red-500">*</span></label>
                     <textarea className="w-full mt-1 p-2 bg-(--fourth) border border-white/10 rounded-md text-white h-24 resize-none" placeholder="Enter your shipping address here..." {...register("shippingAddress")} />
                     {errors.shippingAddress && <p className="text-red-500 text-sm">{errors.shippingAddress.message}</p>}
-                </div>
-                <div className="flex flex-col">
-                    <label className="text-white/80 mt-4">Your contact number <span className="text-red-500">*</span></label>
-                    <input type="text" className="w-full mt-1 p-2 bg-(--fourth) border border-white/10 rounded-md text-white" placeholder="Enter your contact number here..." {...register("contactNumber")} />
-                    {errors.contactNumber && <p className="text-red-500 text-sm">{errors.contactNumber.message}</p>}
                 </div>
                 <button type="submit" className="mt-6 bg-(--primary) w-full text-black font-bold py-2 px-4 rounded-md hover:opacity-90 transition-opacity duration-200">Submit Payment Information</button>
             </form>

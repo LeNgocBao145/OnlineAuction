@@ -30,7 +30,7 @@ export default function Landing() {
         <>
             <Nav />
             <Hero username={user?.name || "Guest"} />
-            <div className="w-8/10 grid grid-cols-[repeat(auto-fill,minmax(clamp(20rem,30dvw,24rem),1fr))] m-auto gap-4">
+            <div className="w-95/100 grid lg:grid-cols-3 grid-cols-1 m-auto gap-4">
                 <EndingSoon />
                 <MostBids />
                 <HighestPrice />

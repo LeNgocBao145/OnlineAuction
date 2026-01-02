@@ -3,15 +3,14 @@ import express from "express";
 import cors from "cors";
 import route from "./routes/index.js";
 import cookieParser from "cookie-parser";
+import { app, server } from "./socket/index.js";
 
 const PORT = process.env.PORT || 5555;
-
-const app = express();
 
 // middeware
 // This help express understand json format of request body
 const allowedOrigins = [
-  `https://${process.env.FRONTEND_HOST}`,
+  `https://${process.env.FRONT_HOST}`,
   'http://localhost:5173',
   'http://localhost:3000',
 ];
@@ -34,6 +33,6 @@ app.use(cookieParser());
 
 route(app);
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);
 });

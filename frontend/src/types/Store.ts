@@ -1,5 +1,7 @@
 import type { Product, ProductDetail, FilterParams, FilteredProductsResponse } from "./Product";
 import type { User, UserProfile, UserRating, UserBidding, UserSelling } from "./User";
+import type { Message, MessageThread } from "./Chat";
+import type { Socket } from "socket.io-client";
 
 export interface AuthState {
   accessToken: string | null;
@@ -98,4 +100,24 @@ export interface UserProfileState {
   rateSeller: (userId: string | number, productId: string | number, rating: number, content: string) => Promise<void>;
 
   clearUserData: () => void;
+}
+
+export interface ChatState {
+  messages: Record<string, MessageThread>;
+  activeProductId: number | string | null;
+  messageLoading: boolean;
+
+  setActiveProductId: (id: number | string | null) => void;
+  fetchMessages: (productId: string | number) => Promise<void>;
+  sendMessage: (recipientId: string, content: string, image?: string) => Promise<void>;
+  addMessage: (message: Message) => Promise<void>;
+  reset: () => void;
+}
+
+export interface SocketState {
+  onlineUsers: number[];
+  socket: Socket | null;
+
+  connectSocket: () => void;
+  disconnectSocket: () => void;
 }

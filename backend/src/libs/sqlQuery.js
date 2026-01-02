@@ -663,7 +663,82 @@ export const placeBidTransaction = `
 // Product Description Queries
 export const getProductDescriptionsByProductId = `SELECT * FROM product_descriptions WHERE product = $1`;
 
-export const createProductDescription = `INSERT INTO product_descriptions (product, description, created_at) VALUES ($1, $2, $3) RETURNING *`;
+export const createSellProduct = `INSERT INTO sell_product(product, seller, init_price, step_price, instant_price, starting_at, expired_at, "isExtent")
+                                            VALUES($1, $2, $3, $4, $5, $6, $7, $8)`;
+//Product images
+export const createProductImages = `INSERT INTO product_images (product, image_path) VALUES ($1, $2::varchar(500)[]) RETURNING *`;
+
+export const updateProductImages = ``;
+
+export const getProductImages = `SELECT * FROM product_images`;
+
+export const getProductImagesById = `SELECT * FROM product_images WHERE product = $1`;
+
+export const getListProducts = (type, order) => {
+    let query;
+    switch (type) {
+        case 'ENDING_SOON':
+            query = `SELECT
+                        p.name,
+                        p.current_price,
+                        CEIL(EXTRACT(EPOCH FROM (sp.expired_at - NOW())) / 60) AS minutes_left
+                     FROM sell_product sp
+                     JOIN products p ON p.id = sp.product
+                     WHERE p.state = 'bidding'
+                     AND sp.expired_at > NOW()
+                     ORDER BY sp.expired_at ${order}
+                     LIMIT $1`;
+            break;
+        case 'MOST_BIDDED':
+            query = `SELECT 
+                        p.id, 
+                        p.name, 
+                        count(b.id) AS bids,
+                        p.current_price
+                     FROM products p
+                     LEFT JOIN bids b ON b.product = p.id
+                     GROUP BY p.id, p.name, p.current_price
+                     ORDER BY bids ${order}
+                     LIMIT $1`
+            break;
+        case 'HIGHEST_PRICE':
+            query = `SELECT
+                        p.id,
+                        p.name,
+                        count(b.id) AS bids,
+                        p.current_price
+                     FROM products p
+                     LEFT JOIN bids b ON b.product = p.id
+                     GROUP BY p.id, p.name, p.current_price
+                     ORDER BY p.current_price ${order}
+                     LIMIT $1`
+            break;
+    }
+    return query;
+}
+
+//Product descriptions
+export const createProductDescription = `INSERT INTO product_descriptions (product, description) VALUES ($1, $2) RETURNING *`;
+
+export const getProductDescription = `SELECT * FROM product_descriptions WHERE id = $1 AND product = $2`;
+
+//Category
+export const getListCategories =   `SELECT
+                                        p.id,
+                                        p.name,
+                                        COALESCE(
+                                            JSONB_AGG(
+                                            JSONB_BUILD_OBJECT('id', c.id, 'name', c.name)
+                                            ORDER BY c.name
+                                            ) FILTER (WHERE c.id IS NOT NULL),
+                                            '[]'::jsonb
+                                        ) AS children
+                                    FROM categories p
+                                    LEFT JOIN categories c
+                                    ON c.parent = p.id
+                                    WHERE p.parent IS NULL
+                                    GROUP BY p.id, p.name
+                                    ORDER BY p.name`;
 
 // Admin Queries
 export const getRequests = (sortLogic) => `
@@ -814,4 +889,98 @@ export const getTop5HighestPrice = `
     ORDER BY p.current_price DESC
 
     LIMIT 5;
+`;
+
+// Transaction
+export const getTradeVerification = `SELECT t.product, 
+                                            t.bidder, 
+                                            t.seller,
+                                            t.delivery_address,
+                                            t.invoice_image,
+                                            t.sell_accept,
+                                            t.bidder_accept,
+                                            t.state,
+                                            b.name AS bidder_name,
+                                            b.rating AS bidder_rating,
+                                            s.name AS seller_name,
+                                            s.rating AS seller_rating,
+                                            p.name,
+                                            p.current_price,
+                                            p.image,
+                                            sp.expired_at
+                                    FROM trade_verifications t
+                                    JOIN users b ON b.id = t.bidder
+                                    JOIN users s ON s.id = t.seller
+                                    JOIN products p ON p.id = t.product
+                                    JOIN sell_product sp ON sp.product = t.product
+                                    WHERE t.product = $1`;
+                        
+export const bidderSubmission = `UPDATE trade_verifications
+                                 SET
+                                    delivery_address = $1,
+                                    invoice_image = $2,
+                                    state = 'pending_seller_confirm'
+                                 WHERE product = $3
+                                 AND state = 'pending_payment'
+                                 RETURNING *`;
+
+export const sellerConfirmation = `UPDATE trade_verifications
+                                   SET
+                                    sell_accept = TRUE,
+                                    delivery_invoice_image = $1,
+                                    state = 'pending_bidder_confirm'
+                                   WHERE product = $2
+                                   AND state = 'pending_seller_confirm'
+                                   RETURNING *`;
+
+export const bidderConfirmation = `UPDATE trade_verifications
+                                   SET
+                                    bidder_accept = TRUE,
+                                    state = 'completed'
+                                   WHERE product = $1
+                                   AND state = 'pending_bidder_confirm'
+                                   RETURNING *`;          
+                                   
+export const tradeCancel = `UPDATE trade_verifications
+                            SET
+                                state = 'failed'
+                            WHERE product = $1
+                            AND state IN ('pending_payment', 'pending_seller_confirm', 'pending_bidder_confirm', 'completed')
+                            RETURNING *`; 
+
+export const getWinner = `SELECT u.*
+                          FROM trade_verifications t
+                          JOIN users u ON u.id = t.bidder
+                          WHERE t.product = $1`
+                          
+export const getRoleFromTrade = `SELECT product, bidder, seller
+                                FROM trade_verifications
+                                WHERE product = $1`
+
+export const rating = `INSERT INTO reviews (product, rater, ratee, liked, content)
+                        VALUES ($1, $2, $3, $4, $5)
+                        RETURNING *`
+
+// Message Queries
+export const createMessage = `
+    INSERT INTO messages (product, sender, content, image, type, created_at) 
+    VALUES ($1, $2, $3, $4, $5, NOW()) 
+    RETURNING *
+`;
+
+export const getMessagesByProduct = (sortLogic = "created_at DESC") => `
+    SELECT 
+        m.id,
+        m.product,
+        m.sender,
+        u.name AS sender_name,
+        m.content,
+        m.image,
+        m.type,
+        m.created_at
+    FROM messages m
+    LEFT JOIN users u ON m.sender = u.id
+    WHERE m.product = $1
+    ORDER BY ${sortLogic}
+    LIMIT $2 OFFSET $3
 `;

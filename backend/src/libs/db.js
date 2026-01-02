@@ -1,4 +1,7 @@
 import pg from 'pg';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const requiredEnvVars = [
     'PG_HOST',
@@ -32,8 +35,8 @@ db.query('SELECT NOW()')
     .then(() => {
         console.log("Connect successfully with postgres database!")
     })
-    .catch((err) => { 
-        console.log("Couldn't connect to database", err) 
+    .catch((err) => {
+        console.log("Couldn't connect to database", err)
         // Don't exit, allow server to start
     });
 

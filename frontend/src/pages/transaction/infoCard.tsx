@@ -1,38 +1,50 @@
 import { CheckIcon } from "@heroicons/react/24/solid";
+import { formatTimeLeft } from "@/utils/timeUtils";
+import type { Transaction } from "@/services/transactionService";
 
 export default function TransactionInfoCard({
-    currentStep
+    currentStep,
+    transaction
 }: { 
-    currentStep: number 
+    currentStep: number,
+    transaction: Transaction | null
 }) {
+    if (!transaction) {
+        return (
+          <div className="border border-white/10 rounded-lg p-4 bg-(--third) text-white/60">
+            Loading transaction...
+          </div>
+        );
+    }
     return (
         <>
             {/*product info component*/}
             <div className="border border-white/10 rounded-lg p-4 bg-(--third)">
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_3fr] gap-4">
-                    <img className="w-full mr-4 aspect-square border-(--primary) border rounded-lg flex justify-center items-center text-white/60" src="" alt="product image" />
+                    <img className="w-full mr-4 aspect-square border-(--primary) border rounded-lg flex justify-center items-center text-white/60" src={transaction.image} alt="product image" />
                     <div className="w-full h-[200px] flex flex-col justify-between">
                         <div className="flex justify-between items-center">
                             <div>
-                                <h2 className="text-white text-xl font-bold">Product Name</h2>
+                                <h2 className="text-white text-xl font-bold">{transaction?.name}</h2>
                                 <div className="p-[0.35rem] bg-(--primary) text-black rounded-2xl flex justify-center items-center">
                                     {currentStep === 1 ? "Awaiting confirmation" : 
                                     currentStep === 2 ? "Processing shipment" :
                                     currentStep === 3 ? "Awaiting delivery confirmation" :
-                                    currentStep === 4 ? "Transaction complete" :
+                                    currentStep === 4 ? "Transaction completed" :
+                                    currentStep === 5 ? "Transaction failed" :
                                     "Unknown status"}
                                 </div>
                             </div>
                             <div>
-                                <p className="text-(--primary) text-2xl font-bold">number</p>
+                                <p className="text-(--primary) text-2xl font-bold">${transaction.current_price}</p>
                                 <p className="text-white/60">Final Price</p>
                             </div>
                         </div>
                         <div className="flex justify-between items-center gap-4">
-                            <p className="text-white/60">Seller: <span className="text-white">seller</span></p>
-                            <p className="text-white/60">Winner: <span className="text-white">bidder</span></p>
+                            <p className="text-white/60">Seller: <span className="text-white">{transaction.seller_name}</span></p>
+                            <p className="text-white/60">Winner: <span className="text-white">{transaction.bidder_name}</span></p>
                         </div>
-                        <p className="text-white/60">Ended: time ago</p>
+                        <p className="text-white/60">Ended: {formatTimeLeft(transaction.expired_at || 0)}</p>
                     </div>
                 </div>
             </div>

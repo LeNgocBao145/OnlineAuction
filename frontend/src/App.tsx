@@ -2,6 +2,8 @@ import "./App.css";
 
 import { BrowserRouter, Route, Routes, Navigate } from "react-router";
 import { Toaster } from "sonner";
+import { useEffect } from "react";
+import useAuthStore from "./stores/authStore";
 
 import Landing from "./pages/landing/landing";
 import SignIn from "./pages/signIn/signIn";
@@ -25,6 +27,14 @@ import BidderTransactionPage from "./pages/transaction/transactionBidder";
 import SellerTransactionPage from "./pages/transaction/transactionSeller";
 
 export default function App() {
+  const { user, refresh } = useAuthStore();
+
+  useEffect(() => {
+    if (user && !useAuthStore.getState().accessToken) {
+      refresh();
+    }
+  }, []);
+
   return (
     <>
       <Toaster position="top-right" richColors />
@@ -46,11 +56,14 @@ export default function App() {
           {/* Redirects for admin dashboard */}
           <Route path="/admin" element={<Navigate to="/admin/user" replace />} />
           <Route path="/admin/dashboard" element={<Navigate to="/admin/user" replace />} />
+
           <Route path="/transactions/bidder/:id" element={<BidderTransactionPage />} />
           <Route path="/transactions/seller/:id" element={<SellerTransactionPage />} />
 
           {/*Testing Routes*/}
           {/*None*/}
+          <Route path="/transactions/:id/bidder" element={<BidderTransactionPage />} />
+          <Route path="/transactions/:id/seller" element={<SellerTransactionPage />} />
 
           {/* protected route */}
           <Route element={<ProtectedRoute />}>
