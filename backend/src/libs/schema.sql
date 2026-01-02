@@ -69,11 +69,7 @@ CREATE TABLE products (
 CREATE TABLE categories (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
-<<<<<<< HEAD
-    parent INT REFERENCES categories(id)
-=======
     parent INTEGER REFERENCES categories(id) ON DELETE CASCADE
->>>>>>> 67849e98dcb05d0c05cbf2e16fb842ea8994df52
 );
 
 CREATE TABLE product_categories (
@@ -161,13 +157,7 @@ CREATE TABLE sell_product (
     init_price REAL NOT NULL,
     step_price REAL NOT NULL,
     instant_price REAL,
-<<<<<<< HEAD
     created_at TIMESTAMP NOT NULL,
-=======
-    starting_at TIMESTAMP NOT NULL DEFAULT now(),
-    isExtent BOOLEAN NOT NULL DEFAULT false,
-    created_at TIMESTAMP NOT NULL DEFAULT now(),    
->>>>>>> 67849e98dcb05d0c05cbf2e16fb842ea8994df52
     expired_at TIMESTAMP NOT NULL
 );
 
@@ -297,6 +287,46 @@ ADD CONSTRAINT fk_sell_product_product
 FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE,
 ADD CONSTRAINT fk_sell_product_seller
 FOREIGN KEY (seller) REFERENCES users(id) ON DELETE CASCADE;
+
+CREATE OR REPLACE FUNCTION fn_add_product_to_parent_categories()
+RETURNS TRIGGER AS $$
+DECLARE
+    parent_id INT;
+BEGIN
+    -- Nếu insert do trigger tạo ra thì bỏ qua
+    IF pg_trigger_depth() > 1 THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT parent INTO parent_id
+    FROM categories
+    WHERE id = NEW.category;
+
+    WHILE parent_id IS NOT NULL LOOP
+
+        -- Insert vào parent nếu chưa tồn tại
+        INSERT INTO product_categories (product, category)
+        VALUES (NEW.product, parent_id)
+        ON CONFLICT DO NOTHING;
+
+        -- Chống cycle (parent trỏ về chính nó)
+        IF parent_id = NEW.category THEN
+            RAISE EXCEPTION 'Category cycle detected at id %', parent_id;
+        END IF;
+
+        -- Lấy tiếp parent
+        SELECT parent INTO parent_id
+        FROM categories
+        WHERE id = parent_id;
+    END LOOP;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trg_product_category_add_parent
+AFTER INSERT ON product_categories
+FOR EACH ROW
+EXECUTE FUNCTION fn_add_product_to_parent_categories();
 
 -- 1. Insert Users
 INSERT INTO users (name, address, email, hashed_password, birthdate, role, rating)
