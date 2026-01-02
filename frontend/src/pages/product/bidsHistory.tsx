@@ -15,12 +15,12 @@ export default function BidHistory() {
         bids.map((bid, index) => (
           <div
             key={index}
-            className="justify-between items-center bg-(--secondary) rounded-lg p-4 mb-2 grid grid-cols-[2fr_2fr_1fr]"
+            className="justify-between items-center bg-(--secondary) rounded-lg p-4 mb-2 grid grid-cols-[2fr_2fr_1fr] gap-4"
           >
             <div className="flex flex-col">
-              <p className="text-white">{formatDate(bid.bid_time)}</p>
+              <p className="text-white font-bold text-sm">{formatDate(bid.bid_time)}</p>
             </div>
-            <p className="text-white">{bid.bidder_name}</p>
+            <p className="text-white text-md">{bid.bidder_name}</p>
             <p className="text-(--primary) font-bold">
               {formatCurrency(bid.amount)}
             </p>
