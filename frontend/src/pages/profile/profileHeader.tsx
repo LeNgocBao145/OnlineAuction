@@ -16,7 +16,7 @@ export default function ProfileHeader({ activePage }: { activePage: string }) {
     }, [user?.id]);
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] pt-0 pb-10 px-15 border-b border-white/10 bg-(--secondary)">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] py-10 px-[10%] border-b border-white/10 bg-(--secondary) items-center">
             <div className="flex items-center gap-4">
                 <img src={getAvatarUrl(profile?.avatar, profile?.name || "User") || "/default-avatar.png"} alt={`${profile?.name}'s profile`} className="h-24 w-24 border-2 border-(--primary) rounded-full" />
                 <div className="flex flex-col">

@@ -115,7 +115,7 @@ export default function ChangeBasicInfo() {
             {OTPModalOpen && (
                 <OTPModal setModalOpen={setOTPModalOpen} setSuccess={setOTPVerified} />
             )}
-            <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-0">
+            <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-10">
                 <div className="flex justify-between items-center">
                     <h1 className="font-bold text-(--primary) text-2xl">Change Account Information</h1>
                     {user?.role === "bidder" && (
