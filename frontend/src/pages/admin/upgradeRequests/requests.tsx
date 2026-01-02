@@ -69,6 +69,10 @@ export default function RequestsManagementTab() {
         }
     };
 
+    const handlePageChange = (newPage: number) => {
+        setPagination(prev => ({ ...prev, page: newPage }));
+    };
+
     return (
         <>
 
@@ -85,7 +89,10 @@ export default function RequestsManagementTab() {
                             />
                             <MagnifyingGlassIcon className="w-5 h-5 text-white/60 absolute right-32 top-2.5" />
                             <div>
-                                <select className="bg-(--secondary) text-white/60 border border-white/10 rounded-md h-10 p-2" value={currentFilter} onChange={(e) => setCurrentFilter(e.target.value)}>
+                                <select className="bg-(--secondary) text-white/60 border border-white/10 rounded-md h-10 p-2" value={currentFilter} onChange={(e) => {
+                                    setCurrentFilter(e.target.value);
+                                    setPagination(prev => ({ ...prev, page: 1 }));
+                                }}>
                                     <option value="All Status">All Status</option>
                                     <option value="Accepted">Accepted</option>
                                     <option value="Rejected">Rejected</option>
@@ -97,12 +104,13 @@ export default function RequestsManagementTab() {
                     <div className="bg-(--secondary) rounded-md p-4 mt-4">
                         <div className="overflow-x-auto">
                             <div className="w-365">
-                                <div className="mt-6 grid grid-cols-[1fr_3fr_3fr_1fr_2fr_2fr] font-bold text-white/80 border-b border-white/10 pb-2">
+                                <div className="mt-6 grid grid-cols-[1fr_2.5fr_2.5fr_1fr_2fr_1.5fr_2.5fr] font-bold text-white/80 border-b border-white/10 pb-2">
                                     <p>Request ID</p>
                                     <p>Full Name</p>
                                     <p>Email</p>
                                     <p>Rating</p>
                                     <p>Request Date</p>
+                                    <p>Status</p>
                                     <p>Actions</p>
                                 </div>
                                 <ul>
@@ -112,25 +120,34 @@ export default function RequestsManagementTab() {
                                         <p className="text-white/60 py-4">No requests found.</p>
                                     ) : (
                                         requestsData.map((request) => (
-                                            <li key={request.id} className="h-20 border-b border-white/10 grid grid-cols-[1fr_3fr_3fr_1fr_2fr_2fr] items-center">
+                                            <li key={request.id} className="h-20 border-b border-white/10 grid grid-cols-[1fr_2.5fr_2.5fr_1fr_2fr_1.5fr_2.5fr] items-center">
                                                 <p className="text-white/60">{request.id}</p>
                                                 <p className="text-white/60">{request.name}</p>
                                                 <p className="text-white/60">{request.email}</p>
                                                 <p className="text-(--primary)">{request.rating}</p>
                                                 <p className="text-white/60">{new Date(request.created_at).toLocaleDateString()}</p>
-                                                {request.state === "success" ? <p className="text-green-400">{getStatusDisplay(request.state)}</p> :
-                                                    request.state === "failed" ? <p className="text-red-400">{getStatusDisplay(request.state)}</p> :
-                                                        <div className="flex gap-2">
+                                                <p className={`font-medium ${request.state === "success" ? "text-green-400" :
+                                                        request.state === "failed" ? "text-red-400" :
+                                                            "text-yellow-400"
+                                                    }`}>
+                                                    {getStatusDisplay(request.state)}
+                                                </p>
+                                                <div className="flex gap-2">
+                                                    {request.state === "pending" ? (
+                                                        <>
                                                             <button
-                                                                className="text-sm bg-green-500 text-black rounded-md px-2 py-1 hover:bg-green-500/10"
+                                                                className="text-sm bg-green-500 text-black rounded-md px-2 py-1 hover:bg-green-600 font-bold transition-colors"
                                                                 onClick={() => handleApprove(request.id)}
                                                             >Accept</button>
                                                             <button
-                                                                className="text-sm bg-red-500 text-white rounded-md px-2 py-1 hover:bg-red-500/10"
+                                                                className="text-sm bg-red-500 text-white rounded-md px-2 py-1 hover:bg-red-600 font-bold transition-colors"
                                                                 onClick={() => handleReject(request.id)}
                                                             >Deny</button>
-                                                        </div>
-                                                }
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-white/20 text-sm italic">Processed</span>
+                                                    )}
+                                                </div>
                                             </li>
                                         )))}
                                 </ul>
@@ -139,21 +156,29 @@ export default function RequestsManagementTab() {
                         <div>
                             <div className="flex justify-center items-center space-x-2 mt-8">
                                 <button
+                                    onClick={() => handlePageChange(1)}
+                                    disabled={pagination.page === 1}
                                     className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
                                     First
                                 </button>
                                 <button
+                                    onClick={() => handlePageChange(pagination.page - 1)}
+                                    disabled={pagination.page === 1}
                                     className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
                                     Previous
                                 </button>
                                 <span className="text-white">
-                                    Page <span className="text-(--primary) font-bold">1</span> of <span className="text-(--primary) font-bold">N</span>
+                                    Page <span className="text-(--primary) font-bold">{pagination.page}</span> of <span className="text-(--primary) font-bold">{pagination.totalPages || 1}</span>
                                 </span>
                                 <button
+                                    onClick={() => handlePageChange(pagination.page + 1)}
+                                    disabled={pagination.page >= pagination.totalPages}
                                     className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
                                     Next
                                 </button>
                                 <button
+                                    onClick={() => handlePageChange(pagination.totalPages)}
+                                    disabled={pagination.page >= pagination.totalPages}
                                     className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
                                     Last
                                 </button>
@@ -163,5 +188,6 @@ export default function RequestsManagementTab() {
                 </div>
             </div>
         </>
+
     );
 }
