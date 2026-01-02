@@ -44,6 +44,7 @@ CREATE TABLE requests (
 CREATE TABLE favorites (
     product INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     PRIMARY KEY (product, user_id)
 );
 
@@ -53,6 +54,7 @@ CREATE TABLE reviews (
     ratee INTEGER NOT NULL,
     liked BOOLEAN NOT NULL,
     content VARCHAR(200),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     PRIMARY KEY (product, ratee, rater)
 );
 
@@ -66,7 +68,8 @@ CREATE TABLE products (
 
 CREATE TABLE categories (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE
+    name VARCHAR(100) NOT NULL UNIQUE,
+    parent INT REFERENCES categories(id)
 );
 
 CREATE TABLE product_categories (
@@ -109,7 +112,9 @@ CREATE TABLE product_questions (
     answerer INTEGER,
     product INTEGER NOT NULL,
     question VARCHAR(200) NOT NULL,
-    answer VARCHAR(200)
+    answer VARCHAR(200),
+    asked_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    answered_at TIMESTAMP
 );
 
 CREATE TABLE refuse (
@@ -151,17 +156,9 @@ CREATE TABLE sell_product (
     seller INTEGER NOT NULL,
     init_price REAL NOT NULL,
     step_price REAL NOT NULL,
-<<<<<<< HEAD
-    created_at TIMESTAMP NOT NULL,
-    expired_at TIMESTAMP NOT NULL,
-    instant_price REAL
-=======
     instant_price REAL,
-    starting_at TIMESTAMP NOT NULL,
-    isExtent BOOLEAN NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT now(),    
+    created_at TIMESTAMP NOT NULL,
     expired_at TIMESTAMP NOT NULL
->>>>>>> c46e0db9a330a97c3badd20fe063b55337c8a7c2
 );
 
 CREATE TABLE trade_verifications (
@@ -191,13 +188,13 @@ CHECK (created_at <= CURRENT_DATE);
 
 ALTER TABLE sell_product
 ADD CONSTRAINT chk_sell_product_expired_at
-CHECK (expired_at > starting_at),
+CHECK (expired_at > created_at),
 ADD CONSTRAINT chk_sell_product_init_price
 CHECK (init_price > 0),
 ADD CONSTRAINT chk_sell_product_step_price
-CHECK (step_price > 0);
+CHECK (step_price > 0),
 ADD CONSTRAINT chk_sell_product_instant_price
-CHECK (instant_price > init_price);
+CHECK (instant_price IS NULL OR instant_price > init_price);
 
 ALTER TABLE messages
 ADD CONSTRAINT chk_messages_created_at
@@ -219,7 +216,7 @@ CHECK (current_price > 0);
 
 ALTER TABLE sessions
 ADD CONSTRAINT fk_sessions_user
-FOREIGN KEY (user) REFERENCES users(id) ON DELETE CASCADE;
+FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
 ALTER TABLE requests
 ADD CONSTRAINT fk_requests_bidder
@@ -227,7 +224,7 @@ FOREIGN KEY (bidder) REFERENCES users(id) ON DELETE CASCADE;
 
 ALTER TABLE favorites
 ADD CONSTRAINT fk_favorites_user
-FOREIGN KEY (user) REFERENCES users(id) ON DELETE CASCADE,
+FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 ADD CONSTRAINT fk_favorites_product
 FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE;
 
@@ -300,13 +297,24 @@ VALUES
 ('David Ho', '89 Vo Van Tan, HCM', 'david@example.com', '$2b$12$n6y.QYKn9TkfbqSnBDsYaOcaOKC68BnlPvt5rdxSgJK0pjtvYdrNu', '1998-04-19', 'bidder', 0.6),
 ('Emma Le', '77 Dien Bien Phu, HCM', 'emma@example.com', '$2b$12$z8deg5NS5P43/O7O0yWeKehfB82ymWUVNlF3UQgrzH9HW9sNCJqiG', '1997-09-09', 'seller', 0.85);
 
--- 2. Insert Categories
-INSERT INTO categories (name) VALUES
-('Electronics'),
-('Fashion'),
-('Home'),
-('Sports'),
-('Collectibles');
+-- 2. Insert Categories (2 levels: Parent => Child)
+-- Level 1: Parent categories
+INSERT INTO categories (name, parent) VALUES
+('Electronics', NULL),
+('Fashion', NULL),
+('Home', NULL),
+('Sports', NULL);
+
+-- Level 2: Child categories
+INSERT INTO categories (name, parent) VALUES
+('Mobile Phones', 1),
+('Laptops', 1),
+('Shoes', 2),
+('Watches', 2),
+('Kitchen Appliances', 3),
+('Furniture', 3),
+('Outdoor Sports', 4),
+('Collectibles', 4);
 
 -- 3. Insert 20 Products
 
@@ -340,27 +348,37 @@ VALUES
 
 -- 4. Insert Product Categories Mapping
 
--- (20 sản phẩm × các nhóm)
-
--- Electronics (1–5)
+-- Electronics => Mobile Phones (1,2)
 INSERT INTO product_categories VALUES
-(1,1),(2,1),(3,1),(4,1),(5,1);
+(1,5),(2,5);
 
--- Fashion (6–10)
+-- Electronics => Laptops (3,4,5)
 INSERT INTO product_categories VALUES
-(6,2),(7,2),(8,2),(9,2),(10,2);
+(3,6),(4,6),(5,6);
 
--- Home (11–15)
+-- Fashion => Shoes (6,7)
 INSERT INTO product_categories VALUES
-(11,3),(12,3),(13,3),(14,3),(15,3);
+(6,7),(7,7);
 
--- Sports (16–18)
+-- Fashion => Watches (8,9,10)
 INSERT INTO product_categories VALUES
-(16,4),(17,4),(18,4);
+(8,8),(9,8),(10,8);
 
--- Collectibles (19–20)
+-- Home => Kitchen Appliances (11,12,13,14)
 INSERT INTO product_categories VALUES
-(19,5),(20,5);
+(11,9),(12,9),(13,9),(14,9);
+
+-- Home => Furniture (15)
+INSERT INTO product_categories VALUES
+(15,10);
+
+-- Sports => Outdoor Sports (16,17,18)
+INSERT INTO product_categories VALUES
+(16,11),(17,11),(18,11);
+
+-- Sports => Collectibles (19,20)
+INSERT INTO product_categories VALUES
+(19,12),(20,12);
 
 -- 5. Insert Product Images (3 ảnh mỗi sản phẩm)
 INSERT INTO product_images (product, image_path)
@@ -638,5 +656,208 @@ INSERT INTO bidder_winner (product, bidder) VALUES
 
 -- 15. Insert Trade Verifications
 INSERT INTO trade_verifications (product, bidder, seller, delivery_address, sell_accept, bidder_accept, state) VALUES
-(1, 3, 1, '12 Tran Hung Dao, HCM', true, true, 'success'),
-(8, 2, 5, '45 Nguyen Hue, HCM', false, false, 'pending');
+(1, 3, 1, '12 Tran Hung Dao, HCM', true, true, 'completed'),
+(8, 2, 5, '45 Nguyen Hue, HCM', false, false, 'pending_payment');
+
+-- 16. Insert Sessions
+INSERT INTO sessions (user_id, expired_at, refresh_token) VALUES
+(1, CURRENT_DATE + INTERVAL '30 days', 'refresh_token_alice_123456'),
+(2, CURRENT_DATE + INTERVAL '30 days', 'refresh_token_bob_789012'),
+(3, CURRENT_DATE + INTERVAL '30 days', 'refresh_token_charlie_345678');
+
+-- 17. Insert Product Questions
+INSERT INTO product_questions (questioner, answerer, product, question, answer) VALUES
+(2, 1, 1, 'Is the phone unlocked?', 'Yes, fully unlocked for all carriers'),
+(3, 1, 3, 'Does it come with original charger?', 'Yes, original Apple charger included'),
+(4, 5, 2, 'Any scratches on screen?', 'No scratches, screen protector applied'),
+(2, 5, 8, 'Is this authentic LV?', 'Yes, comes with certificate of authenticity'),
+(3, NULL, 5, 'Battery life?', NULL);
+
+-- 18. Insert Bid Requests
+INSERT INTO bid_requests (bidder, product, request_date, state) VALUES
+(2, 1, NOW() - INTERVAL '2 days', 'success'),
+(3, 2, NOW() - INTERVAL '1 day', 'success'),
+(4, 3, NOW() - INTERVAL '3 hours', 'pending');
+
+-- 19. Insert Allowed Bidders
+INSERT INTO allowed_bidder (product, bidder, allowed_at) VALUES
+(1, 2, NOW() - INTERVAL '2 days'),
+(1, 3, NOW() - INTERVAL '2 days'),
+(2, 2, NOW() - INTERVAL '1 day'),
+(2, 3, NOW() - INTERVAL '1 day'),
+(3, 2, NOW() - INTERVAL '1 day'),
+(3, 3, NOW() - INTERVAL '1 day'),
+(3, 4, NOW() - INTERVAL '1 day');
+
+-- 1. Setup Extension & Column
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
+ALTER TABLE products 
+ADD COLUMN IF NOT EXISTS search_vector TSVECTOR;
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS search_vector TSVECTOR;
+
+-- 2. Core Function: Update Search Vector
+-- Logic: Name (A) || Category (B) || Description (C)
+CREATE OR REPLACE FUNCTION fn_update_product_search_vector(product_id_input INT)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE products
+    SET search_vector = 
+        -- Weight A: Product Name
+        setweight(to_tsvector('simple', unaccent(COALESCE(name, ''))), 'A') ||
+        
+        -- Weight B: Category Names
+        setweight(to_tsvector('simple', unaccent(COALESCE((
+            -- CTE Đệ quy để lấy danh mục hiện tại và toàn bộ danh mục cha
+            WITH RECURSIVE category_tree AS (
+                -- 1. Anchor: Lấy các danh mục trực tiếp của sản phẩm
+                SELECT c.id, c.name, c.parent
+                FROM categories c
+                JOIN product_categories pc ON c.id = pc.category
+                WHERE pc.product = product_id_input
+                
+                UNION ALL
+                
+                -- 2. Recursive: Lần ngược lên các danh mục cha (parent)
+                SELECT parent_cat.id, parent_cat.name, parent_cat.parent
+                FROM categories parent_cat
+                JOIN category_tree child_cat ON child_cat.parent = parent_cat.id
+            )
+            SELECT STRING_AGG(name, ' ') FROM category_tree
+        ), ''))), 'B') ||
+        
+        -- Weight C: Product Descriptions
+        setweight(to_tsvector('simple', unaccent(COALESCE((
+            SELECT STRING_AGG(d.description, ' ')
+            FROM product_descriptions d
+            WHERE d.product = product_id_input
+        ), ''))), 'C')
+    WHERE id = product_id_input;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ---------------------------------------------------------
+-- TRIGGER 1: Khi thay đổi bảng products
+-- ---------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_trg_products_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.name IS DISTINCT FROM OLD.name THEN
+        PERFORM fn_update_product_search_vector(NEW.id);
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_products_update ON products;
+CREATE TRIGGER trg_products_update
+AFTER INSERT OR UPDATE ON products
+FOR EACH ROW EXECUTE FUNCTION fn_trg_products_update();
+
+-- ---------------------------------------------------------
+-- TRIGGER 2: Khi thay đổi bảng product_decriptions
+-- ---------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_trg_description_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'DELETE') THEN
+        PERFORM fn_update_product_search_vector(OLD.product);
+    ELSE
+        PERFORM fn_update_product_search_vector(NEW.product);
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_description_update ON product_descriptions;
+CREATE TRIGGER trg_description_update
+AFTER INSERT OR UPDATE OR DELETE ON product_descriptions
+FOR EACH ROW EXECUTE FUNCTION fn_trg_description_update();
+
+-- ---------------------------------------------------------
+-- TRIGGER 3: Khi thay đổi bảng product_categories
+-- ---------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_trg_product_categories_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'DELETE' OR TG_OP = 'UPDATE') THEN
+        PERFORM fn_update_product_search_vector(OLD.product);
+    END IF;
+    
+    IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
+        PERFORM fn_update_product_search_vector(NEW.product);
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_product_categories_update ON product_categories;
+CREATE TRIGGER trg_product_categories_update
+AFTER INSERT OR UPDATE OR DELETE ON product_categories
+FOR EACH ROW EXECUTE FUNCTION fn_trg_product_categories_update();
+
+-- ---------------------------------------------------------
+-- TRIGGER 4: Khi thay đổi bảng categories
+-- ---------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_trg_categories_name_update()
+RETURNS TRIGGER AS $$
+DECLARE
+    rec RECORD;
+BEGIN
+    -- Chỉ chạy khi tên thay đổi HOẶC parent thay đổi
+    IF (NEW.name IS DISTINCT FROM OLD.name) OR (NEW.parent IS DISTINCT FROM OLD.parent) THEN
+        
+        -- Tìm tất cả sản phẩm thuộc danh mục này HOẶC thuộc các danh mục con
+        FOR rec IN 
+            WITH RECURSIVE subcategories AS (
+                -- Lấy danh mục đang bị thay đổi (Cha)
+                SELECT id FROM categories WHERE id = NEW.id
+                UNION ALL
+                -- Lấy tất cả danh mục con của nó
+                SELECT c.id FROM categories c
+                JOIN subcategories s ON c.parent = s.id
+            )
+            -- Tìm sản phẩm nối với bất kỳ danh mục nào trong cây này
+            SELECT DISTINCT pc.product AS product_id
+            FROM product_categories pc
+            JOIN subcategories s ON pc.category = s.id
+        LOOP
+            PERFORM fn_update_product_search_vector(rec.product_id);
+        END LOOP;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_categories_name_update ON categories;
+CREATE TRIGGER trg_categories_name_update
+AFTER UPDATE ON categories
+FOR EACH ROW EXECUTE FUNCTION fn_trg_categories_name_update();
+
+-- Cập nhật data
+DO $$
+DECLARE 
+    r RECORD;
+BEGIN
+    FOR r IN SELECT id FROM products LOOP
+        PERFORM fn_update_product_search_vector(r.id);
+    END LOOP;
+END;
+$$;
+
+-- Tạo Index
+CREATE INDEX IF NOT EXISTS idx_products_search_vector
+ON products
+USING GIN (search_vector);
+
+CREATE INDEX IF NOT EXISTS idx_users_search_vector
+ON users
+USING GIN (search_vector);
+
+-- Update users search_vector
+UPDATE users
+SET search_vector = 
+    setweight(to_tsvector('simple', unaccent(COALESCE(name, ''))), 'A') ||
+    setweight(to_tsvector('simple', unaccent(COALESCE(email, ''))), 'B');

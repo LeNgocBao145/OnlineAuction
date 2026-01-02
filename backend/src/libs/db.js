@@ -28,6 +28,7 @@ const db = new pg.Pool({
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
+    statement_timeout: 30000,
 });
 
 // Test connection
@@ -46,15 +47,12 @@ db.on('error', (err) => {
 });
 
 const query = async (text, params) => {
-    const client = await db.connect();
     try {
-        const result = await client.query(text, params);
+        const result = await db.query(text, params);
         return result;
     } catch (error) {
-        console.error('Database query error:', error);
+        console.error('Database query error:', error.message);
         throw error;
-    } finally {
-        client.release();
     }
 };
 
