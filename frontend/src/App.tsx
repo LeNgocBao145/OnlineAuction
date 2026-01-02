@@ -34,10 +34,9 @@ export default function App() {
       refresh();
     }
   }, []);
-
   return (
     <>
-      <Toaster position="top-right" richColors />
+      <Toaster position="bottom-right" richColors />
       <BrowserRouter>
         <Routes>
           {/* Common */}
@@ -47,16 +46,16 @@ export default function App() {
           <Route path="/verify-otp" element={<VerifyOTP />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
-          {/*Route needing integration, putting it here for testing*/}
-          <Route path="/admin/user" element={<UserManagementTab />} />
-          <Route path="/admin/product" element={<ProductManagementTab />} />
-          <Route path="/admin/category" element={<CategoryManagementTab />} />
-          <Route path="/admin/requests" element={<RequestsManagementTab />} />
 
+          {/*Route needing integration, putting it here for testing*/}
           {/* Redirects for admin dashboard */}
           <Route path="/admin" element={<Navigate to="/admin/user" replace />} />
           <Route path="/admin/dashboard" element={<Navigate to="/admin/user" replace />} />
 
+          <Route path="/admin/user" element={<UserManagementTab />} />
+          <Route path="/admin/product" element={<ProductManagementTab />} />
+          <Route path="/admin/category" element={<CategoryManagementTab />} />
+          <Route path="/admin/requests" element={<RequestsManagementTab />} />
           <Route path="/transactions/bidder/:id" element={<BidderTransactionPage />} />
           <Route path="/transactions/seller/:id" element={<SellerTransactionPage />} />
 
