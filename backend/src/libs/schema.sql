@@ -69,7 +69,11 @@ CREATE TABLE products (
 CREATE TABLE categories (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
+<<<<<<< HEAD
     parent INT REFERENCES categories(id)
+=======
+    parent INTEGER REFERENCES categories(id) ON DELETE CASCADE
+>>>>>>> 67849e98dcb05d0c05cbf2e16fb842ea8994df52
 );
 
 CREATE TABLE product_categories (
@@ -157,7 +161,13 @@ CREATE TABLE sell_product (
     init_price REAL NOT NULL,
     step_price REAL NOT NULL,
     instant_price REAL,
+<<<<<<< HEAD
     created_at TIMESTAMP NOT NULL,
+=======
+    starting_at TIMESTAMP NOT NULL DEFAULT now(),
+    isExtent BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP NOT NULL DEFAULT now(),    
+>>>>>>> 67849e98dcb05d0c05cbf2e16fb842ea8994df52
     expired_at TIMESTAMP NOT NULL
 );
 

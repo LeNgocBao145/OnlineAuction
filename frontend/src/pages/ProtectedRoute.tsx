@@ -34,7 +34,7 @@ const ProtectedRoute = () => {
   }
 
   if (!accessToken) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/signIn" replace />;
   }
   return (
     <div>

@@ -25,6 +25,7 @@ import CategoryManagementTab from "./pages/admin/category/category";
 import RequestsManagementTab from "./pages/admin/upgradeRequests/requests";
 import BidderTransactionPage from "./pages/transaction/transactionBidder";
 import SellerTransactionPage from "./pages/transaction/transactionSeller";
+import MainLayout from "./components/layout/MainLayout";
 
 export default function App() {
   const { user, refresh } = useAuthStore();
@@ -38,52 +39,54 @@ export default function App() {
     <>
       <Toaster position="bottom-right" richColors />
       <BrowserRouter>
-        <Routes>
-          {/* Common */}
-          <Route path="/" element={<Landing />} />
-          <Route path="/signIn" element={<SignIn />} />
-          <Route path="/signUp" element={<SignUp />} />
-          <Route path="/verify-otp" element={<VerifyOTP />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+        <MainLayout>
+          <Routes>
+            {/* Common */}
+            <Route path="/" element={<Landing />} />
+            <Route path="/signIn" element={<SignIn />} />
+            <Route path="/signUp" element={<SignUp />} />
+            <Route path="/verify-otp" element={<VerifyOTP />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
 
 
-          {/*Route needing integration, putting it here for testing*/}
-          {/* Redirects for admin dashboard */}
-          <Route path="/admin" element={<Navigate to="/admin/user" replace />} />
-          <Route path="/admin/dashboard" element={<Navigate to="/admin/user" replace />} />
+            {/*Route needing integration, putting it here for testing*/}
+            {/* Redirects for admin dashboard */}
+            <Route path="/admin" element={<Navigate to="/admin/user" replace />} />
+            <Route path="/admin/dashboard" element={<Navigate to="/admin/user" replace />} />
 
-          <Route path="/admin/user" element={<UserManagementTab />} />
-          <Route path="/admin/product" element={<ProductManagementTab />} />
-          <Route path="/admin/category" element={<CategoryManagementTab />} />
-          <Route path="/admin/requests" element={<RequestsManagementTab />} />
-          <Route path="/transactions/bidder/:id" element={<BidderTransactionPage />} />
-          <Route path="/transactions/seller/:id" element={<SellerTransactionPage />} />
+            <Route path="/admin/user" element={<UserManagementTab />} />
+            <Route path="/admin/product" element={<ProductManagementTab />} />
+            <Route path="/admin/category" element={<CategoryManagementTab />} />
+            <Route path="/admin/requests" element={<RequestsManagementTab />} />
+            <Route path="/transactions/bidder/:id" element={<BidderTransactionPage />} />
+            <Route path="/transactions/seller/:id" element={<SellerTransactionPage />} />
 
-          {/*Testing Routes*/}
-          {/*None*/}
-          <Route path="/transactions/:id/bidder" element={<BidderTransactionPage />} />
-          <Route path="/transactions/:id/seller" element={<SellerTransactionPage />} />
+            {/*Testing Routes*/}
+            {/*None*/}
+            <Route path="/transactions/:id/bidder" element={<BidderTransactionPage />} />
+            <Route path="/transactions/:id/seller" element={<SellerTransactionPage />} />
 
-          {/* protected route */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/product/:id" element={<ProductPage />} />
-            <Route
-              path="/profile/settings"
-              element={<ProfileSettingsBasicInfo />}
-            />
-            <Route path="/profile/bids" element={<ProfileMyBids />} />
-            <Route path="/profile/reviews" element={<ProfileMyReviews />} />
-            <Route path="/profile/favorites" element={<ProfileFavorites />} />
-            <Route path="/profile/sellings" element={<ProductSellerPage />} />
+            {/* protected route */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/product/:id" element={<ProductPage />} />
+              <Route
+                path="/profile/settings"
+                element={<ProfileSettingsBasicInfo />}
+              />
+              <Route path="/profile/bids" element={<ProfileMyBids />} />
+              <Route path="/profile/reviews" element={<ProfileMyReviews />} />
+              <Route path="/profile/favorites" element={<ProfileFavorites />} />
+              <Route path="/profile/sellings" element={<ProductSellerPage />} />
 
-            {/* Seller Page */}
-            <Route path="/productSeller" element={<ProductSellerPage />} />
-            <Route path="/createProduct" element={<CreateAuction />} />
-          </Route>
+              {/* Seller Page */}
+              <Route path="/productSeller" element={<ProductSellerPage />} />
+              <Route path="/createProduct" element={<CreateAuction />} />
+            </Route>
 
-          {/* Catch all Error Page*/}
-        </Routes>
+            {/* Catch all Error Page*/}
+          </Routes>
+        </MainLayout>
       </BrowserRouter>
     </>
   );
