@@ -44,7 +44,8 @@ export function generateAvatarFromName(name: string): string {
     </svg>
   `.trim();
 
-  const encoded = btoa(svg);
+  // Encode UTF-8 string to base64 (supports Unicode)
+  const encoded = btoa(unescape(encodeURIComponent(svg)));
   return `data:image/svg+xml;base64,${encoded}`;
 }
 

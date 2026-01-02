@@ -43,7 +43,7 @@ export default function MyProducts() {
 
     if (loading) {
         return (
-            <div className="w-8/10 m-auto mt-0 flex justify-center items-center py-20">
+            <div className="w-8/10 m-auto mt-10 flex justify-center items-center py-20">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-(--primary)"></div>
             </div>
         );
@@ -51,7 +51,7 @@ export default function MyProducts() {
 
     if (error) {
         return (
-            <div className="w-8/10 m-auto mt-0">
+            <div className="w-8/10 m-auto mt-10">
                 <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 text-red-300">
                     <p>Error: {error}</p>
                 </div>
@@ -60,7 +60,7 @@ export default function MyProducts() {
     }
 
     return (
-        <div className="w-8/10 m-auto mt-0 justify-center flex flex-col">
+        <div className="w-8/10 m-auto mt-10 justify-center flex flex-col">
             <h1 className="text-(--primary) text-2xl font-bold">Your Auctions and Products</h1>
             <div className="flex flex-wrap items-center justify-between gap-4 mt-4 p-4 w-full">
                 <div className="flex items-center gap-4">

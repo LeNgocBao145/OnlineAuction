@@ -273,7 +273,7 @@ export const getCategories = (sortLogic) => `
   LIMIT $1 OFFSET $2
 `;
 
-export const createCategory = `INSERT INTO categories (name) VALUES ($1) RETURNING *`;
+export const createCategory = `INSERT INTO categories (name, parent) VALUES ($1, $2) RETURNING *`;
 
 export const getAdminProducts = (sortLogic) => `
   SELECT 
@@ -297,7 +297,7 @@ export const getAdminProducts = (sortLogic) => `
   LIMIT $1 OFFSET $2
 `;
 
-export const updateCategoryById = `UPDATE categories SET name = $1 WHERE id = $2 RETURNING *`;
+export const updateCategoryById = `UPDATE categories SET name = $1, parent = $2 WHERE id = $3 RETURNING *`;
 
 export const deleteCategoryById = `DELETE FROM categories WHERE id = $1`;
 
@@ -737,10 +737,13 @@ export const getListCategories = `
 // Admin Queries
 export const getRequests = (sortLogic) => `
     SELECT
-        ${getUserColumns()},
-        r.id AS request_id,
-        r.created_at AS request_date,
-        r.state AS request_state,
+        u.id AS user_id,
+        u.name,
+        u.email,
+        u.rating,
+        r.id AS id,
+        r.created_at AS created_at,
+        r.state AS state,
         ts_rank(u.search_vector, plainto_tsquery('simple', unaccent($1))) AS rank,
         COUNT(*) OVER() AS total_count
 
@@ -753,7 +756,7 @@ export const getRequests = (sortLogic) => `
       AND (r.state = ANY($2) OR $2 IS NULL)
 
     GROUP BY 
-        u.id,
+        u.id, u.name, u.email, u.rating,
         r.id, r.created_at, r.state,
         query, u.search_vector
 

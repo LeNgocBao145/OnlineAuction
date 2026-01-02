@@ -301,9 +301,9 @@ class AdminController {
 
   async updateCategory(req, res) {
     try {
-      const { name } = req.body;
+      const { name, parent } = req.body;
       const categoryId = req.params.categoryId;
-      const updatedCategory = await query(updateCategoryById, [name, categoryId]);
+      const updatedCategory = await query(updateCategoryById, [name, parent || null, categoryId]);
       if (!updatedCategory.rows.length) {
         return res.status(404).json({ message: "Category not found" });
       }
@@ -319,11 +319,11 @@ class AdminController {
 
   async createCategory(req, res) {
     try {
-      const { name } = req.body;
+      const { name, parent } = req.body;
       if (!name) {
         return res.status(400).json({ message: "Category name is required" });
       }
-      const newCategory = await query(createCategory, [name]);
+      const newCategory = await query(createCategory, [name, parent || null]);
       if (!newCategory) {
         return res.status(403).json({ message: "Create category failed!" });
       }

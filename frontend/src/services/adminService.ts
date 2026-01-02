@@ -14,6 +14,7 @@ export interface AdminUser {
 export interface AdminCategory {
   id: number;
   name: string;
+  parent?: number | null;
   product_count?: number;
   created_at?: string;
 }
@@ -107,13 +108,13 @@ const adminService = {
     return { categories: res.data?.categories as AdminCategory[], pagination: res.data?.pagination };
   },
 
-  async createCategory(name: string): Promise<AdminCategory> {
-    const res = await api.post('/admins/categories', { name }, { withCredentials: true });
+  async createCategory(name: string, parent?: number | null): Promise<AdminCategory> {
+    const res = await api.post('/admins/categories', { name, parent }, { withCredentials: true });
     return res.data?.category as AdminCategory;
   },
 
-  async updateCategory(categoryId: number, name: string): Promise<AdminCategory> {
-    const res = await api.put(`/admins/categories/${categoryId}`, { name }, { withCredentials: true });
+  async updateCategory(categoryId: number, name: string, parent?: number | null): Promise<AdminCategory> {
+    const res = await api.put(`/admins/categories/${categoryId}`, { name, parent }, { withCredentials: true });
     return res.data?.category as AdminCategory;
   },
 

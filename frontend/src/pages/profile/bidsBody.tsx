@@ -21,7 +21,7 @@ export default function BidsBody() {
 
     if (error) {
         return (
-            <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-0">
+            <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-10">
                 <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 text-red-300">
                     <p>Error: {error}</p>
                 </div>
@@ -31,7 +31,7 @@ export default function BidsBody() {
 
     if (loading) {
         return (
-            <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-0 flex justify-center items-center py-20">
+            <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-10 flex justify-center items-center py-20">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-(--primary)"></div>
             </div>
         );
@@ -49,7 +49,7 @@ export default function BidsBody() {
     const visibleBiddings = filteredBiddings.slice(0, visibleCount);
 
     return (
-        <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-0 justify-center flex flex-col">
+        <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-10 justify-center flex flex-col">
             <h1 className="font-bold text-2xl text-(--primary)">My Bids</h1>
             <div className="flex items-center gap-4 mt-4 w-full">
                 <p className="text-white/60">Sort by</p>

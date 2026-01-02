@@ -1,5 +1,5 @@
 import query from "../libs/db.js";
-import { getTop5EndingSoon, getTop5MostBids, getTop5HighestPrice, getCategories } from "../libs/sqlQuery.js";
+import { getTop5EndingSoon, getTop5MostBids, getTop5HighestPrice, getListCategories } from "../libs/sqlQuery.js";
 
 class HomeController {
   async getHomeData(req, res) {
@@ -26,7 +26,11 @@ class HomeController {
 
   async getCategories(req, res) {
     try {
-      const categories = await query(getCategories);
+      const categories = await query(`
+        SELECT id, name, parent
+        FROM categories
+        ORDER BY parent NULLS FIRST, name
+      `);
       return res.status(200).json({
         message: "Categories retrieved successfully",
         data: categories.rows

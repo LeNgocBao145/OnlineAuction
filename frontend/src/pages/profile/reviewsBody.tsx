@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
 
-import { FaStar, FaRegStar, FaStarHalfAlt } from "react-icons/fa";
 import useUserStore from "../../stores/userStore";
 import useAuthStore from "../../stores/authStore";
 import { formatDate } from "@/utils/dateUtils";
@@ -9,8 +7,7 @@ import { formatDate } from "@/utils/dateUtils";
 export default function ReviewsBody() {
     const { user } = useAuthStore();
     const { ratings, loading, error, fetchRatings } = useUserStore();
-    const navigate = useNavigate();
-    const [reviewMaxRating, setReviewMaxRating] = useState<number>(6);
+    const [reviewMaxRating] = useState<number>(6);
     const [page, setPage] = useState<number>(1);
 
     useEffect(() => {
@@ -28,7 +25,7 @@ export default function ReviewsBody() {
 
     if (loading) {
         return (
-            <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-0 text-center">
+            <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-10 text-center">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-t-2 border-(--primary)"></div>
             </div>
         );
@@ -36,14 +33,14 @@ export default function ReviewsBody() {
 
     if (error) {
         return (
-            <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-0 text-red-400">
+            <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-10 text-red-400">
                 <p>Error: {error}</p>
             </div>
         );
     }
 
     return (
-        <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-0">
+        <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-10">
             <h1 className="font-bold text-2xl text-(--primary)">My Reviews</h1>
             <div className="flex mt-4 gap-4 items-end border border-white/10 p-4 rounded-md bg-white/2">
                 <div>
