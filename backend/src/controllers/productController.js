@@ -19,8 +19,8 @@ import {
   createProductDescription,
   createSellProduct
 } from "../libs/sqlQuery.js";
-import { 
-  sendQuestionAskedEmail, 
+import {
+  sendQuestionAskedEmail,
   sendQuestionAnsweredEmail,
   sendBidRequestEmail,
   sendBidResponseEmail,
@@ -32,90 +32,90 @@ import {
 
 class ProductController {
   async addProduct(req, res) {
-      try {
-          const { seller, name, images, init_price, step_price, instant_price, start_at, expired_at, description, isExtent } = req.body;
+    try {
+      const { seller, name, images, init_price, step_price, instant_price, start_at, expired_at, description, isExtent } = req.body;
 
 
-          if (!seller || !name || !images || !init_price || !step_price || !start_at || !expired_at || !description || typeof (isExtent) !== 'boolean') {
-              return res.status(400).json({
-                message: "Seller id, name, images, init_price, step_price, description and isExtent are required"
-              });
-          }
-
-
-          if(!Array.isArray(images) || images.length < 3) {
-              return res.status(400).json({
-                  message: "Images must contain at least 3 items"
-                });
-          }
-
-
-          if(init_price <= 0 || step_price <= 0) {
-              return res.status(400).json({
-                  message: "Init price and step price must be positive",
-              });
-          }
-
-
-          const result = await query(createProduct, [
-              name,
-              init_price,
-              images[0]
-          ]);
-
-
-          const productId = result.rows[0].id;
-
-
-          await Promise.all([
-              query(createProductImages, [productId, images]),
-              query(createProductDescription, [productId, description]),
-              query(createSellProduct, [productId, seller, init_price, step_price, instant_price || null, start_at, expired_at, isExtent])
-          ]);
-
-
-          return res.status(201).json({ message: "Product created successfully!", productId });    
-      } catch(error) {
-          console.error("[addProduct] Error: ", error);
-          res.status(500).json({ message: "Internal Server Error" });
+      if (!seller || !name || !images || !init_price || !step_price || !start_at || !expired_at || !description || typeof (isExtent) !== 'boolean') {
+        return res.status(400).json({
+          message: "Seller id, name, images, init_price, step_price, description and isExtent are required"
+        });
       }
+
+
+      if (!Array.isArray(images) || images.length < 3) {
+        return res.status(400).json({
+          message: "Images must contain at least 3 items"
+        });
+      }
+
+
+      if (init_price <= 0 || step_price <= 0) {
+        return res.status(400).json({
+          message: "Init price and step price must be positive",
+        });
+      }
+
+
+      const result = await query(createProduct, [
+        name,
+        init_price,
+        images[0]
+      ]);
+
+
+      const productId = result.rows[0].id;
+
+
+      await Promise.all([
+        query(createProductImages, [productId, images]),
+        query(createProductDescription, [productId, description]),
+        query(createSellProduct, [productId, seller, init_price, step_price, instant_price || null, start_at, expired_at, isExtent])
+      ]);
+
+
+      return res.status(201).json({ message: "Product created successfully!", productId });
+    } catch (error) {
+      console.error("[addProduct] Error: ", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
   }
 
 
   async addDescription(req, res) {
-      try {
-          const productId = req.params.productId;
-          const { des } = req.body;
+    try {
+      const productId = req.params.productId;
+      const { des } = req.body;
 
 
-          if (!productId || !des) {
-              return res.status(400).json({
-                message: "ProductID and description are required",
-              });
-          }
-
-
-          const product = await query(getProductById, [productId]);
-
-
-          if (!product.rows.length) {
-              return res.status(404).json({ message: "No product found" });
-          }
-
-
-          const result = await query(createProductDescription, [productId, des]);
-
-
-          const newProductDescription = result.rows[0];
-
-
-          return res
-                  .status(201)
-                  .json({ message: "Product description created successfully!", newProductDescription });
-      } catch (error) {
-          console.error("[addDescription] Error: ", error);
-          res.status(500).json({ message: "Internal Server Error" });
+      if (!productId || !des) {
+        return res.status(400).json({
+          message: "ProductID and description are required",
+        });
       }
+
+
+      const product = await query(getProductById, [productId]);
+
+
+      if (!product.rows.length) {
+        return res.status(404).json({ message: "No product found" });
+      }
+
+
+      const result = await query(createProductDescription, [productId, des]);
+
+
+      const newProductDescription = result.rows[0];
+
+
+      return res
+        .status(201)
+        .json({ message: "Product description created successfully!", newProductDescription });
+    } catch (error) {
+      console.error("[addDescription] Error: ", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
   }
 
   async getProductDetails(req, res) {
@@ -131,6 +131,8 @@ class ProductController {
       }
 
       const productData = result.rows[0];
+
+      console.log(productData);
 
       return res.status(200).json({
         message: "Product details retrieved successfully",
@@ -149,7 +151,7 @@ class ProductController {
       const keyword = req.query.keyword ? req.query.keyword.trim() : "";
 
       const category = req.query.category ? parseInt(req.query.category, 10) : null;
-      
+
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
       const offset = (page - 1) * limit;
@@ -165,7 +167,7 @@ class ProductController {
       const states = req.query.states
         ? req.query.states.split(",").map(s => s.trim())
         : null;
-          
+
       const finalStates = states?.filter(s => allowedStates.includes(s)) || null;
 
       const SORT_MAPPING = {
@@ -351,7 +353,7 @@ class ProductController {
       await sendQuestionAnsweredEmail(asker_email, product_name, trimmedAnswer, productUrl);
 
       return res.status(200).json({ message: "Question answered successfully" });
-    } catch (error) { 
+    } catch (error) {
       console.error("Error when answering question", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
@@ -402,9 +404,9 @@ class ProductController {
         const productUrl = `https://${process.env.FRONTEND_HOST}/products/${productId}`;
 
         await sendBidRequestEmail(to, productName, buyerName, productUrl)
-              .catch((err) => {
-                console.error("Error sending bid request email", err);
-              });
+          .catch((err) => {
+            console.error("Error sending bid request email", err);
+          });
       };
 
 
@@ -438,7 +440,7 @@ class ProductController {
       const { productId } = req.params;
 
       const keyword = req.query.keyword ? req.query.keyword.trim() : "";
-      
+
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 5));
       const offset = (page - 1) * limit;
@@ -665,7 +667,7 @@ class ProductController {
         return res.status(403).json({ message: "New users with 0 ratings need permission to bid on this product" });
       }
 
-      if (!isFirstBid && parseFloat(data.user_rating) < 4) {
+      if (!isFirstBid && parseFloat(data.user_rating) < 0.8) {
         return res.status(403).json({ message: "User rating too low to place a bid" });
       }
 
@@ -684,7 +686,7 @@ class ProductController {
       const productUrl = `https://${process.env.FRONTEND_HOST}/products/${productId}`;
 
       const toList = [sellerEmail];
-      if (previousHighestBidderEmail && previousHighestBidderEmail !== currentBidderEmail) {  
+      if (previousHighestBidderEmail && previousHighestBidderEmail !== currentBidderEmail) {
         toList.push(previousHighestBidderEmail);
       }
 
