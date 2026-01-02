@@ -48,8 +48,6 @@ export default function App() {
             <Route path="/verify-otp" element={<VerifyOTP />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
 
-
-            {/*Route needing integration, putting it here for testing*/}
             {/* Redirects for admin dashboard */}
             <Route path="/admin" element={<Navigate to="/admin/user" replace />} />
             <Route path="/admin/dashboard" element={<Navigate to="/admin/user" replace />} />
@@ -60,11 +58,10 @@ export default function App() {
             <Route path="/admin/requests" element={<RequestsManagementTab />} />
             <Route path="/transactions/bidder/:id" element={<BidderTransactionPage />} />
             <Route path="/transactions/seller/:id" element={<SellerTransactionPage />} />
-
-            {/*Testing Routes*/}
-            {/*None*/}
             <Route path="/transactions/:id/bidder" element={<BidderTransactionPage />} />
             <Route path="/transactions/:id/seller" element={<SellerTransactionPage />} />
+
+            <Route path="/product/:id" element={<ProductPage />} />
 
             {/* protected route */}
             <Route element={<ProtectedRoute />}>

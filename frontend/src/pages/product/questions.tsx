@@ -5,9 +5,11 @@ import useProductStore from "@/stores/productStore";
 import useAuthStore from "@/stores/authStore";
 import { getAvatarUrl } from "@/utils/avatarUtils";
 import { formatDate } from "@/utils/dateUtils";
+import AnswerQuestionModal from "./modal/answeringQuestion";
 
 export default function ProductQuestions() {
   const [askingQuestion, setAskingQuestion] = useState(false);
+  const [answeringQuestion, setAnsweringQuestion] = useState(false);
   const {product} = useProductStore();
   const { user } = useAuthStore();
   const questions = product?.qa || [];
@@ -24,6 +26,17 @@ export default function ProductQuestions() {
         />
       )}
 
+      {answeringQuestion && (
+        <AnswerQuestionModal
+          setAnsweringQuestion={setAnsweringQuestion}
+          productId={product?.id || ""}
+          askerName={"Questioner"}
+          question={"Sample question"}
+          profileName={user?.name || "You"}
+          profilePicture={userAvatar}
+        />
+      )}
+
       <div className="w-full flex flex-row justify-between items-center">
         <h1 className="font-bold font-inter text-(--primary) text-3xl">
           Questions & Answers
@@ -34,6 +47,14 @@ export default function ProductQuestions() {
         >
           Ask a question?
         </button>
+        {user.relation === "seller" && (
+          <button
+            onClick={() => setAnsweringQuestion(true)}
+            className="text-(--primary) underline"
+          >
+            Answer questions
+          </button>
+        )}
       </div>
 
       {questions.length === 0 ? (
@@ -50,6 +71,7 @@ export default function ProductQuestions() {
               </p>
               <p className="text-white/80 mt-2">{q.question}</p>
             </div>
+            {q.answer && (
             <div className="flex flex-row items-start mt-4 gap-4">
               <ArrowRightIcon className="w-6 h-6 text-white/50 transform -translate-y-1/2 mt-4 z-0" />
               <div>
@@ -59,9 +81,10 @@ export default function ProductQuestions() {
                     {formatDate(q.answered_at) || "-"}
                   </span>
                 </p>
-                <p className="text-white/80">{q.answer || "No answer yet"}</p>
+                <p className="text-white/80">{q.answer}</p>
               </div>
             </div>
+            )}
           </div>
         ))
       )}

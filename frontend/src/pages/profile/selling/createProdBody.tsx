@@ -60,7 +60,7 @@ export default function CreateAuctionBody() {
             <div className="mt-6 border border-white/10 rounded-lg p-6 bg-(--third)">
                 <h2 className="text-2xl text-white text-bold">Basic Product Information</h2>
                 <div className="mt-4">
-                    <label htmlFor="productName" className="text-white/80">Product Name (Required)</label>
+                    <label htmlFor="productName" className="text-white/80">Product Name<span className="text-red-500">*</span></label>
                     <input type="text" id="productName" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white" 
                     placeholder="Enter product name" {...register("productName")}/>
 
@@ -117,14 +117,14 @@ export default function CreateAuctionBody() {
                 <h2 className="text-2xl text-white text-bold">Auction Pricings</h2>
                 <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <div>
-                        <label htmlFor="startingBid" className="text-white/80">Starting Bid Price (Required)</label>
+                        <label htmlFor="startingBid" className="text-white/80">Starting Bid Price<span className="text-red-500">*</span></label>
                         <input type="number" id="startingBid" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white" 
                         placeholder="Enter starting bid price" {...register("startingBid")} />
 
                         {errors.startingBid && <p className="text-red-400 text-sm mt-1">{errors.startingBid.message}</p>}
                     </div>
                     <div>
-                        <label htmlFor="bidStep" className="text-white/80">Bid Step Price (Required)</label>
+                        <label htmlFor="bidStep" className="text-white/80">Bid Step Price<span className="text-red-500">*</span></label>
                         <input type="number" id="bidStep" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white" 
                         placeholder="Enter starting bid price" {...register("bidStep")} />
 
@@ -140,7 +140,7 @@ export default function CreateAuctionBody() {
             <div className="mt-6 border border-white/10 rounded-lg p-6 bg-(--third)">
                 <h2 className="text-2xl text-white text-bold">Product Description</h2>
                 <div className="mt-4">
-                    <label htmlFor="productDescription" className="text-white/80">Description (Required)</label>
+                    <label htmlFor="productDescription" className="text-white/80">Description<span className="text-red-500">*</span></label>
                     <textarea id="productDescription" rows={6} className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white resize-none" 
                     placeholder="Enter product description" maxLength={500} {...register("productDescription")} onChange={(e) => setDescription(e.target.value)}
                     ></textarea>
@@ -154,13 +154,13 @@ export default function CreateAuctionBody() {
                 <h2 className="text-2xl text-white text-bold">Auction Timing and Duration</h2>
                 <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div>
-                        <label htmlFor="startTime" className="text-white/80">Auction Start Time (Required)</label>
+                        <label htmlFor="startTime" className="text-white/80">Auction Start Time<span className="text-red-500">*</span></label>
                         <input type="datetime-local" id="startTime" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white" {...register("startTime")} />
                     
                         {errors.startTime && <p className="text-red-400 text-sm mt-1">{errors.startTime.message}</p>}
                     </div>
                     <div>
-                        <label htmlFor="endTime" className="text-white/80">Auction End Time (Required)</label>
+                        <label htmlFor="endTime" className="text-white/80">Auction End Time<span className="text-red-500">*</span></label>
                         <input type="datetime-local" id="endTime" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white" {...register("endTime")} />
 
                         {errors.endTime && <p className="text-red-400 text-sm mt-1">{errors.endTime.message}</p>}

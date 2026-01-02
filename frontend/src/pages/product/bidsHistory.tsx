@@ -6,6 +6,16 @@ export default function BidHistory() {
   const { product } = useProductStore();
   const bids = product?.bids || [];
 
+  const isSeller = true; // Replace with actual logic to determine if the user is the seller
+
+  const handleDenial = (bidId: number) => {
+    // logic
+    console.log(`Denying bid with ID: ${bidId}`);
+
+    //
+    throw new Error("Deny bid not implemented yet");
+  }
+
   const maskName = (name: string) => {
     const parts = name.trim().split(" ");
     return parts.length === 1 ? parts[0] : `****${parts.at(-1)}`;
@@ -29,6 +39,13 @@ export default function BidHistory() {
             <p className="text-(--primary) font-bold">
               {formatCurrency(bid.amount)}
             </p>
+            {isSeller && (
+              <div className="col-span-3 flex justify-end mt-2">
+                <button onClick={() => handleDenial(index)} className="bg-red-600 text-white rounded-md px-4 py-2 hover:bg-red-700 transition-colors duration-200">
+                  Deny
+                </button>
+              </div>
+            )}
           </div>
         ))
       )}
