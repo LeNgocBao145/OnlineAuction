@@ -44,7 +44,6 @@ export default function ProductBrief() {
       console.error("Error toggling favorite:", error);
     }
   };
-
   if (!product) return null;
 
   return (
@@ -144,7 +143,11 @@ export default function ProductBrief() {
               Login to place bid
             </button>
           </div>
+<<<<<<< Updated upstream
         ) : product.state === "ended" && user.relation === "seller" ? ( // user object add another check if this user is the seller/bidder of the current product
+=======
+        ) : product.state === "sold" && user.role === "bidder" ? ( // user object add another check if this user is the seller/bidder of the current product
+>>>>>>> Stashed changes
           <div>
             <button
               className="w-full h-40 bg-white/10 text-white rounded-lg mb-4 font-bold"
@@ -153,13 +156,17 @@ export default function ProductBrief() {
               Auction ended - Proceed to transaction
             </button>
           </div>
+<<<<<<< Updated upstream
         ) : product.state === "ended" && user.relation === "winner" ? (
+=======
+        ) : product.state === "sold" && user.role !== "bidder" && product.seller_id === user.id ? (
+>>>>>>> Stashed changes
           <div>
             <button
-              className="w-full h-40 bg-white/10 text-white rounded-lg mb-4 font-bold"
-              onClick={() => navigate("/transactions/bidder/:id")} // call another API for the transaction id
+              className="w-full h-20 bg-(--primary) text-black rounded-lg mb-4 font-bold"
+              onClick={() => navigate(`/transactions/${product.id}/seller`)}
             >
-              Auction ended - Proceed to transaction
+              Go to transaction
             </button>
           </div>
         ) : product.state === "ended" && user.relation === "other" ? (

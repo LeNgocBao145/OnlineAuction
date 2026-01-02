@@ -1,16 +1,17 @@
 import { getRoleFromTrade } from "../libs/sqlQuery.js";
+import query from "../libs/db.js";
 
 export const transactionMiddleware = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { productId } = req.params;
+    const productId = req.params.productId;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     const result = await query(getRoleFromTrade, [productId]);
-
+    console.log(result.rows);
     if (result.rowCount === 0) {
       return res.status(404).json({ message: "Transaction not found" });
     }
