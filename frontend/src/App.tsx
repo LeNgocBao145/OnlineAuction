@@ -1,6 +1,6 @@
 import "./App.css";
 
-import { BrowserRouter, Route, Routes } from "react-router";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router";
 import { Toaster } from "sonner";
 
 import Landing from "./pages/landing/landing";
@@ -42,6 +42,10 @@ export default function App() {
           <Route path="/admin/product" element={<ProductManagementTab />} />
           <Route path="/admin/category" element={<CategoryManagementTab />} />
           <Route path="/admin/requests" element={<RequestsManagementTab />} />
+
+          {/* Redirects for admin dashboard */}
+          <Route path="/admin" element={<Navigate to="/admin/user" replace />} />
+          <Route path="/admin/dashboard" element={<Navigate to="/admin/user" replace />} />
           <Route path="/transactions/bidder/:id" element={<BidderTransactionPage />} />
           <Route path="/transactions/seller/:id" element={<SellerTransactionPage />} />
 

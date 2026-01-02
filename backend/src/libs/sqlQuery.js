@@ -26,7 +26,14 @@ export const getUserById = `SELECT ${getUserColumns()} FROM users u WHERE u.id =
 
 export const createUser = `INSERT INTO users (name, email, hashed_password, birthdate, address, role, rating) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`;
 
-export const getUsers = `SELECT ${getUserColumns()} FROM users u`;
+export const getUsers = (sortLogic) => `
+  SELECT 
+    ${getUserColumns()},
+    COUNT(*) OVER() AS total_count
+  FROM users u 
+  ORDER BY ${sortLogic}
+  LIMIT $1 OFFSET $2
+`;
 
 export const deleteUserById = `DELETE FROM users WHERE id = $1`;
 
@@ -250,18 +257,45 @@ export const getSessionByRefreshToken = `SELECT * FROM sessions WHERE refresh_to
 export const deleteSessionByRefreshToken = `DELETE FROM sessions WHERE refresh_token = $1`;
 
 // Category Queries
-export const getCategories = `
+export const getCategories = (sortLogic) => `
   SELECT 
     c.id,
     c.name,
     c.parent,
-    p.name AS parent_name
+    p.name AS parent_name,
+    COUNT(pc.product) AS product_count,
+    COUNT(*) OVER() AS total_count
   FROM categories c
   LEFT JOIN categories p ON c.parent = p.id
-  ORDER BY COALESCE(c.parent, c.id), c.parent NULLS FIRST, c.name
+  LEFT JOIN product_categories pc ON c.id = pc.category
+  GROUP BY c.id, c.name, c.parent, p.name
+  ORDER BY ${sortLogic}
+  LIMIT $1 OFFSET $2
 `;
 
 export const createCategory = `INSERT INTO categories (name) VALUES ($1) RETURNING *`;
+
+export const getAdminProducts = (sortLogic) => `
+  SELECT 
+    p.id,
+    p.name,
+    p.current_price,
+    sp.instant_price,
+    (SELECT c.name FROM product_categories pc
+     JOIN categories c ON pc.category = c.id  
+     WHERE pc.product = p.id LIMIT 1) AS category_name,
+    seller.name AS seller_name,
+    winner.name AS winner_name,
+    COUNT(*) OVER() AS total_count
+  FROM products p
+  JOIN sell_product sp ON p.id = sp.product
+  LEFT JOIN users seller ON sp.seller = seller.id
+  LEFT JOIN bidder_winner bw ON p.id = bw.product
+  LEFT JOIN users winner ON bw.bidder = winner.id
+  GROUP BY p.id, p.name, p.current_price, sp.instant_price, seller.name, winner.name
+  ORDER BY ${sortLogic}
+  LIMIT $1 OFFSET $2
+`;
 
 export const updateCategoryById = `UPDATE categories SET name = $1 WHERE id = $2 RETURNING *`;
 
@@ -446,7 +480,12 @@ export const getFilteredProductsQuery = (sortLogic) => `
     SELECT
         ${getProductColumns()},
         sp.instant_price,
+        seller.name AS seller_name,
         bidder.name AS highest_bidder,
+        winner.name AS winner_name,
+        (SELECT c.name FROM product_categories pc
+         JOIN categories c ON pc.category = c.id  
+         WHERE pc.product = p.id LIMIT 1) AS category_name,
         sp.created_at,
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
@@ -458,6 +497,9 @@ export const getFilteredProductsQuery = (sortLogic) => `
     FROM
         products p
             JOIN sell_product sp ON p.id = sp.product
+            LEFT JOIN users seller ON sp.seller = seller.id
+            LEFT JOIN bidder_winner bw ON p.id = bw.product
+            LEFT JOIN users winner ON bw.bidder = winner.id
             LEFT JOIN product_categories pc ON p.id = pc.product
             LEFT JOIN categories c ON pc.category = c.id
             LEFT JOIN bids b ON p.id = b.product
@@ -480,7 +522,7 @@ export const getFilteredProductsQuery = (sortLogic) => `
     GROUP BY 
         p.id,
         sp.expired_at, sp.created_at, sp.instant_price,
-        bidder.name, 
+        seller.name, bidder.name, winner.name,
         query, p.search_vector
 
     ORDER BY ${sortLogic}, rank DESC, is_new DESC

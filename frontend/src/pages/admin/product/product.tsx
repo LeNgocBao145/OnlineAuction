@@ -1,10 +1,9 @@
 import Nav from "@/components/ui/nav";
 import AdminHeader from "../adminHeader";
 
-import { MagnifyingGlassIcon } from "@heroicons/react/24/solid";
+import { MagnifyingGlassIcon, ChevronUpIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import productService from "@/services/productService";
 import adminService from "@/services/adminService";
 
 interface ProductItem {
@@ -21,21 +20,23 @@ export default function ProductManagementTab() {
     const [productData, setProductData] = useState<ProductItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchKeyword, setSearchKeyword] = useState("");
+    const [sortConfig, setSortConfig] = useState<{ key: keyof ProductItem; direction: "asc" | "desc" } | null>(null);
+    const [pagination, setPagination] = useState({ page: 1, limit: 10, totalItems: 0, totalPages: 0 });
 
     const fetchProducts = async () => {
         try {
             setLoading(true);
-            const result = await productService.filterProducts({ limit: 100 });
-            const products = result.products.map(p => ({
-                id: p.id,
-                name: p.name,
-                category_name: p.category_name || "N/A",
-                current_price: p.current_price,
-                instant_price: p.instant_price || 0,
-                seller_name: p.seller_name || "N/A",
-                winner_name: p.winner_name || null
-            }));
-            setProductData(products);
+
+            // Build sort parameter
+            let sortParam = "id_asc";
+            if (sortConfig) {
+                const sortKey = `${sortConfig.key}_${sortConfig.direction}`;
+                sortParam = sortKey;
+            }
+
+            const result = await adminService.getProducts(sortParam, pagination.page, pagination.limit);
+            setProductData(result.products);
+            setPagination(result.pagination);
         } catch (error: any) {
             toast.error(error?.response?.data?.message || "Failed to fetch products");
         } finally {
@@ -45,7 +46,7 @@ export default function ProductManagementTab() {
 
     useEffect(() => {
         fetchProducts();
-    }, []);
+    }, [sortConfig, pagination.page]);
 
     const handleDeleteProduct = async (productId: number) => {
         if (!confirm("Are you sure you want to delete this product?")) return;
@@ -58,9 +59,21 @@ export default function ProductManagementTab() {
         }
     };
 
+    const handleSort = (key: keyof ProductItem) => {
+        let direction: "asc" | "desc" = "asc";
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+            direction = "desc";
+        }
+        setSortConfig({ key, direction });
+    };
+
     const filteredProducts = productData.filter(product =>
         product.name.toLowerCase().includes(searchKeyword.toLowerCase())
     );
+
+    const handlePageChange = (newPage: number) => {
+        setPagination(prev => ({ ...prev, page: newPage }));
+    };
 
     return (
         <>
@@ -69,9 +82,9 @@ export default function ProductManagementTab() {
                 <AdminHeader activeTab="product" />
                 <div className="p-4 border border-white/10 rounded-b-lg bg-(--third)">
                     <div className="relative lg:w-1/3 w-full">
-                        <input 
-                            className="border border-white/10 text-white/60 bg-(--secondary) w-full h-10 p-2 rounded-md" 
-                            placeholder="Search product by name..." 
+                        <input
+                            className="border border-white/10 text-white/60 bg-(--secondary) w-full h-10 p-2 rounded-md"
+                            placeholder="Search product by name..."
                             value={searchKeyword}
                             onChange={(e) => setSearchKeyword(e.target.value)}
                         />
@@ -81,13 +94,13 @@ export default function ProductManagementTab() {
                         <div className="overflow-x-auto">
                             <div className="w-365">
                                 <div className="mt-6 grid grid-cols-[1fr_2fr_1fr_1fr_1fr_2fr_2fr_1fr] font-bold text-white/80 border-b border-white/10 pb-2">
-                                    <p>Product ID</p>
-                                    <p>Name</p>
-                                    <p>Category</p>
-                                    <p>Current Price</p>
-                                    <p>Instant Price</p>
-                                    <p>Seller</p>
-                                    <p>Winner</p>
+                                    <div onClick={() => handleSort("id")} className="cursor-pointer flex items-center gap-1">Product ID {sortConfig?.key === "id" && (sortConfig.direction === "asc" ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />)}</div>
+                                    <div onClick={() => handleSort("name")} className="cursor-pointer flex items-center gap-1">Name {sortConfig?.key === "name" && (sortConfig.direction === "asc" ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />)}</div>
+                                    <div onClick={() => handleSort("category_name")} className="cursor-pointer flex items-center gap-1">Category {sortConfig?.key === "category_name" && (sortConfig.direction === "asc" ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />)}</div>
+                                    <div onClick={() => handleSort("current_price")} className="cursor-pointer flex items-center gap-1">Current Price {sortConfig?.key === "current_price" && (sortConfig.direction === "asc" ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />)}</div>
+                                    <div onClick={() => handleSort("instant_price")} className="cursor-pointer flex items-center gap-1">Instant Price {sortConfig?.key === "instant_price" && (sortConfig.direction === "asc" ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />)}</div>
+                                    <div onClick={() => handleSort("seller_name")} className="cursor-pointer flex items-center gap-1">Seller {sortConfig?.key === "seller_name" && (sortConfig.direction === "asc" ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />)}</div>
+                                    <div onClick={() => handleSort("winner_name")} className="cursor-pointer flex items-center gap-1">Winner {sortConfig?.key === "winner_name" && (sortConfig.direction === "asc" ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />)}</div>
                                     <p>Actions</p>
                                 </div>
                                 <ul>
@@ -96,42 +109,50 @@ export default function ProductManagementTab() {
                                     ) : filteredProducts.length === 0 ? (
                                         <p className="text-white/60 py-4">No products found.</p>
                                     ) : (
-                                    filteredProducts.map((product) => (
-                                        <li key={product.id} className="h-20 border-b border-white/10 grid grid-cols-[1fr_2fr_1fr_1fr_1fr_2fr_2fr_1fr] items-center">
-                                            <p className="text-white/60">{product.id}</p>
-                                            <p className="text-white/60">{product.name}</p>
-                                            <p className="text-white/60">{product.category_name}</p>
-                                            <p className="text-(--primary)">${product.current_price}</p>
-                                            <p className="text-(--primary)">${product.instant_price}</p>
-                                            <p className="text-white/60">{product.seller_name}</p>
-                                            <p className="text-white/60">{product.winner_name || "None"}</p>
-                                            <button 
-                                                className="text-sm bg-red-500 text-white rounded-md px-2 py-1 hover:bg-red-500/10"
-                                                onClick={() => handleDeleteProduct(product.id)}
-                                            >Delete</button>
-                                        </li>
-                                    )))}
+                                        productData.map((product) => (
+                                            <li key={product.id} className="h-20 border-b border-white/10 grid grid-cols-[1fr_2fr_1fr_1fr_1fr_2fr_2fr_1fr] items-center">
+                                                <p className="text-white/60">{product.id}</p>
+                                                <p className="text-white/60">{product.name}</p>
+                                                <p className="text-white/60">{product.category_name}</p>
+                                                <p className="text-(--primary)">${product.current_price}</p>
+                                                <p className="text-(--primary)">${product.instant_price}</p>
+                                                <p className="text-white/60">{product.seller_name}</p>
+                                                <p className="text-white/60">{product.winner_name || "None"}</p>
+                                                <button
+                                                    className="text-sm bg-red-500 text-white rounded-md px-2 py-1 hover:bg-red-500/10"
+                                                    onClick={() => handleDeleteProduct(product.id)}
+                                                >Delete</button>
+                                            </li>
+                                        )))}
                                 </ul>
                             </div>
                         </div>
                         <div>
                             <div className="flex justify-center items-center space-x-2 mt-8">
-                                <button 
+                                <button
+                                    onClick={() => handlePageChange(1)}
+                                    disabled={pagination.page === 1}
                                     className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
                                     First
                                 </button>
-                                <button 
+                                <button
+                                    onClick={() => handlePageChange(pagination.page - 1)}
+                                    disabled={pagination.page === 1}
                                     className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
                                     Previous
                                 </button>
                                 <span className="text-white">
-                                    Page <span className="text-(--primary) font-bold">1</span> of <span className="text-(--primary) font-bold">N</span>
+                                    Page <span className="text-(--primary) font-bold">{pagination.page}</span> of <span className="text-(--primary) font-bold">{pagination.totalPages || 1}</span>
                                 </span>
-                                <button 
+                                <button
+                                    onClick={() => handlePageChange(pagination.page + 1)}
+                                    disabled={pagination.page >= pagination.totalPages}
                                     className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
                                     Next
                                 </button>
-                                <button 
+                                <button
+                                    onClick={() => handlePageChange(pagination.totalPages)}
+                                    disabled={pagination.page >= pagination.totalPages}
                                     className="border border-white/10 hover:bg-(--primary) hover:text-black w-20 h-10 text-white bg-(--secondary) rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
                                     Last
                                 </button>

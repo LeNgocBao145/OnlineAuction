@@ -78,8 +78,8 @@ export default function Nav() {
             onKeyDown={handleKeyDown}
             className="w-full h-[50px] rounded-lg px-16px bg-(--secondary) text-white/60 pl-2 pr-10"
           />
-          <MagnifyingGlassIcon 
-            className="absolute w-5 h-5 text-white/60 right-2 cursor-pointer hover:text-(--primary)" 
+          <MagnifyingGlassIcon
+            className="absolute w-5 h-5 text-white/60 right-2 cursor-pointer hover:text-(--primary)"
             onClick={handleSearch}
           />
         </div>
@@ -150,13 +150,6 @@ export default function Nav() {
                     >
                       Dashboard
                     </Link>
-                    <Link
-                      to="/admin"
-                      className="block px-4 py-2 text-(--primary) hover:bg-white/10 font-medium"
-                      onClick={() => setOpenUserMenu(false)}
-                    >
-                      Admin Panel
-                    </Link>
                   </>
                 )}
 
@@ -186,7 +179,7 @@ export default function Nav() {
           <>
             <button
               onClick={() => navigate("/signIn")}
-              className="text-black font-bold px-6 h-[50px] rounded-8px whitespace-nowrap cursor-pointer border border-(--primary) rounded-md bg-(--primary)"          
+              className="text-black font-bold px-6 h-[50px] rounded-8px whitespace-nowrap cursor-pointer border border-(--primary) rounded-md bg-(--primary)"
             >
               Sign In
             </button>

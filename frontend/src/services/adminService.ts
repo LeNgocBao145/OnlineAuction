@@ -47,9 +47,13 @@ export interface PaginationInfo {
 
 const adminService = {
   // User Management
-  async getUsers(): Promise<AdminUser[]> {
-    const res = await api.get('/admins/accounts', { withCredentials: true });
-    return res.data?.users as AdminUser[];
+  async getUsers(sort?: string, page?: number, limit?: number): Promise<{ users: AdminUser[]; pagination: PaginationInfo }> {
+    const params = new URLSearchParams();
+    if (sort) params.append('sort', sort);
+    if (page) params.append('page', page.toString());
+    if (limit) params.append('limit', limit.toString());
+    const res = await api.get(`/admins/accounts?${params.toString()}`, { withCredentials: true });
+    return { users: res.data?.users as AdminUser[], pagination: res.data?.pagination };
   },
 
   async createUser(data: {
@@ -79,10 +83,28 @@ const adminService = {
     await api.delete(`/admins/accounts/${userId}`, { withCredentials: true });
   },
 
+  // Product Management
+  async getProducts(sort?: string, page?: number, limit?: number): Promise<{ products: AdminProduct[]; pagination: PaginationInfo }> {
+    const params = new URLSearchParams();
+    if (sort) params.append('sort', sort);
+    if (page) params.append('page', page.toString());
+    if (limit) params.append('limit', limit.toString());
+    const res = await api.get(`/admins/products?${params.toString()}`, { withCredentials: true });
+    return { products: res.data?.products as AdminProduct[], pagination: res.data?.pagination };
+  },
+
+  async deleteProduct(productId: number): Promise<void> {
+    await api.delete(`/admins/products/${productId}`, { withCredentials: true });
+  },
+
   // Category Management
-  async getCategories(): Promise<AdminCategory[]> {
-    const res = await api.get('/admins/categories', { withCredentials: true });
-    return res.data?.categories as AdminCategory[];
+  async getCategories(sort?: string, page?: number, limit?: number): Promise<{ categories: AdminCategory[]; pagination: PaginationInfo }> {
+    const params = new URLSearchParams();
+    if (sort) params.append('sort', sort);
+    if (page) params.append('page', page.toString());
+    if (limit) params.append('limit', limit.toString());
+    const res = await api.get(`/admins/categories?${params.toString()}`, { withCredentials: true });
+    return { categories: res.data?.categories as AdminCategory[], pagination: res.data?.pagination };
   },
 
   async createCategory(name: string): Promise<AdminCategory> {
@@ -99,10 +121,6 @@ const adminService = {
     await api.delete(`/admins/categories/${categoryId}`, { withCredentials: true });
   },
 
-  // Product Management
-  async deleteProduct(productId: number): Promise<void> {
-    await api.delete(`/admins/products/${productId}`, { withCredentials: true });
-  },
 
   // Upgrade Requests Management
   async getUpgradeRequests(params?: {
