@@ -525,13 +525,13 @@ class ProductController {
           p.id as product_id,
           p.name as product_name,
           p.current_price,
-          p.step_price,
-          p.instant_price,
+          sp.step_price,
+          sp.instant_price,
           p.state as product_state,
           sp.seller,
           sp.expired_at,
           seller_user.email as seller_email,
-          (SELECT COUNT(*) FROM ratings WHERE rated_user = u.id) as rating_count,
+          (SELECT COUNT(*) FROM reviews WHERE ratee = u.id) as rating_count,
           (SELECT br.id FROM bid_requests br WHERE br.bidder = u.id AND br.product = p.id AND br.state = 'success' LIMIT 1) as bid_permission,
           (SELECT bidder.email FROM bids b JOIN users bidder ON b.buyer = bidder.id WHERE b.product = p.id ORDER BY b.price DESC LIMIT 1) as prev_bidder_email
         FROM users u
