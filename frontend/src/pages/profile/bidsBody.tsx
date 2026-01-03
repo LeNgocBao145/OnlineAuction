@@ -10,7 +10,7 @@ export default function BidsBody() {
     const { biddings, loading, error, fetchBiddings } = useUserStore();
     const [statusFilter, setStatusFilter] = useState<number>(4);
     const [visibleCount, setVisibleCount] = useState<number>(5);
-    const [page, setPage] = useState<number>(1);
+    const [page] = useState<number>(1);
 
     useEffect(() => {
         if (user?.id) {
@@ -40,8 +40,8 @@ export default function BidsBody() {
         if (statusFilter === 1) return bid.state === "incoming";
         if (statusFilter === 2) return bid.state === "bidding";
         if (statusFilter === 3) return bid.state === "sold";
-        if (statusFilter === 4) return bid.state === "sold" && bid.highest_bidder_id !== user?.id.toString(); // Losing - sold but not in won list
-        if (statusFilter === 5) return bid.state === "sold" && bid.highest_bidder_id === user?.id.toString(); // Won - sold and in won list
+        if (statusFilter === 4) return bid.state === "sold" && bid.highest_bidder_id === user?.id.toString(); // Won - sold and in won list
+        if (statusFilter === 5) return bid.state === "sold" && bid.highest_bidder_id !== user?.id.toString(); // Losing - sold but not in won list
         return true;
     });
 

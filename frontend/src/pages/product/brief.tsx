@@ -72,10 +72,11 @@ export default function ProductBrief() {
   const handleBuyNow = async () => {
     try {
       console.log(product?.instant_price);
-      await placeBid(product?.id, product?.instant_price);
-      toast.success("Bid placed successfully!");
-    } catch (error) {
-      console.error("Error place instant price bid: ", error);      
+      await placeBid(product?.id || "", { bidAmount: product?.instant_price });
+      toast.success("Bid placed successfully! You are currently winning.");
+    } catch (error: any) {
+      console.error("Error place instant price bid: ", error);     
+      toast.error(error?.response?.data?.message || "Failed to place bid"); 
     }
   }
 
@@ -85,7 +86,7 @@ export default function ProductBrief() {
     <>
       {placingBid && (
         <div
-          className="backdrop-filter backdrop-blur-sm fixed inset-0 flex justify-center items-center z-[1000]"
+          className="backdrop-filter backdrop-blur-sm fixed inset-0 flex justify-center items-center z-1000"
 
           onClick={() => setPlacingBid(false)}
         >
@@ -255,7 +256,10 @@ export default function ProductBrief() {
                   )}
                   {/* Only show Buy it now for approved users */}
                   {product.instant_price && product.user_bid_request_state === "success" && (
-                    <button className="w-full h-14 bg-white/10 hover:bg-white/15 text-white rounded-xl border border-white/10 font-bold transition-all">
+                    <button 
+                      className="w-full h-14 bg-white/10 hover:bg-white/15 text-white rounded-xl border border-white/10 font-bold transition-all"
+                      onClick={handleBuyNow}
+                    >
                       Buy it now
                     </button>
                   )}

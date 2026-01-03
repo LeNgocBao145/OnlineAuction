@@ -1,4 +1,4 @@
-import { FaUser, FaStar, FaRegStar } from "react-icons/fa";
+import { FaUser } from "react-icons/fa";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
