@@ -1,5 +1,7 @@
 CREATE DATABASE OnlineAuction;
 
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
 CREATE TYPE user_role AS ENUM ('bidder', 'seller', 'admin');
 
 CREATE TYPE product_state AS ENUM ('incoming', 'bidding', 'sold');
@@ -364,6 +366,19 @@ CREATE TRIGGER trg_delete_seller_products
 BEFORE DELETE ON users
 FOR EACH ROW
 EXECUTE FUNCTION delete_seller_products();
+
+CREATE OR REPLACE FUNCTION users_tsvector_trigger() RETURNS trigger AS $$
+BEGIN
+  NEW.search_vector :=
+    setweight(to_tsvector('simple', unaccent(coalesce(NEW.name, ''))), 'A') ||
+    setweight(to_tsvector('simple', unaccent(coalesce(NEW.email, ''))), 'B');
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tsvectorupdate
+BEFORE INSERT OR UPDATE ON users
+FOR EACH ROW EXECUTE FUNCTION users_tsvector_trigger();
 
 -- 1. Insert Users
 INSERT INTO users (name, address, email, hashed_password, birthdate, role, rating)
