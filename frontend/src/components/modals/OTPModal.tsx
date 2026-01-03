@@ -8,9 +8,9 @@ export default function OTPModal({
     email,
     onVerify,
     onResend
-} : {
+}: {
     setModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
-    setSuccess: React.Dispatch<React.SetStateAction<boolean>>;
+    setSuccess?: React.Dispatch<React.SetStateAction<boolean>>;
     email: string;
     onVerify: (otp: string) => Promise<void>;
     onResend: () => Promise<void>;
@@ -39,11 +39,11 @@ export default function OTPModal({
         try {
             setIsVerifying(true);
             await onVerify(otp);
-            setSuccess(true);
+            setSuccess?.(true);
             setModalOpen(false);
         } catch (error: any) {
             toast.error(error?.response?.data?.message || "OTP verification failed!");
-            setSuccess(false);
+            setSuccess?.(false);
         } finally {
             setIsVerifying(false);
         }
@@ -95,11 +95,10 @@ export default function OTPModal({
                                 title={otpRemainTime > 0 ? `Wait ${otpRemainTime}s to resend` : 'Resend OTP'}
                             >
                                 <PaperAirplaneIcon
-                                    className={`w-5 h-5 -rotate-45 transition-colors ${
-                                        pressedResend || otpRemainTime > 0
+                                    className={`w-5 h-5 -rotate-45 transition-colors ${pressedResend || otpRemainTime > 0
                                             ? 'text-white/30 cursor-not-allowed'
                                             : 'text-white/60 hover:text-(--primary) cursor-pointer'
-                                    }`}
+                                        }`}
                                 />
                             </button>
                         </div>

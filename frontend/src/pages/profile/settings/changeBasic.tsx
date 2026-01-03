@@ -1,4 +1,4 @@
-import { FaUser } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaIdCard, FaLock } from "react-icons/fa";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,17 +13,21 @@ export default function ChangeBasicInfo() {
   const { user, fetchMe } = useAuthStore();
   const {
     profile,
-    loading,
     fetchProfile,
     updateProfile,
     changePassword,
     sendOTP,
     verifyOTP,
   } = useUserStore();
+
+  // Separate loading states for each section
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
+
+  // OTP related states
   const [OTPModalOpen, setOTPModalOpen] = useState(false);
-  const [OTPVerified, setOTPVerified] = useState(false);
-  const [pendingProfileData, setPendingProfileData] = useState<any>(null);
   const [newEmail, setNewEmail] = useState<string>("");
 
   useEffect(() => {
@@ -32,9 +36,9 @@ export default function ChangeBasicInfo() {
     }
   }, [user?.id, fetchProfile]);
 
+  // Schema for basic profile info (without email)
   const profileFormSchema = z.object({
     username: z.string().min(3, "Username must be at least 3 characters long"),
-    email: z.string().email("Invalid email address"),
     birthdate: z
       .string()
       .transform((str) => new Date(str))
@@ -61,6 +65,11 @@ export default function ChangeBasicInfo() {
     address: z.string().min(10, "Address must be at least 10 characters long"),
   });
 
+  // Schema for email change
+  const emailFormSchema = z.object({
+    email: z.string().email("Invalid email address"),
+  });
+
   const passwordFormSchema = z
     .object({
       oldPassword: z
@@ -81,15 +90,26 @@ export default function ChangeBasicInfo() {
   const {
     register: registerProfile,
     handleSubmit: handleSubmitProfile,
-    formState: { errors: profileErrors },
+    formState: { errors: profileErrors, isDirty: isProfileDirty },
     reset: resetProfile,
   } = useForm({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       username: "",
-      email: "",
       birthdate: "",
       address: "",
+    },
+  });
+
+  const {
+    register: registerEmail,
+    handleSubmit: handleSubmitEmail,
+    formState: { errors: emailErrors, isDirty: isEmailDirty },
+    reset: resetEmail,
+  } = useForm({
+    resolver: zodResolver(emailFormSchema),
+    defaultValues: {
+      email: "",
     },
   });
 
@@ -98,61 +118,76 @@ export default function ChangeBasicInfo() {
     handleSubmit: handleSubmitPassword,
     formState: { errors: passwordErrors },
     reset: resetPassword,
+    watch: watchPassword,
   } = useForm({
     resolver: zodResolver(passwordFormSchema),
   });
+
+  // Check if password form has any values
+  const passwordValues = watchPassword();
+  const hasPasswordValues = !!(passwordValues.oldPassword || passwordValues.newPassword || passwordValues.confirmPassword);
 
   useEffect(() => {
     if (profile) {
       resetProfile({
         username: profile.name || "",
-        email: profile.email || "",
         birthdate: profile.birthdate ? profile.birthdate.split("T")[0] : "",
         address: profile.address || "",
       });
+      resetEmail({
+        email: profile.email || "",
+      });
     }
-  }, [profile, resetProfile]);
+  }, [profile, resetProfile, resetEmail]);
 
+  // Submit profile info (without email)
   const onSubmitProfile = async (data: any) => {
-    const emailChanged = profile?.email !== data.email;
-
-    if (emailChanged) {
-      try {
-        setPendingProfileData({
-          name: data.username,
-          email: data.email,
-          birthdate: new Date(data.birthdate).toISOString(),
-          address: data.address,
-        });
-        setNewEmail(data.email);
-        await sendOTP(user?.id!, data.email);
-        toast.success("OTP sent to your new email address!");
-        setOTPModalOpen(true);
-      } catch (error: any) {
-        toast.error(error?.response?.data?.message || "Failed to send OTP");
-        console.error(error);
-      }
-    } else {
-      try {
-        await updateProfile(user?.id!, {
-          name: data.username,
-          email: data.email,
-          birthdate: new Date(data.birthdate).toISOString(),
-          address: data.address,
-        });
-        toast.success("Profile updated successfully!");
-        await fetchProfile(user?.id!);
-        await fetchMe();
-      } catch (error: any) {
-        toast.error(
-          error?.response?.data?.message || "Failed to update profile"
-        );
-        console.error(error);
-      }
+    try {
+      setProfileLoading(true);
+      await updateProfile(user?.id!, {
+        name: data.username,
+        birthdate: new Date(data.birthdate).toISOString(),
+        address: data.address,
+      });
+      toast.success("Profile updated successfully!");
+      await fetchProfile(user?.id!);
+      await fetchMe();
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Failed to update profile"
+      );
+      console.error(error);
+    } finally {
+      setProfileLoading(false);
     }
   };
+
+  // Submit email change (with OTP verification)
+  const onSubmitEmail = async (data: any) => {
+    const emailChanged = profile?.email !== data.email;
+
+    if (!emailChanged) {
+      toast.info("Email is the same as current email");
+      return;
+    }
+
+    try {
+      setEmailLoading(true);
+      setNewEmail(data.email);
+      await sendOTP(user?.id!, data.email);
+      toast.success("OTP sent to your new email address!");
+      setOTPModalOpen(true);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to send OTP");
+      console.error(error);
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
   const onSubmitPassword = async (data: any) => {
     try {
+      setPasswordLoading(true);
       await changePassword(
         user?.id!,
         data.oldPassword,
@@ -166,6 +201,8 @@ export default function ChangeBasicInfo() {
         error?.response?.data?.message || "Failed to change password"
       );
       console.error(error);
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -187,10 +224,9 @@ export default function ChangeBasicInfo() {
   const handleVerifyOTP = async (otp: string) => {
     try {
       await verifyOTP(user?.id!, newEmail, otp);
-      toast.success("Email verified and profile updated successfully!");
+      toast.success("Email verified and updated successfully!");
       await fetchProfile(user?.id!);
       await fetchMe();
-      setPendingProfileData(null);
       setNewEmail("");
     } catch (error: any) {
       throw error;
@@ -211,7 +247,6 @@ export default function ChangeBasicInfo() {
       {OTPModalOpen && (
         <OTPModal
           setModalOpen={setOTPModalOpen}
-          setSuccess={setOTPVerified}
           email={newEmail}
           onVerify={handleVerifyOTP}
           onResend={handleResendOTP}
@@ -234,11 +269,16 @@ export default function ChangeBasicInfo() {
           )}
         </div>
 
+        {/* Basic Profile Info Section */}
         <form
           className="mt-6 flex flex-col gap-4"
           onSubmit={handleSubmitProfile(onSubmitProfile)}
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
+          <h2 className="text-white text-lg font-semibold flex items-center gap-2">
+            <FaIdCard className="text-(--primary)" />
+            Basic Information
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col">
               <label className="text-white mb-2" htmlFor="username">
                 Username
@@ -252,21 +292,6 @@ export default function ChangeBasicInfo() {
               />
               {profileErrors.username && (
                 <p className="text-red-500">{profileErrors.username.message}</p>
-              )}
-            </div>
-            <div className="flex flex-col">
-              <label className="text-white mb-2" htmlFor="email">
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white"
-                placeholder="Enter email"
-                {...registerProfile("email")}
-              />
-              {profileErrors.email && (
-                <p className="text-red-500">{profileErrors.email.message}</p>
               )}
             </div>
             <div className="flex flex-col">
@@ -286,35 +311,77 @@ export default function ChangeBasicInfo() {
                 </p>
               )}
             </div>
-            <div className="flex flex-col">
-              <label className="text-white mb-2" htmlFor="address">
-                Address
-              </label>
-              <input
-                type="text"
-                id="address"
-                className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white"
-                placeholder="Enter address"
-                {...registerProfile("address")}
-              />
-              {profileErrors.address && (
-                <p className="text-red-500">{profileErrors.address.message}</p>
-              )}
-            </div>
+          </div>
+          <div className="flex flex-col">
+            <label className="text-white mb-2" htmlFor="address">
+              Address
+            </label>
+            <input
+              type="text"
+              id="address"
+              className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white"
+              placeholder="Enter address"
+              {...registerProfile("address")}
+            />
+            {profileErrors.address && (
+              <p className="text-red-500">{profileErrors.address.message}</p>
+            )}
           </div>
           <button
             type="submit"
-            disabled={loading}
-            className="mt-4 p-3 bg-(--primary) text-black font-bold rounded-md w-32 self-end disabled:opacity-50"
+            disabled={profileLoading || !isProfileDirty}
+            className="mt-4 p-3 bg-(--primary) text-black font-bold rounded-md w-40 self-end disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "Saving..." : "Save Changes"}
+            {profileLoading ? "Saving..." : "Save Changes"}
           </button>
         </form>
-        <div className="w-full h-1 bg-white/10 rouned-lg my-8"></div>
+
+        <div className="w-full h-1 bg-white/10 rounded-lg my-8"></div>
+
+        {/* Email Change Section */}
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={handleSubmitEmail(onSubmitEmail)}
+        >
+          <h2 className="text-white text-lg font-semibold flex items-center gap-2">
+            <FaEnvelope className="text-(--primary)" />
+            Change Email Address
+          </h2>
+          <div className="flex flex-col">
+            <label className="text-white mb-2" htmlFor="email">
+              New Email Address
+            </label>
+            <input
+              type="email"
+              id="email"
+              className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white"
+              placeholder="Enter new email"
+              {...registerEmail("email")}
+            />
+            {emailErrors.email && (
+              <p className="text-red-500">{emailErrors.email.message}</p>
+            )}
+          </div>
+          <button
+            type="submit"
+            disabled={emailLoading || !isEmailDirty}
+            className="mt-4 p-3 bg-(--primary) text-black font-bold rounded-md w-40 self-end disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {emailLoading ? "Sending OTP..." : "Update Email"}
+          </button>
+        </form>
+
+        <div className="w-full h-1 bg-white/10 rounded-lg my-8"></div>
+
+        {/* Password Change Section */}
         <form
           className="flex flex-col gap-4"
           onSubmit={handleSubmitPassword(onSubmitPassword)}
         >
+          <h2 className="text-white text-lg font-semibold flex items-center gap-2">
+            <FaLock className="text-(--primary)" />
+            Change Password
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex flex-col">
               <label className="text-white mb-2" htmlFor="old-password">
@@ -370,10 +437,10 @@ export default function ChangeBasicInfo() {
           </div>
           <button
             type="submit"
-            disabled={loading}
-            className="mt-4 p-3 bg-(--primary) text-black font-bold rounded-md w-32 self-end disabled:opacity-50"
+            disabled={passwordLoading || !hasPasswordValues}
+            className="mt-4 p-3 bg-(--primary) text-black font-bold rounded-md w-40 self-end disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "Changing..." : "Save Changes"}
+            {passwordLoading ? "Changing..." : "Save Password"}
           </button>
         </form>
       </div>

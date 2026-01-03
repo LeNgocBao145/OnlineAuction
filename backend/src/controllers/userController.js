@@ -87,7 +87,9 @@ class UserController {
         return res.status(404).json({ error: "User not found." });
       }
 
-      const { name, email, address, birthdate } = req.body;
+      const { name, address, birthdate } = req.body;
+      // Use provided email or fall back to current email
+      const email = req.body.email || user.rows[0].email;
 
       // Validate birthdate (must be 18+)
       const birthDate = new Date(birthdate);

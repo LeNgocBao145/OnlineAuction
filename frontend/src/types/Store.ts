@@ -87,7 +87,7 @@ export interface UserProfileState {
   fetchProfile: (userId: string | number) => Promise<void>;
   updateProfile: (userId: string | number, data: {
     name: string;
-    email: string;
+    email?: string;
     birthdate: string;
     address: string;
   }) => Promise<void>;
