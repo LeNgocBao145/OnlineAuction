@@ -29,6 +29,13 @@ const userService = {
         }, { withCredentials: true });
     },
 
+    // Send OTP for email change
+    async sendOTP(userId: string | number, email: string): Promise<void> {
+        await api.post(`/users/${userId}/send-otp`, {
+            email
+        }, { withCredentials: true });
+    },
+
     // Verify OTP for email change
     async verifyOTP(userId: string | number, email: string, otp: string): Promise<UserProfile> {
         const res = await api.patch(`/users/${userId}/verify-otp`, {

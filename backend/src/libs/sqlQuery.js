@@ -22,7 +22,13 @@ const getUserColumns = () => USER_SELECT_FIELDS.map(col => `u.${col}`).join(', '
 // User Queries
 export const getUserByEmail = `SELECT ${getUserColumns()} FROM users u WHERE email = $1`;
 
-export const getUserById = `SELECT ${getUserColumns()} FROM users u WHERE u.id = $1`;
+export const getUserById = `
+  SELECT 
+    u.id, u.name, u.email, u.birthdate, u.hashed_password, u.address, u.role, u.rating,
+    (SELECT COUNT(*) FROM reviews WHERE ratee = u.id) as rating_count
+  FROM users u 
+  WHERE u.id = $1
+`;
 
 export const createUser = `INSERT INTO users (name, email, hashed_password, birthdate, address, role, rating) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`;
 
@@ -37,7 +43,7 @@ export const getUsers = (sortLogic) => `
 
 export const deleteUserById = `DELETE FROM users WHERE id = $1`;
 
-export const updateUserById = `UPDATE users SET name = $1, email = $2, birthdate = $3, address = $4, role = $5, rating = $6 WHERE id = $7 RETURNING *`;
+export const updateUserById = `UPDATE users SET name = $1, email = $2, birthdate = $3, address = $4, role = $5 WHERE id = $6 RETURNING *`;
 
 export const updateUserInformationById = `UPDATE users SET name = $1, email = $2, birthdate = $3, address = $4 WHERE id = $5 RETURNING *`;
 
@@ -72,7 +78,8 @@ export const getBiddingsByUserId = (sortLogic) => `
         MAX(b.bid_date) AS bid_date,
         MAX(b.price) AS bid_price,
         sp.instant_price,
-        bidder.name AS highest_bidder,
+        bidder.name AS highest_bidder_name,
+        bidder.id AS highest_bidder_id,
         sp.created_at,
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
@@ -88,7 +95,7 @@ export const getBiddingsByUserId = (sortLogic) => `
             LEFT JOIN categories c ON pc.category = c.id
             LEFT JOIN bids pb ON p.id = pb.product
             LEFT JOIN LATERAL(
-                SELECT u.name
+                SELECT u.name, u.id
                 FROM bids b2 JOIN users u ON b2.buyer = u.id
                 WHERE b2.product = p.id
                 ORDER BY b2.price DESC
@@ -108,7 +115,7 @@ export const getBiddingsByUserId = (sortLogic) => `
     GROUP BY 
         p.id,
         sp.expired_at, sp.created_at, sp.instant_price,
-        bidder.name,
+        bidder.name, bidder.id,
         query, p.search_vector
 
     ORDER BY ${sortLogic}, rank DESC
@@ -301,16 +308,26 @@ export const updateCategoryById = `UPDATE categories SET name = $1, parent = $2 
 
 export const deleteCategoryById = `DELETE FROM categories WHERE id = $1`;
 
+export const getCategoryProductCount = `SELECT COUNT(*) FROM product_categories WHERE category = $1`;
+
 // Product Queries
 export const getProducts = `SELECT ${getProductColumns()} FROM products p`;
 
-export const getProductById = `SELECT ${getProductColumns()} FROM products p WHERE id = $1`;
+export const createProduct = `INSERT INTO products (name, current_price, image) VALUES ($1, $2, $3) RETURNING *`;
 
-export const createProduct = `INSERT INTO products (name, description, image, start_price, current_price, end_time, seller_id, category_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`;
+export const createProductCategory = `INSERT INTO product_categories (product, category) VALUES ($1, $2) RETURNING *`;
 
-export const updateProductById = `UPDATE products SET name = $1, description = $2, image = $3, start_price = $4, current_price = $5, end_time = $6, seller_id = $7, category_id = $8 WHERE id = $9 RETURNING *`;
+export const updateProductById = `UPDATE products SET name = $1, current_price = $2, image = $3 WHERE id = $4 RETURNING *`;
+
 
 export const deleteProductById = `DELETE FROM products WHERE id = $1`;
+
+export const updateProductStateById = `UPDATE products SET state = $1 WHERE id = $2 RETURNING *`;
+
+export const updateSellProductById = `UPDATE sell_product SET init_price = $1, step_price = $2, instant_price = $3, starting_at = $4, expired_at = $5, isExtent = $6 WHERE product = $7 RETURNING *`;
+
+export const closeSellProductById = `UPDATE sell_product SET expired_at = NOW() WHERE product = $1 RETURNING *`;
+
 
 export const markFavoriteProduct = `
     INSERT INTO favorites (user_id, product) 
@@ -457,6 +474,7 @@ export const getProductDetailsById = `
             (
                 SELECT json_agg(
                     json_build_object(
+                        'id', q.id,
                         'question', q.question,
                         'questioner_name', u_q.name,
                         'answer', q.answer,
@@ -471,7 +489,19 @@ export const getProductDetailsById = `
                 WHERE q.product = b.id
             ),
             '[]'
-        ) AS qa
+        ) AS qa,
+
+        -- User specific info
+        (SELECT CASE 
+            WHEN EXISTS (SELECT 1 FROM allowed_bidder WHERE bidder = $2 AND product = b.id) THEN 'success'
+            ELSE (SELECT state FROM bid_requests WHERE bidder = $2 AND product = b.id LIMIT 1)
+        END) as user_bid_request_state,
+        CASE 
+            WHEN b.seller_id = $2 THEN 'seller'
+            WHEN EXISTS (SELECT 1 FROM bidder_winner WHERE bidder = $2 AND product = b.id) THEN 'winner'
+            WHEN EXISTS (SELECT 1 FROM bids WHERE buyer = $2 AND product = b.id) THEN 'bidder'
+            ELSE 'other'
+        END as user_relation
 
     FROM base b;
 `;
@@ -529,6 +559,10 @@ export const getFilteredProductsQuery = (sortLogic) => `
 
     LIMIT $8 OFFSET $9;
 `;
+
+export const getProductExistsById = `SELECT id FROM products WHERE id = $1`;
+
+export const getProductById = getProductDetailsById;
 
 export const createQuestion = `
     INSERT INTO product_questions (questioner, product, question, asked_at) VALUES ($1, $2, $3, NOW()) RETURNING *;
@@ -660,11 +694,63 @@ export const placeBidTransaction = `
     RETURNING id;
 `;
 
+// Auto-bidding queries
+export const upsertAutoBid = `
+    INSERT INTO auto_bids (product, bidder, max_price, created_at)
+    VALUES ($1, $2, $3, NOW())
+    ON CONFLICT (product, bidder) 
+    DO UPDATE SET max_price = $3, created_at = NOW()
+    RETURNING *;
+`;
+
+export const getAutoBidByProductAndBidder = `
+    SELECT * FROM auto_bids WHERE product = $1 AND bidder = $2;
+`;
+
+export const getTopAutoBidsForProduct = `
+    SELECT ab.*, u.email as bidder_email
+    FROM auto_bids ab
+    JOIN users u ON u.id = ab.bidder
+    WHERE ab.product = $1
+    ORDER BY ab.max_price DESC, ab.created_at ASC
+    LIMIT 2;
+`;
+
+export const deleteAutoBid = `
+    DELETE FROM auto_bids WHERE product = $1 AND bidder = $2;
+`;
+
+export const insertBidRecord = `
+    INSERT INTO bids (buyer, product, price, bid_date)
+    VALUES ($1, $2, $3, NOW())
+    RETURNING *;
+`;
+
+export const updateProductPrice = `
+    UPDATE products SET current_price = $1 WHERE id = $2 AND state = 'bidding' RETURNING *;
+`;
+
+// Leader bid queries
+export const getCurrentLeaderBid = `
+  SELECT 
+    b.id as bid_id,
+    b.buyer as bidder_id,
+    b.price as bid_price,
+    b.bid_date,
+    u.email as bidder_email
+  FROM bids b
+  JOIN users u ON u.id = b.buyer
+  WHERE b.product = $1
+  ORDER BY b.price DESC, b.bid_date ASC
+  LIMIT 1;
+`;
+
 // Product Description Queries
 export const getProductDescriptionsByProductId = `SELECT * FROM product_descriptions WHERE product = $1`;
 
-export const createSellProduct = `INSERT INTO sell_product(product, seller, init_price, step_price, instant_price, starting_at, expired_at, "isExtent")
+export const createSellProduct = `INSERT INTO sell_product(product, seller, init_price, step_price, instant_price, starting_at, expired_at, isExtent)
                                             VALUES($1, $2, $3, $4, $5, $6, $7, $8)`;
+
 //Product images
 export const createProductImages = `INSERT INTO product_images (product, image_path) VALUES ($1, $2::varchar(500)[]) RETURNING *`;
 
@@ -718,7 +804,8 @@ export const getListProducts = (type, order) => {
 }
 
 //Product descriptions
-export const createProductDescription = `INSERT INTO product_descriptions (product, description) VALUES ($1, $2) RETURNING *`;
+export const createProductDescription = `INSERT INTO product_descriptions (product, description, created_at) VALUES ($1, $2, NOW()) RETURNING *`;
+
 
 export const getProductDescription = `SELECT * FROM product_descriptions WHERE id = $1 AND product = $2`;
 
@@ -980,4 +1067,121 @@ export const getMessagesByProduct = (sortLogic = "created_at DESC") => `
     WHERE m.product = $1
     ORDER BY ${sortLogic}
     LIMIT $2 OFFSET $3
+`;
+
+// Bidder Management Queries (for seller to manage bidders)
+export const getProductBidders = `
+    WITH all_bidders AS (
+        -- Get bidders from bids table
+        SELECT DISTINCT 
+            b.buyer AS bidder_id,
+            u.name AS bidder_name,
+            u.email AS bidder_email,
+            u.rating AS bidder_rating,
+            MAX(b.price) AS highest_bid,
+            MAX(b.bid_date) AS last_bid_date,
+            NULL::numeric AS auto_bid_max,
+            'manual' AS bid_type,
+            false AS from_refuse
+        FROM bids b
+        JOIN users u ON u.id = b.buyer
+        WHERE b.product = $1
+        GROUP BY b.buyer, u.name, u.email, u.rating
+        
+        UNION ALL
+        
+        -- Get bidders from auto_bids table
+        SELECT DISTINCT
+            ab.bidder AS bidder_id,
+            u.name AS bidder_name,
+            u.email AS bidder_email,
+            u.rating AS bidder_rating,
+            NULL::numeric AS highest_bid,
+            ab.created_at AS last_bid_date,
+            ab.max_price AS auto_bid_max,
+            'auto' AS bid_type,
+            false AS from_refuse
+        FROM auto_bids ab
+        JOIN users u ON u.id = ab.bidder
+        WHERE ab.product = $1
+        
+        UNION ALL
+        
+        -- Get refused bidders from refuse table
+        SELECT DISTINCT
+            r.buyer AS bidder_id,
+            u.name AS bidder_name,
+            u.email AS bidder_email,
+            u.rating AS bidder_rating,
+            NULL::numeric AS highest_bid,
+            NULL::timestamp AS last_bid_date,
+            NULL::numeric AS auto_bid_max,
+            'refused' AS bid_type,
+            true AS from_refuse
+        FROM refuse r
+        JOIN users u ON u.id = r.buyer
+        WHERE r.product = $1
+    ),
+    merged_bidders AS (
+        SELECT 
+            bidder_id,
+            bidder_name,
+            bidder_email,
+            bidder_rating,
+            MAX(highest_bid) AS highest_bid,
+            MAX(last_bid_date) AS last_bid_date,
+            MAX(auto_bid_max) AS auto_bid_max,
+            CASE 
+                WHEN bool_or(from_refuse) THEN 'refused'
+                WHEN MAX(auto_bid_max) IS NOT NULL THEN 'auto'
+                ELSE 'manual'
+            END AS bid_type,
+            bool_or(from_refuse) AS is_refused
+        FROM all_bidders
+        GROUP BY bidder_id, bidder_name, bidder_email, bidder_rating
+    )
+    SELECT 
+        mb.bidder_id,
+        mb.bidder_name,
+        mb.bidder_email,
+        mb.bidder_rating,
+        mb.highest_bid,
+        mb.last_bid_date,
+        mb.auto_bid_max,
+        mb.bid_type,
+        mb.is_refused,
+        COUNT(*) OVER() AS total_count
+    FROM merged_bidders mb
+    ORDER BY mb.is_refused ASC, mb.highest_bid DESC NULLS LAST, mb.last_bid_date DESC
+    LIMIT $2 OFFSET $3;
+`;
+
+export const refuseBidder = `
+    WITH inserted_refuse AS (
+        INSERT INTO refuse (product, buyer)
+        VALUES ($1, $2)
+        ON CONFLICT (product, buyer) DO NOTHING
+        RETURNING product, buyer
+    ),
+    deleted_bids AS (
+        DELETE FROM bids
+        WHERE product = $1 AND buyer = $2
+        RETURNING id
+    ),
+    deleted_auto_bids AS (
+        DELETE FROM auto_bids
+        WHERE product = $1 AND bidder = $2
+        RETURNING product
+    )
+    SELECT 
+        (SELECT COUNT(*) FROM deleted_bids) AS deleted_bids_count,
+        (SELECT COUNT(*) FROM deleted_auto_bids) AS deleted_auto_bids_count;
+`;
+
+export const checkIsRefused = `
+    SELECT 1 FROM refuse WHERE product = $1 AND buyer = $2;
+`;
+
+export const unrefuseBidder = `
+    DELETE FROM refuse WHERE product = $1 AND buyer = $2;
 `;

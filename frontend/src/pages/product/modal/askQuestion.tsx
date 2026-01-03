@@ -51,7 +51,7 @@ export default function AskQuestionModal(
                 </div>
                 <div className="flex justify-start items-center gap-4 w-full p-8">
                     <img src={avatarUrl} alt={`${profileName}'s profile`} className="w-24 h-24 border-2 border-(--primary) rounded-full"/>
-                    <p className="text-(--primary) font-bold text-2xl">{profileName.length > 20 ? profileName.slice(0, 20) + "..." : profileName}</p>
+                    <p className="text-(--primary) font-bold text-2xl wrap-break-word">{profileName.length > 20 ? profileName.slice(0, 20) + "..." : profileName}</p>
                 </div>
                 <textarea placeholder="Type your question here..." maxLength={300} onChange={(e) => {setQuestion(e.target.value)}} className="resize-none p-2 rounded-lg w-full h-1/3 border border-(--primary) text-white"/>
                 <div className="flex justify-between items-center mt-4 px-2">

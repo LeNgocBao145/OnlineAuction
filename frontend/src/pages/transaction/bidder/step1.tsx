@@ -38,7 +38,7 @@ export default function Step1Box({ productId, transaction, onSuccess }: StepBoxP
           const { paymentProof: invoiceImage, shippingAddress: deliveryAddress } = data;
           const res = await transactionService.bidderSubmit(productId, {
             deliveryAddress,
-            invoiceImage: invoiceImage.name,
+            invoiceImage
           });
           if(res) {
             toast.success("Send payment information to seller successfully");

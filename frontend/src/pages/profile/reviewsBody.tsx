@@ -6,13 +6,14 @@ import { formatDate } from "@/utils/dateUtils";
 
 export default function ReviewsBody() {
     const { user } = useAuthStore();
-    const { ratings, loading, error, fetchRatings } = useUserStore();
+    const { ratings, loading, error, fetchRatings, profile, fetchProfile } = useUserStore();
     const [reviewMaxRating] = useState<number>(6);
     const [page, setPage] = useState<number>(1);
 
     useEffect(() => {
         if (user?.id) {
             fetchRatings(user.id);
+            fetchProfile(user.id);
         }
     }, [user?.id]);
 
@@ -42,28 +43,85 @@ export default function ReviewsBody() {
     return (
         <div className="w-8/10 m-auto border border-white/10 rounded-lg p-6 bg-(--third) mt-10">
             <h1 className="font-bold text-2xl text-(--primary)">My Reviews</h1>
-            <div className="flex mt-4 gap-4 items-end border border-white/10 p-4 rounded-md bg-white/2">
-                <div>
-                    <p className="text-3xl text-(--primary) font-bold">{averageRating}</p>
-                    <p className="text-white/60">Overall Rating</p>
+            
+            {/* Rating Display Section */}
+            <div className="bg-black/20 border border-white/10 rounded-lg p-4 mt-4">
+                <div className="flex items-center justify-between gap-6">
+                    <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="text-white/60 text-sm">Your Rating Progress</span>
+                            <span className="text-white/40 text-sm">•</span>
+                            <span className="text-white font-semibold text-lg">
+                                {(() => {
+                                    const raw = profile?.rating ?? 0;
+                                    const num = typeof raw === 'string' ? parseFloat(raw) || 0 : raw;
+                                    const clamped = Math.max(0, Math.min(num, 1));
+                                    return clamped.toFixed(2);
+                                })()}
+                            </span>
+                            <span className="text-white/60 text-sm">
+                                ({profile?.rating_count || 0} reviews)
+                            </span>
+                        </div>
+                        <div className="relative">
+                            <div className="w-full bg-white/10 rounded-full h-4 overflow-hidden backdrop-blur-sm">
+                                <div 
+                                    className={`h-full rounded-full transition-all duration-500 ease-out ${
+                                        (() => {
+                                            const raw = profile?.rating ?? 0;
+                                            const num = typeof raw === 'string' ? parseFloat(raw) || 0 : raw;
+                                            return num >= 0.8 ? 'bg-gradient-to-r from-green-600 to-green-400' : 'bg-gradient-to-r from-yellow-600 to-orange-400';
+                                        })()
+                                    }`}
+                                    style={{ width: `${(() => {
+                                        const raw = profile?.rating ?? 0;
+                                        const num = typeof raw === 'string' ? parseFloat(raw) || 0 : raw;
+                                        const clamped = Math.max(0, Math.min(num, 1));
+                                        return clamped * 100;
+                                    })()}%` }}
+                                />
+                            </div>
+                            <div className="absolute -top-1 right-0">
+                                <span className="bg-black/50 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full border border-white/20">
+                                    {(() => {
+                                        const raw = profile?.rating ?? 0;
+                                        const num = typeof raw === 'string' ? parseFloat(raw) || 0 : raw;
+                                        const clamped = Math.max(0, Math.min(num, 1));
+                                        return `${Math.round(clamped * 100)}%`;
+                                    })()}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <p className="text-2xl text-white font-bold">{ratings.length}</p>
-                    <p className="text-white/60">Total Reviews</p>
-                </div>
+                {(profile?.rating_count || 0) === 0 && (
+                    <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
+                        <p className="text-yellow-400 text-sm">
+                            <strong>Note:</strong> As a new user, you'll need to get approval from sellers before bidding on products.
+                        </p>
+                    </div>
+                )}
+                {(profile?.rating || 0) < 0.8 && (profile?.rating_count || 0) > 0 && (
+                    <div className="mt-3 p-3 bg-orange-500/10 border border-orange-500/20 rounded-md">
+                        <p className="text-orange-400 text-sm">
+                            <strong>Note:</strong> Users with rating below 0.8 may need approval from sellers before bidding on some products.
+                        </p>
+                    </div>
+                )}
             </div>
+
             <div className="flex flex-col mt-4 gap-4 border border-white/10 p-4 rounded-md bg-white/2">
                 <ul>
                     {reviewsToShow.length > 0 ? reviewsToShow.map((review, index) => (
                         <li key={index} className="border-b border-white/10 py-4">
                             <div className="flex justify-between items-center">
-                                <p className="text-white font-bold text-2xl">{review.buyer_name}</p>
+                                <p className="text-white font-bold text-2xl">{review.rater_name}</p>
                                 <p className="text-white/60 text-sm">On {formatDate(review.created_at)}</p>
                             </div>
                             <p className="text-white/60 flex justify-start items-center gap-1">Gave you a <span className="text-yellow-400">
-                                {review.rating === 1 ? "Like" : review.rating === 0 ? "Dislike" : "Neutral"}</span>
+                                {review.liked === 1 ? "Like" : "Dislike"} </span>
                             </p>
-                            <p className="text-white mt-2">{review.comment}</p>
+                            <p className="text-white mt-2">{review.content}</p>
                         </li>
                     )) : <p className="text-white/60">No reviews found for the selected rating range.</p>}
                 </ul>

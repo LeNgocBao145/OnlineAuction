@@ -1,6 +1,7 @@
 import Chatbox from "./chatbox";
 import TransactionInfoCard from "./infoCard";
-import Step1And2Box from "./seller/step1And2";
+import Step1Box from './seller/step1';
+import Step2Box from "./seller/step2";
 import Step3Box from "./seller/step3";
 import Step4Box from "./seller/step4";
 import { useEffect, useMemo, useState } from "react";
@@ -41,8 +42,8 @@ export default function SellerTransactionPage() {
       <div className="mt-6 grid lg:grid-cols-[2fr_1fr] grid-cols-1 gap-6 items-start">
         <div className="grid gap-6">
           <TransactionInfoCard currentStep={currentStep ?? 0} transaction={transaction ?? null} />
-          {currentStep === 1 && <Step1And2Box productId={productId} transaction={transaction} onSuccess={refetch} />}
-          {currentStep === 2 && <Step1And2Box productId={productId} transaction={transaction} onSuccess={refetch} />}
+          {currentStep === 1 && <Step1Box/>}
+          {currentStep === 2 && <Step2Box productId={productId} transaction={transaction} onSuccess={refetch} />}
           {currentStep === 3 && <Step3Box productId={productId} transaction={transaction} onSuccess={refetch} />}
         </div>
         <Chatbox sideCalling="seller" productId={productId} recipientId={transaction?.bidder} />

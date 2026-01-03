@@ -11,16 +11,29 @@ import {
   approveBidRequest,
   rejectBidRequest,
   handleInstantBuyQuery,
-  placeBidTransaction,
   createProduct,
+  createProductCategory,
   getProductById,
-  getProductImagesById,
   createProductImages,
   createProductDescription,
-  createSellProduct
+  createSellProduct,
+  upsertAutoBid,
+  getTopAutoBidsForProduct,
+  insertBidRecord,
+  updateProductPrice,
+  getCurrentLeaderBid,
+  updateProductById,
+  updateProductStateById,
+  updateSellProductById,
+  closeSellProductById,
+  deleteProductById,
+  getProductBidders,
+  refuseBidder as refuseBidderQuery,
+  unrefuseBidder as unrefuseBidderQuery
 } from "../libs/sqlQuery.js";
-import { 
-  sendQuestionAskedEmail, 
+
+import {
+  sendQuestionAskedEmail,
   sendQuestionAnsweredEmail,
   sendBidRequestEmail,
   sendBidResponseEmail,
@@ -32,90 +45,77 @@ import {
 
 class ProductController {
   async addProduct(req, res) {
-      try {
-          const { seller, name, images, init_price, step_price, instant_price, start_at, expired_at, description, isExtent } = req.body;
+    try {
+      const { seller, name, images, init_price, step_price, instant_price, start_at, expired_at, description, isExtent, category } = req.body;
 
-
-          if (!seller || !name || !images || !init_price || !step_price || !start_at || !expired_at || !description || typeof (isExtent) !== 'boolean') {
-              return res.status(400).json({
-                message: "Seller id, name, images, init_price, step_price, description and isExtent are required"
-              });
-          }
-
-
-          if(!Array.isArray(images) || images.length < 3) {
-              return res.status(400).json({
-                  message: "Images must contain at least 3 items"
-                });
-          }
-
-
-          if(init_price <= 0 || step_price <= 0) {
-              return res.status(400).json({
-                  message: "Init price and step price must be positive",
-              });
-          }
-
-
-          const result = await query(createProduct, [
-              name,
-              init_price,
-              images[0]
-          ]);
-
-
-          const productId = result.rows[0].id;
-
-
-          await Promise.all([
-              query(createProductImages, [productId, images]),
-              query(createProductDescription, [productId, description]),
-              query(createSellProduct, [productId, seller, init_price, step_price, instant_price || null, start_at, expired_at, isExtent])
-          ]);
-
-
-          return res.status(201).json({ message: "Product created successfully!", productId });    
-      } catch(error) {
-          console.error("[addProduct] Error: ", error);
-          res.status(500).json({ message: "Internal Server Error" });
+      if (!seller || !name || !images || !init_price || !step_price || !start_at || !expired_at || !description || typeof (isExtent) !== 'boolean' || !category) {
+        return res.status(400).json({
+          message: "Seller id, name, images, init_price, step_price, description, isExtent and category are required"
+        });
       }
+
+      if (!Array.isArray(images) || images.length < 3) {
+        return res.status(400).json({
+          message: "Images must contain at least 3 items"
+        });
+      }
+
+      if (init_price <= 0 || step_price <= 0) {
+        return res.status(400).json({
+          message: "Init price and step price must be positive",
+        });
+      }
+
+      const result = await query(createProduct, [
+        name,
+        init_price,
+        images[0]
+      ]);
+
+      const productId = result.rows[0].id;
+
+      await Promise.all([
+        query(createProductImages, [productId, images]),
+        query(createProductDescription, [productId, description]),
+        query(createProductCategory, [productId, category]),
+        query(createSellProduct, [productId, seller, init_price, step_price, instant_price || null, start_at, expired_at, isExtent])
+      ]);
+
+      return res.status(201).json({ message: "Product created successfully!", productId });
+    } catch (error) {
+      console.error("[addProduct] Error: ", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
   }
 
-
   async addDescription(req, res) {
-      try {
-          const productId = req.params.productId;
-          const { des } = req.body;
+    try {
+      const productId = req.params.productId;
+      const { des } = req.body;
 
-
-          if (!productId || !des) {
-              return res.status(400).json({
-                message: "ProductID and description are required",
-              });
-          }
-
-
-          const product = await query(getProductById, [productId]);
-
-
-          if (!product.rows.length) {
-              return res.status(404).json({ message: "No product found" });
-          }
-
-
-          const result = await query(createProductDescription, [productId, des]);
-
-
-          const newProductDescription = result.rows[0];
-
-
-          return res
-                  .status(201)
-                  .json({ message: "Product description created successfully!", newProductDescription });
-      } catch (error) {
-          console.error("[addDescription] Error: ", error);
-          res.status(500).json({ message: "Internal Server Error" });
+      if (!productId || !des) {
+        return res.status(400).json({
+          message: "ProductID and description are required",
+        });
       }
+
+      const product = await query(getProductById, [productId]);
+
+      if (!product.rows.length) {
+        return res.status(404).json({ message: "No product found" });
+      }
+
+      const result = await query(createProductDescription, [productId, des]);
+
+      const newProductDescription = result.rows[0];
+
+      return res
+        .status(201)
+        .json({ message: "Product description created successfully!", newProductDescription });
+    } catch (error) {
+      console.error("[addDescription] Error: ", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
   }
 
   async getProductDetails(req, res) {
@@ -125,7 +125,8 @@ class ProductController {
         return res.status(400).json({ message: "Invalid product ID" });
       }
 
-      const result = await query(getProductDetailsById, [productId]);
+      const userId = req.user?.id || null;
+      const result = await query(getProductDetailsById, [productId, userId]);
       if (result.rows.length === 0) {
         return res.status(404).json({ message: "Product not found" });
       }
@@ -149,7 +150,7 @@ class ProductController {
       const keyword = req.query.keyword ? req.query.keyword.trim() : "";
 
       const category = req.query.category ? parseInt(req.query.category, 10) : null;
-      
+
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
       const offset = (page - 1) * limit;
@@ -165,7 +166,7 @@ class ProductController {
       const states = req.query.states
         ? req.query.states.split(",").map(s => s.trim())
         : null;
-          
+
       const finalStates = states?.filter(s => allowedStates.includes(s)) || null;
 
       const SORT_MAPPING = {
@@ -273,7 +274,7 @@ class ProductController {
 
       // Send email using data from the single query
       const { seller_email, product_name, user_name } = result.rows[0];
-      const productUrl = `https://${process.env.FRONTEND_HOST}/products/${productId}`;
+      const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
 
       await sendQuestionAskedEmail(seller_email, product_name, user_name, trimmedQuestion, productUrl);
 
@@ -346,12 +347,12 @@ class ProductController {
 
       // Send email using data from the single query
       const { asker_email, product_name } = result.rows[0];
-      const productUrl = `https://${process.env.FRONTEND_HOST}/products/${productId}`;
+      const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
 
       await sendQuestionAnsweredEmail(asker_email, product_name, trimmedAnswer, productUrl);
 
       return res.status(200).json({ message: "Question answered successfully" });
-    } catch (error) { 
+    } catch (error) {
       console.error("Error when answering question", error);
       res.status(500).json({ message: "Internal Server Error" });
     }
@@ -399,12 +400,12 @@ class ProductController {
         const to = userData.seller_email;
         const productName = userData.product_name;
         const buyerName = userData.name;
-        const productUrl = `https://${process.env.FRONTEND_HOST}/products/${productId}`;
+        const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
 
         await sendBidRequestEmail(to, productName, buyerName, productUrl)
-              .catch((err) => {
-                console.error("Error sending bid request email", err);
-              });
+          .catch((err) => {
+            console.error("Error sending bid request email", err);
+          });
       };
 
 
@@ -438,7 +439,7 @@ class ProductController {
       const { productId } = req.params;
 
       const keyword = req.query.keyword ? req.query.keyword.trim() : "";
-      
+
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 5));
       const offset = (page - 1) * limit;
@@ -599,134 +600,424 @@ class ProductController {
     }
   }
 
-  async placeBid(req, res) {
+  // --- START: Helpers for placeBid ---
+
+  _checkBidPermissions = (data, userId) => {
+
+    if (data.product_state !== "bidding" || new Date() > new Date(data.expired_at)) return "Bidding is closed for this product";
+    if (data.user_id === data.seller) return "Sellers cannot bid on their own products";
+
+    // Check if bidder is refused
+    if (data.is_refused) return "You have been refused from bidding on this product";
+
+    const isNew = parseInt(data.rating_count, 10) === 0;
+    const hasLowRating = parseFloat(data.user_rating) < 0.8;
+
+    // Check if user needs permission (either new user OR low rating user)
+    if ((isNew || hasLowRating) && !data.bid_permission) {
+      if (isNew) {
+        return "New users with 0 ratings need permission to bid on this product";
+      } else {
+        return "User rating too low to place a bid without approval";
+      }
+    }
+
+    return null;
+  }
+
+  _processManualBid = async (res, userId, productId, amount, instP, minNext, data, productUrl, notifyList, userEmail) => {
+
+    if (instP > 0 && amount >= instP) {
+      const result = await query(handleInstantBuyQuery, [userId, productId, amount]);
+      if (result.rowCount === 0) return res.status(409).json({ message: "Product was just sold to someone else" });
+      this._notifySuccess(userEmail, data.product_name, amount, productUrl, notifyList, true);
+      return res.status(200).json({ message: "Instant buy successful!" });
+    }
+
+    const leaderResult = await query(getCurrentLeaderBid, [productId]);
+    const leader = leaderResult.rows[0];
+    if (leader && leader.bidder_id !== userId && amount <= parseFloat(leader.bid_price)) {
+      return res.status(409).json({ message: `Someone else bid higher. Current: ${parseFloat(leader.bid_price).toFixed(0)}` });
+    }
+
+    const topAuto = (await query(getTopAutoBidsForProduct, [productId])).rows[0];
+    if (topAuto && topAuto.bidder !== userId && amount <= parseFloat(topAuto.max_price)) {
+      const outbidPrice = Math.min(amount + parseFloat(data.step_price), parseFloat(topAuto.max_price));
+      await query(insertBidRecord, [userId, productId, amount]);
+      await this._finalizeBid(topAuto.bidder, productId, outbidPrice, parseFloat(topAuto.max_price));
+      this._notifySuccess(userEmail, data.product_name, amount, productUrl, [], false);
+      this._notifySuccess(topAuto.bidder_email, data.product_name, outbidPrice, productUrl, notifyList, false);
+      return res.status(201).json({ message: "Outbid by auto-bidding", currentPrice: outbidPrice, isWinning: false });
+    }
+
+    await this._finalizeBid(userId, productId, amount, null);
+    this._notifySuccess(userEmail, data.product_name, amount, productUrl, notifyList, false);
+    return res.status(201).json({ message: "Bid placed successfully", currentPrice: amount, isWinning: true });
+  }
+
+  _processAutoBid = async (res, userId, productId, maxPrice, currP, stepP, minNext, data, productUrl, notifyList, userEmail) => {
+
+    const leader = (await query(getCurrentLeaderBid, [productId])).rows[0];
+    const leaderId = leader ? parseInt(leader.bidder_id, 10) : null;
+    const leaderPrice = leader ? parseFloat(leader.bid_price) : currP;
+
+    await query(upsertAutoBid, [productId, userId, maxPrice]);
+    if (leaderId === userId) return res.status(200).json({ message: "Auto-bid updated. Still leading.", currentPrice: leaderPrice, isWinning: true });
+
+    const topBids = (await query(getTopAutoBidsForProduct, [productId])).rows;
+    const [first, second] = topBids;
+    const m1 = parseFloat(first.max_price), m2 = second ? parseFloat(second.max_price) : 0;
+    const winnerId = first.bidder;
+    const winnerMax = m1;
+    const finalPrice = Math.max(minNext, topBids.length > 1 ? (m1 > m2 ? Math.min(m2 + stepP, m1) : m1) : (leaderPrice + stepP));
+
+    if (topBids.length > 1) {
+      // Insert runner-up bid (so both auto-bidders have bid records), then winner's bid
+      const runner = second;
+      const runnerId = runner.bidder;
+      const runnerMax = m2;
+      const runnerPrice = Math.max(minNext, Math.min(runnerMax, finalPrice - stepP));
+
+      // runner's bid record (does not update product current_price yet)
+      await query(insertBidRecord, [runnerId, productId, runnerPrice]);
+
+      // winner's bid record and update product price
+      await query(insertBidRecord, [winnerId, productId, finalPrice]);
+      await query(updateProductPrice, [finalPrice, productId]);
+
+      this._notifySuccess(winnerId === userId ? userEmail : first.bidder_email, data.product_name, finalPrice, productUrl, notifyList, false);
+
+      return res.status(winnerId === userId ? 201 : 200).json({
+        message: winnerId === userId ? "Auto-bid active. You win!" : "Outbid by higher auto-bid",
+        currentPrice: finalPrice,
+        isWinning: winnerId === userId
+      });
+    }
+
+    // single auto-bidder case
+    await this._finalizeBid(winnerId, productId, finalPrice, winnerId === userId ? maxPrice : winnerMax);
+    this._notifySuccess(winnerId === userId ? userEmail : first.bidder_email, data.product_name, finalPrice, productUrl, notifyList, false);
+
+    return res.status(winnerId === userId ? 201 : 200).json({
+      message: winnerId === userId ? "Auto-bid active. You win!" : "Outbid by higher auto-bid",
+      currentPrice: finalPrice,
+      isWinning: winnerId === userId
+    });
+  }
+
+  _finalizeBid = async (bidderId, productId, price) => {
+
+    await query(insertBidRecord, [bidderId, productId, price]);
+    await query(updateProductPrice, [price, productId]);
+  }
+
+  _notifySuccess = (winnerEmail, productName, price, url, others, isInstant) => {
+
+    const [sendWinner, sendOthers] = isInstant ? [sendSuccessfullyInstantBuyEmail, sendInstantBuyEmail] : [sendBidSuccessfullyEmail, sendPriceUpdateEmail];
+    sendWinner(winnerEmail, productName, price, url).catch(e => console.error("Email error:", e));
+    others.forEach(email => sendOthers(email, productName, price, winnerEmail, url).catch(e => console.error("Email error:", e)));
+  }
+
+  _getBidCheckQuery = () => {
+
+    return `
+      SELECT u.id as user_id, u.email as user_email, u.rating as user_rating,
+             p.id as product_id, p.name as product_name, p.current_price, p.state as product_state,
+             sp.step_price, sp.instant_price, sp.seller, sp.expired_at,
+             seller_user.email as seller_email,
+             (SELECT COUNT(*) FROM reviews WHERE ratee = u.id) as rating_count,
+             (SELECT 1 FROM allowed_bidder ab WHERE ab.bidder = u.id AND ab.product = p.id LIMIT 1) as bid_permission,
+             (SELECT 1 FROM refuse r WHERE r.buyer = u.id AND r.product = p.id LIMIT 1) as is_refused,
+             (SELECT b.email FROM bids b2 JOIN users b ON b2.buyer = b.id WHERE b2.product = p.id ORDER BY b2.price DESC, b2.bid_date ASC LIMIT 1) as prev_bidder_email
+      FROM users u CROSS JOIN products p
+      LEFT JOIN sell_product sp ON sp.product = p.id
+      LEFT JOIN users seller_user ON seller_user.id = sp.seller
+      WHERE u.id = $1 AND p.id = $2`;
+  }
+
+  // --- END: Helpers for placeBid ---
+
+  placeBid = async (req, res) => {
+
+    try {
+      const { productId } = req.params;
+      const { id: userId, email: userEmail } = req.user;
+      const { bidAmount, maxPrice: autoMax } = req.body;
+
+      const amount = bidAmount ? parseFloat(bidAmount) : null;
+      const maxPrice = autoMax ? parseFloat(autoMax) : null;
+
+      if (!amount === !maxPrice) return res.status(400).json({ message: "Provide either bidAmount OR maxPrice" });
+      if (isNaN(amount || maxPrice) || (amount || maxPrice) <= 0) return res.status(400).json({ message: "Invalid amount" });
+
+      const checkResult = await query(this._getBidCheckQuery(), [userId, productId]);
+      const data = checkResult.rows[0];
+      if (!data) return res.status(404).json({ message: "User or product not found" });
+
+      const permissionError = this._checkBidPermissions(data, userId);
+      if (permissionError) return res.status(403).json({ message: permissionError });
+
+      const [currP, stepP, instP] = [data.current_price, data.step_price, data.instant_price || 0].map(parseFloat);
+      const minNext = currP + stepP;
+      if ((amount || maxPrice) < minNext) return res.status(400).json({ message: `Minimum bid is ${minNext.toFixed(0)}` });
+
+      const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
+      const notifyList = [data.seller_email, data.prev_bidder_email && data.prev_bidder_email !== userEmail && data.prev_bidder_email].filter(Boolean);
+
+      if (amount) return this._processManualBid(res, userId, productId, amount, instP, minNext, data, productUrl, notifyList, userEmail);
+      return this._processAutoBid(res, userId, productId, maxPrice, currP, stepP, minNext, data, productUrl, notifyList, userEmail);
+    } catch (error) {
+      console.error("Error placing bid:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async updateProduct(req, res) {
     try {
       const { productId } = req.params;
       const userId = req.user.id;
-      const { bidAmount } = req.body;
-      const amount = parseFloat(bidAmount);
+      const { name, init_price, step_price, instant_price, start_at, expired_at, description, isExtent, category } = req.body;
 
-      if (isNaN(amount) || amount <= 0) {
-        return res.status(400).json({ message: "Invalid bid amount" });
+      const check = await query(`SELECT seller FROM sell_product WHERE product = $1`, [productId]);
+      if (check.rows.length === 0 || check.rows[0].seller !== userId) {
+        return res.status(403).json({ message: "Unauthorized." });
       }
 
-      const combinedCheckQuery = `
-        SELECT
-          u.id as user_id,
-          u.email as user_email,
-          u.rating as user_rating,
-          p.id as product_id,
-          p.name as product_name,
-          p.current_price,
-          sp.step_price,
-          sp.instant_price,
-          p.state as product_state,
-          sp.seller,
-          sp.expired_at,
-          seller_user.email as seller_email,
-          (SELECT COUNT(*) FROM reviews WHERE ratee = u.id) as rating_count,
-          (SELECT br.id FROM bid_requests br WHERE br.bidder = u.id AND br.product = p.id AND br.state = 'success' LIMIT 1) as bid_permission,
-          (SELECT bidder.email FROM bids b JOIN users bidder ON b.buyer = bidder.id WHERE b.product = p.id ORDER BY b.price DESC LIMIT 1) as prev_bidder_email
-        FROM users u
-          CROSS JOIN products p
-          LEFT JOIN sell_product sp ON sp.product = p.id
-          LEFT JOIN users seller_user ON seller_user.id = sp.seller
-        WHERE u.id = $1 AND p.id = $2
-      `;
+      await Promise.all([
+        query(updateProductById, [name, init_price, req.body.image || '', productId]),
+        query(updateSellProductById, [init_price, step_price, instant_price || null, start_at, expired_at, isExtent, productId]),
+        query(`UPDATE product_descriptions SET description = $1 WHERE product = $2`, [description, productId]),
+        query(`UPDATE product_categories SET category = $1 WHERE product = $2`, [category, productId])
+      ]);
 
-      const checkResult = await query(combinedCheckQuery, [userId, productId]);
+      return res.status(200).json({ message: "Product updated successfully!" });
+    } catch (error) {
+      console.error("[updateProduct] Error: ", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
 
-      if (checkResult.rows.length === 0) {
-        return res.status(404).json({ message: "User or product not found" });
+  async closeAuction(req, res) {
+    try {
+      const { productId } = req.params;
+      const userId = req.user.id;
+
+      const check = await query(`SELECT seller FROM sell_product WHERE product = $1`, [productId]);
+      if (check.rows.length === 0 || check.rows[0].seller !== userId) {
+        return res.status(403).json({ message: "Unauthorized." });
       }
 
-      const data = checkResult.rows[0];
+      await query(updateProductStateById, ['sold', productId]);
+      await query(closeSellProductById, [productId]);
 
-      if (!data.user_id) {
-        return res.status(404).json({ message: "User not found" });
+      return res.status(200).json({ message: "Auction closed successfully!" });
+    } catch (error) {
+      console.error("[closeAuction] Error: ", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
+
+  async deleteProduct(req, res) {
+    try {
+      const { productId } = req.params;
+      const userId = req.user.id;
+
+      const check = await query(`SELECT seller FROM sell_product WHERE product = $1`, [productId]);
+      if (check.rows.length === 0 || check.rows[0].seller !== userId) {
+        return res.status(403).json({ message: "Unauthorized." });
       }
 
-      if (!data.product_id) {
+      const bidCheck = await query(`SELECT COUNT(*) FROM bids WHERE product = $1`, [productId]);
+      if (parseInt(bidCheck.rows[0].count) > 0) {
+        return res.status(400).json({ message: "Cannot delete product that has bids." });
+      }
+
+      await query(deleteProductById, [productId]);
+      return res.status(200).json({ message: "Product deleted successfully!" });
+    } catch (error) {
+      console.error("[deleteProduct] Error: ", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
+
+  async getProductBidders(req, res) {
+    try {
+      const { productId } = req.params;
+      const userId = req.user.id;
+
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+      const offset = (page - 1) * limit;
+
+      // Check if user is the seller of this product
+      const sellerCheck = await query(
+        `SELECT seller FROM sell_product WHERE product = $1`,
+        [productId]
+      );
+
+      if (sellerCheck.rows.length === 0) {
         return res.status(404).json({ message: "Product not found" });
       }
 
-      if (data.product_state !== "bidding" || new Date() > new Date(data.expired_at)) {
-        return res.status(403).json({ message: "Bidding is closed for this product" });
+      if (sellerCheck.rows[0].seller !== parseInt(userId, 10)) {
+        return res.status(403).json({ message: "Only the seller can view bidders for their products" });
       }
 
-      if (data.user_id === data.seller) {
-        return res.status(403).json({ message: "Sellers cannot bid on their own products" });
-      }
+      const { rows } = await query(getProductBidders, [productId, limit, offset]);
 
-      const ratingCount = parseInt(data.rating_count, 10);
-      const isFirstBid = ratingCount === 0;
+      const totalItems = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
+      const totalPages = Math.ceil(totalItems / limit);
 
-      if (isFirstBid && !data.bid_permission) {
-        return res.status(403).json({ message: "New users with 0 ratings need permission to bid on this product" });
-      }
+      const bidders = rows.map((item) => {
+        const { total_count, ...bidderData } = item;
+        return bidderData;
+      });
 
-      if (!isFirstBid && parseFloat(data.user_rating) < 4) {
-        return res.status(403).json({ message: "User rating too low to place a bid" });
-      }
-
-      const current_price = parseFloat(data.current_price);
-      const step_price = parseFloat(data.step_price);
-      const instant_price = parseFloat(data.instant_price || 0);
-
-      if (amount < current_price + step_price) {
-        return res.status(400).json({ message: `Bid amount must be at least $${(current_price + step_price).toFixed(2)}` });
-      }
-
-      const sellerEmail = data.seller_email;
-      const currentBidderEmail = data.user_email;
-      const previousHighestBidderEmail = data.prev_bidder_email;
-      const productName = data.product_name;
-      const productUrl = `https://${process.env.FRONTEND_HOST}/products/${productId}`;
-
-      const toList = [sellerEmail];
-      if (previousHighestBidderEmail && previousHighestBidderEmail !== currentBidderEmail) {  
-        toList.push(previousHighestBidderEmail);
-      }
-
-      if (instant_price > 0 && amount >= instant_price) {
-        const instantResult = await query(handleInstantBuyQuery, [userId, productId, amount]);
-
-        if (instantResult.rowCount === 0) {
-          return res.status(409).json({ message: "Product was just sold to someone else" });
-        }
-
-        sendSuccessfullyInstantBuyEmail(currentBidderEmail, productName, amount, productUrl)
-          .catch(err => console.error("Error sending instant buy email to buyer:", err));
-
-        for (const recipient of toList) {
-          sendInstantBuyEmail(recipient, productName, amount, currentBidderEmail, productUrl)
-            .catch(err => console.error("Error sending instant buy email to others:", err));
-        }
-
-        return res.status(200).json({ message: "Instant buy successful! You have purchased the product." });
-      }
-
-      const bidResult = await query(placeBidTransaction, [userId, productId, amount]);
-
-      if (bidResult.rowCount === 0) {
-        return res.status(409).json({ message: "Someone else has placed a higher bid. Please try again with a higher amount." });
-      }
-
-      sendBidSuccessfullyEmail(currentBidderEmail, productName, amount, productUrl)
-        .catch(err => console.error("Error sending bid success email to bidder:", err));
-
-      for (const recipient of toList) {
-        sendPriceUpdateEmail(recipient, productName, amount, currentBidderEmail, productUrl)
-          .catch(err => console.error("Error sending price update email to others:", err));
-      }
-
-      return res.status(201).json({ message: "Bid placed successfully" });
+      return res.status(200).json({
+        message: "Product bidders retrieved successfully",
+        data: {
+          bidders,
+          pagination: {
+            page,
+            limit,
+            totalItems,
+            totalPages,
+          },
+        },
+      });
     } catch (error) {
-      console.error("Error when placing bid", error);
+      console.error("Error when getting product bidders", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async refuseBidder(req, res) {
+    try {
+      const { productId, bidderId } = req.params;
+      const userId = req.user.id;
+
+      // Check if user is the seller of this product
+      const sellerCheck = await query(
+        `SELECT sp.seller, p.name as product_name, p.current_price, p.state as product_state
+         FROM sell_product sp
+         JOIN products p ON p.id = sp.product
+         WHERE sp.product = $1`,
+        [productId]
+      );
+
+      if (sellerCheck.rows.length === 0) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      const productData = sellerCheck.rows[0];
+
+      if (productData.seller !== parseInt(userId, 10)) {
+        return res.status(403).json({ message: "Only the seller can refuse bidders for their products" });
+      }
+
+      if (productData.product_state !== "bidding") {
+        return res.status(400).json({ message: "Cannot refuse bidders for products that are not currently bidding" });
+      }
+
+      // Check if bidder exists
+      const bidderCheck = await query(
+        `SELECT id, name, email FROM users WHERE id = $1`,
+        [bidderId]
+      );
+
+      if (bidderCheck.rows.length === 0) {
+        return res.status(404).json({ message: "Bidder not found" });
+      }
+
+      // Refuse the bidder
+      const result = await query(refuseBidderQuery, [productId, bidderId]);
+      const deleteResult = result.rows[0];
+
+      // Check if we need to update the current_price (if the refused bidder had the highest bid)
+      const newHighestBid = await query(
+        `SELECT MAX(price) as max_price FROM bids WHERE product = $1`,
+        [productId]
+      );
+
+      if (newHighestBid.rows[0].max_price) {
+        await query(
+          `UPDATE products SET current_price = $1 WHERE id = $2`,
+          [newHighestBid.rows[0].max_price, productId]
+        );
+      } else {
+        // No bids left, reset to init_price
+        const initPrice = await query(
+          `SELECT init_price FROM sell_product WHERE product = $1`,
+          [productId]
+        );
+        if (initPrice.rows.length > 0) {
+          await query(
+            `UPDATE products SET current_price = $1 WHERE id = $2`,
+            [initPrice.rows[0].init_price, productId]
+          );
+        }
+      }
+
+      return res.status(200).json({
+        message: "Bidder refused successfully",
+        data: {
+          deleted_bids: parseInt(deleteResult.deleted_bids_count, 10),
+          deleted_auto_bids: parseInt(deleteResult.deleted_auto_bids_count, 10)
+        }
+      });
+    } catch (error) {
+      console.error("Error when refusing bidder", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  async unrefuseBidder(req, res) {
+    try {
+      const { productId, bidderId } = req.params;
+      const userId = req.user.id;
+
+      // Check if user is the seller of this product
+      const sellerCheck = await query(
+        `SELECT sp.seller, p.state as product_state
+         FROM sell_product sp
+         JOIN products p ON p.id = sp.product
+         WHERE sp.product = $1`,
+        [productId]
+      );
+
+      if (sellerCheck.rows.length === 0) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      const productData = sellerCheck.rows[0];
+
+      if (productData.seller !== parseInt(userId, 10)) {
+        return res.status(403).json({ message: "Only the seller can unrefuse bidders for their products" });
+      }
+
+      // Check if bidder is actually refused
+      const refuseCheck = await query(
+        `SELECT 1 FROM refuse WHERE product = $1 AND buyer = $2`,
+        [productId, bidderId]
+      );
+
+      if (refuseCheck.rows.length === 0) {
+        return res.status(400).json({ message: "Bidder is not refused" });
+      }
+
+      // Unrefuse the bidder
+      await query(unrefuseBidderQuery, [productId, bidderId]);
+
+      return res.status(200).json({
+        message: "Bidder unrefused successfully"
+      });
+    } catch (error) {
+      console.error("Error when unrefusing bidder", error);
       return res.status(500).json({ message: "Internal server error" });
     }
   }
 }
+
 
 const productController = new ProductController();
 export default productController;

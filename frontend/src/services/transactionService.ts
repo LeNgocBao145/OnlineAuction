@@ -15,8 +15,7 @@ export interface Transaction {
     seller: number;
     delivery_address: string | null;
     invoice_image: string | null;
-    receipt_image: string | null;
-    delivery_invoice_image: string | null;
+    transport_image: string | null;
     sell_accept: boolean;
     bidder_accept: boolean;
     state: TradeState;
@@ -44,9 +43,14 @@ const transactionService = {
 
     async bidderSubmit(productId: number, data: {
         deliveryAddress: string,
-        invoiceImage: string
+        invoiceImage: File
     }): Promise<Transaction> {
-        const res = await api.patch(`/users/trade-verifications/${productId}/bidder-submit`, data, { withCredentials: true });
+        const form = new FormData();
+        form.append("deliveryAddress", data.deliveryAddress);
+        form.append("invoiceImage", data.invoiceImage);
+        const res = await api.patch(`/users/trade-verifications/${productId}/bidder-submit`, 
+                                    form, 
+                                    { withCredentials: true });
         return res.data[0] as Transaction;
     },
 

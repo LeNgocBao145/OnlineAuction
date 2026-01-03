@@ -75,6 +75,22 @@ const useUserStore = create<UserProfileState>()(
         }
       },
 
+      sendOTP: async (userId: string | number, email: string) => {
+        try {
+          set({ loading: true, error: null });
+          await userService.sendOTP(userId, email);
+        } catch (err: any) {
+          const message =
+            err?.response?.data?.message ||
+            err?.message ||
+            "Failed to send OTP!";
+          set({ error: message });
+          throw err;
+        } finally {
+          set({ loading: false });
+        }
+      },
+
       verifyOTP: async (
         userId: string | number,
         email: string,

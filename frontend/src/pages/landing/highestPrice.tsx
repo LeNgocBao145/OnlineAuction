@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router";
-import { useState, useEffect } from "react";
 import useHomeStore from "@/stores/homeStore";
 import { formatTimeLeft } from "@/utils/timeUtils";
+import { formatCurrency } from "@/utils/numberUtils";
 
 export default function HighestPrice() {
     const navigate = useNavigate();
@@ -35,7 +35,7 @@ export default function HighestPrice() {
                             <p className="text-white/60">{item.bid_count} • {formatTimeLeft(item.time_left || 0)}</p>
                         </div>
                         <div>
-                            <p className="text-(--primary)">${Number(item.current_price).toLocaleString("de-DE")}</p>
+                            <p className="text-(--primary)">{formatCurrency(Number(item.current_price))}</p>
                             <p className="text-white/60">current bid</p>
                         </div>
                     </li>

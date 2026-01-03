@@ -6,6 +6,8 @@ export type User = {
     birthdate: string;
     role: string;
     rating: number;
+    rating_count: number;
+    relation?: "seller" | "winner" | "bidder" | "other";
     avatar?: string;
 }
 
@@ -33,7 +35,8 @@ export interface UserBidding {
     bid_date: string;
     bid_price: string;
     instant_price: string | null;
-    highest_bidder: string;
+    highest_bidder_name: string;
+    highest_bidder_id: string | number;
     created_at: string;
     time_left: string;
     categories: string[];

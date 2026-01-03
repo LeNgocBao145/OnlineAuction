@@ -9,26 +9,26 @@ const productService = {
 
   async filterProducts(params: FilterParams): Promise<FilteredProductsResponse> {
     const queryParams = new URLSearchParams();
-    
+
     if (params.keyword) queryParams.append("keyword", params.keyword);
     if (params.category) queryParams.append("category", params.category.toString());
     if (params.page) queryParams.append("page", params.page.toString());
     if (params.limit) queryParams.append("limit", params.limit.toString());
     if (params.startDate) queryParams.append("startDate", params.startDate);
     if (params.endDate) queryParams.append("endDate", params.endDate);
-    
+
     const minPrice = params.minPrice ?? 0;
     const maxPrice = params.maxPrice ?? Number.MAX_SAFE_INTEGER;
     queryParams.append("minPrice", minPrice.toString());
     queryParams.append("maxPrice", maxPrice.toString());
-    
+
     if (params.states && params.states.length > 0) {
       queryParams.append("states", params.states.join(","));
     }
     if (params.sort) queryParams.append("sort", params.sort);
 
-    const res = await api.get(`/products?${queryParams.toString()}`, { 
-      withCredentials: true 
+    const res = await api.get(`/products?${queryParams.toString()}`, {
+      withCredentials: true
     });
 
     return res.data?.data as FilteredProductsResponse;
@@ -36,11 +36,11 @@ const productService = {
 
   async placeBid(
     productId: string | number,
-    bidAmount: number
-  ): Promise<void> {
+    data: { bidAmount?: number; maxPrice?: number }
+  ): Promise<{ message: string; currentPrice?: number; isWinning?: boolean }> {
     const res = await api.post(
       `/products/${productId}/bid`,
-      { bidAmount },
+      data,
       { withCredentials: true }
     );
     return res.data;
@@ -57,6 +57,99 @@ const productService = {
     );
     return res.data;
   },
+
+  async askToBid(productId: string | number): Promise<void> {
+    const res = await api.post(`/products/${productId}/ask-to-bid`, {}, { withCredentials: true });
+    return res.data;
+  },
+
+  async getBidRequests(productId: string | number, params?: { page?: number; limit?: number; states?: string }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.states) queryParams.append("states", params.states);
+
+    const res = await api.get(`/products/${productId}/bid-requests?${queryParams.toString()}`, { withCredentials: true });
+    return res.data;
+  },
+
+  async acceptBidRequest(productId: string | number, requestId: number): Promise<void> {
+    const res = await api.post(`/products/${productId}/bid-requests/${requestId}/accept`, {}, { withCredentials: true });
+    return res.data;
+  },
+
+  async rejectBidRequest(productId: string | number, requestId: number): Promise<void> {
+    const res = await api.post(`/products/${productId}/bid-requests/${requestId}/reject`, {}, { withCredentials: true });
+    return res.data;
+  },
+
+  async addProduct(data: any): Promise<any> {
+    const res = await api.post('/products/add', data, { withCredentials: true });
+    return res.data;
+  },
+
+  async updateProduct(productId: string | number, data: any): Promise<any> {
+    const res = await api.put(`/products/${productId}`, data, { withCredentials: true });
+    return res.data;
+  },
+
+  async getCategories(): Promise<any[]> {
+
+    const res = await api.get('/categories');
+    return res.data?.data || [];
+  },
+
+  async closeProduct(productId: string | number): Promise<any> {
+    const res = await api.post(`/products/${productId}/close`, {}, { withCredentials: true });
+    return res.data;
+  },
+
+  async deleteProduct(productId: string | number): Promise<any> {
+    const res = await api.delete(`/products/${productId}`, { withCredentials: true });
+    return res.data;
+  },
+
+  // Seller bidder management
+  async getBidders(
+    productId: string | number,
+    params?: { page?: number; limit?: number }
+  ): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+
+    const res = await api.get(
+      `/products/${productId}/bidders?${queryParams.toString()}`,
+      { withCredentials: true }
+    );
+    return res.data;
+  },
+
+  async refuseBidder(
+    productId: string | number,
+    bidderId: number
+  ): Promise<any> {
+    const res = await api.post(
+      `/products/${productId}/bidders/${bidderId}/refuse`,
+      {},
+      { withCredentials: true }
+    );
+    return res.data;
+  },
+
+  async unrefuseBidder(
+    productId: string | number,
+    bidderId: number
+  ): Promise<any> {
+    const res = await api.post(
+      `/products/${productId}/bidders/${bidderId}/unrefuse`,
+      {},
+      { withCredentials: true }
+    );
+    return res.data;
+  }
 };
+
+
 
 export default productService;

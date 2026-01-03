@@ -14,7 +14,6 @@ export default function EditUserModal({
     const [birthdate, setBirthdate] = useState(userData.birthdate?.split('T')[0] || '');
     const [address, setAddress] = useState(userData.address);
     const [role, setRole] = useState(userData.role);
-    const [rating, setRating] = useState(userData.rating);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async () => {
@@ -29,8 +28,7 @@ export default function EditUserModal({
                 email,
                 birthdate,
                 address,
-                role,
-                rating
+                role
             });
             toast.success("User updated successfully");
             onUpdate();
@@ -64,19 +62,13 @@ export default function EditUserModal({
                         <label className="text-white/80 mb-2">Address <span className="text-red-500">*</span></label>
                         <input type="text" placeholder="Enter address..." value={address} onChange={(e) => setAddress(e.target.value)} className="w-full p-2 rounded-md mt-2 bg-(--secondary) border border-white/10 text-white"/>
                     </div>
-                    <div className="w-full grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-white/80 mb-2">Role <span className="text-red-500">*</span></label>
-                            <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full p-2 rounded-md mt-2 bg-(--secondary) border border-white/10 text-white">
-                                <option value="bidder">Bidder</option>
-                                <option value="seller">Seller</option>
-                                <option value="admin">Admin</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-white/80 mb-2">Rating</label>
-                            <input type="number" min="0" max="5" step="0.1" value={rating} onChange={(e) => setRating(parseFloat(e.target.value))} className="w-full p-2 rounded-md mt-2 bg-(--secondary) border border-white/10 text-white"/>
-                        </div>
+                    <div className="w-full">
+                        <label className="text-white/80 mb-2">Role <span className="text-red-500">*</span></label>
+                        <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full p-2 rounded-md mt-2 bg-(--secondary) border border-white/10 text-white">
+                            <option value="bidder">Bidder</option>
+                            <option value="seller">Seller</option>
+                            <option value="admin">Admin</option>
+                        </select>
                     </div>
                     <div className="w-full flex justify-between items-center gap-4">
                         <button className="bg-(--secondary) text-white rounded-md p-2 w-full" onClick={() => setEditingUser(false)}>Cancel</button>

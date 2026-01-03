@@ -2,7 +2,7 @@ import {
   getUserById,
   updateUserInformationById,
   getFavoritesQuery,
-  getProductById,
+  getProductExistsById,
   markFavoriteProduct,
   unmarkFavoriteProduct,
   getFavoriteByUserAndProduct,
@@ -87,7 +87,9 @@ class UserController {
         return res.status(404).json({ error: "User not found." });
       }
 
-      const { name, email, address, birthdate } = req.body;
+      const { name, address, birthdate } = req.body;
+      // Use provided email or fall back to current email
+      const email = req.body.email || user.rows[0].email;
 
       // Validate birthdate (must be 18+)
       const birthDate = new Date(birthdate);
@@ -107,7 +109,7 @@ class UserController {
       }
 
       // Validate address format (support Vietnamese characters)
-      const addressRegex = /^[\p{L}\p{N}\s,.'-]{3,}$/u;
+      const addressRegex = /^[\p{L}\p{N}\s,.\/'-]{3,}$/u;
       if (!addressRegex.test(address)) {
         return res.status(400).json({ error: "Invalid address format." });
       }
@@ -146,6 +148,47 @@ class UserController {
     }
   }
 
+  async sendOTP(req, res) {
+    try {
+      const userId = req.params.userId;
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      // Get user from database
+      const user = await query(getUserById, [userId]);
+      if (user.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Generate OTP
+      const otp = crypto.randomInt(100000, 999999).toString();
+      const expiredAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+      // Store OTP with userId for verification
+      otpStore.set(email, { otp, expiredAt, userId });
+
+      // Send OTP email
+      await sendOTPEmail(email, otp);
+
+      return res.status(200).json({
+        message: "OTP sent to email successfully",
+        email,
+      });
+    } catch (error) {
+      console.error("Error when sending OTP!", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
   async verifyOTP(req, res) {
     try {
       const userId = req.params.userId;
@@ -173,11 +216,22 @@ class UserController {
         return res.status(400).json({ message: "Invalid OTP" });
       }
 
+      // Verify userId matches
+      if (otpRecord.userId && otpRecord.userId != userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
       // Remove OTP from memory
       otpStore.delete(email);
 
-      // Update user information using stored data
-      const { name, birthdate, address } = otpRecord;
+      // Get current user data
+      const user = await query(getUserById, [userId]);
+      if (user.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Update user email
+      const { name, birthdate, address } = user.rows[0];
       const updatedUser = await query(updateUserInformationById, [
         name,
         email,
@@ -187,7 +241,7 @@ class UserController {
       ]);
 
       return res.status(200).json({
-        message: "Update user information successfully!",
+        message: "Email verified and updated successfully!",
         updatedUser,
       });
     } catch (error) {
@@ -209,7 +263,7 @@ class UserController {
       }
 
       // Check if product exists
-      const product = await query(getProductById, [productId]);
+      const product = await query(getProductExistsById, [productId]);
       if (product.rows.length === 0) {
         return res.status(404).json({ message: "Product not found" });
       }
@@ -308,9 +362,9 @@ class UserController {
 
       const states = req.query.states
         ? req.query.states
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => s !== "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s !== "")
         : null;
       const finalStates = states && states.length > 0 ? states : null;
 
@@ -517,9 +571,9 @@ class UserController {
 
       const states = req.query.states
         ? req.query.states
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => s !== "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s !== "")
         : null;
       const finalStates = states && states.length > 0 ? states : null;
 
@@ -622,9 +676,9 @@ class UserController {
 
       const states = req.query.states
         ? req.query.states
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => s !== "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s !== "")
         : null;
       const finalStates = states && states.length > 0 ? states : null;
 
@@ -729,9 +783,9 @@ class UserController {
 
       const states = req.query.states
         ? req.query.states
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => s !== "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s !== "")
         : null;
       const finalStates = states && states.length > 0 ? states : null;
 
@@ -909,7 +963,9 @@ class UserController {
   async bidderSubmission(req, res) {
     try {
       const productId = req.params.productId;
-      const { deliveryAddress, invoiceImage } = req.body;
+      const { deliveryAddress } = req.body;
+      const invoiceImage = req.file?.filename;
+
       if(!deliveryAddress || !invoiceImage) {
         return res
           .status(400)
@@ -928,7 +984,7 @@ class UserController {
       const productId = req.params.productId;
       const deliveryInvoiceImage = req.body;
 
-      if(!deliveryInvoiceImage) {
+      if (!deliveryInvoiceImage) {
         return res
           .status(400)
           .json({ message: "Delivery invoice image is required" });

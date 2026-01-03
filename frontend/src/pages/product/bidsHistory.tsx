@@ -1,54 +1,65 @@
 import useProductStore from "@/stores/productStore";
-import { formatDate } from "@/utils/dateUtils";
 import { formatCurrency } from "@/utils/numberUtils";
+import { maskName } from "@/utils/maskUtils";
+
 
 export default function BidHistory() {
   const { product } = useProductStore();
   const bids = product?.bids || [];
 
-  const isSeller = true; // Replace with actual logic to determine if the user is the seller
-
-  const handleDenial = (bidId: number) => {
-    // logic
-    console.log(`Denying bid with ID: ${bidId}`);
-
-    //
-    throw new Error("Deny bid not implemented yet");
-  }
-
-  const maskName = (name: string) => {
-    const parts = name.trim().split(" ");
-    return parts.length === 1 ? parts[0] : `****${parts.at(-1)}`;
-  };
-
   return (
-    <div className="w-full p-4 bg-(--third) border border-white/10 rounded-xl">
-      <h1 className="text-(--primary) text-2xl font-bold mb-4">Bids History</h1>
+    <div className="w-full p-6 bg-(--third) border border-white/10 rounded-xl shadow-xl">
+      <h2 className="text-(--primary) text-2xl font-bold mb-6 flex items-center gap-2">
+        <span className="w-2 h-8 bg-(--primary) rounded-full"></span>
+        Bids History
+      </h2>
+
       {bids.length === 0 ? (
-        <p className="text-white">No bids yet.</p>
+        <div className="text-center py-10 border border-dashed border-white/10 rounded-lg">
+          <p className="text-white/40">No bids have been placed yet.</p>
+        </div>
       ) : (
-        bids.map((bid, index) => (
-          <div
-            key={index}
-            className="justify-between items-center bg-(--secondary) rounded-lg p-4 mb-2 grid grid-cols-[2fr_2fr_1fr] gap-4"
-          >
-            <div className="flex flex-col">
-              <p className="text-white font-bold text-sm">{formatDate(bid.bid_time)}</p>
-            </div>
-            <p className="text-white text-md">{maskName(bid.bidder_name)}</p>
-            <p className="text-(--primary) font-bold">
-              {formatCurrency(bid.amount)}
-            </p>
-            {isSeller && (
-              <div className="col-span-3 flex justify-end mt-2">
-                <button onClick={() => handleDenial(index)} className="bg-red-600 text-white rounded-md px-4 py-2 hover:bg-red-700 transition-colors duration-200">
-                  Deny
-                </button>
-              </div>
-            )}
+        <div className="space-y-2 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
+          {/* Header */}
+          <div className="grid grid-cols-[1.5fr_2fr_1.5fr] gap-4 px-4 py-2 border-b border-white/5 text-xs uppercase tracking-widest text-white/40 font-semibold">
+            <span>Time</span>
+            <span>Bidder</span>
+            <span className="text-right">Amount</span>
           </div>
-        ))
+
+          {bids.map((bid, index) => (
+            <div
+              key={index}
+              className="group relative bg-white/5 hover:bg-white/10 rounded-xl p-4 transition-all duration-200 border border-transparent hover:border-white/10"
+            >
+              <div className="grid grid-cols-[1.5fr_2fr_1.5fr] gap-4 items-center">
+                <div className="flex flex-col">
+                  <p className="text-white/40 text-[11px] font-medium leading-none mb-1">
+                    {new Date(bid.bid_time).toLocaleDateString()}
+                  </p>
+                  <p className="text-white font-mono text-xs leading-none">
+                    {new Date(bid.bid_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </p>
+                </div>
+
+                <div className="truncate pr-2">
+                  <p className="text-white/90 text-sm font-semibold truncate group-hover:text-(--primary) transition-colors">
+                    {maskName(bid.bidder_name)}
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <p className="text-(--primary) font-bold text-base tracking-tight leading-none">
+                    {formatCurrency(bid.amount)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
+
   );
 }
+

@@ -1,9 +1,10 @@
 // Sử dụng cho danh sách sản phẩm (simple card)
 export interface Product {
-  id: number;
+  id: number | string;
   name: string;
   current_price: number;
   image_url?: string;
+  created_at?: string;
   time_left?: string;
   bid_count?: number;
   state?: string;
@@ -26,12 +27,13 @@ export interface ProductBid {
 }
 
 export interface ProductQA {
+  id: number;
   question: string;
   questioner_name: string;
   answer?: string | null;
   answerer_name?: string | null;
   asked_at: string;
-  answered_at?: string | null;
+  answered_at?: string | undefined;
 }
 
 // Chi tiết sản phẩm trả về từ API /product/:id
@@ -48,11 +50,16 @@ export interface ProductDetail {
   seller_name: string;
   created_at: string;
   expired_at: string;
-  categories: string[];
+  starting_at?: string;
+  isExtent?: boolean;
+  categories: any[];
   additional_images: string[];
   descriptions: ProductDescription[];
+
   bids: ProductBid[];
   qa: ProductQA[];
+  user_bid_request_state?: "pending" | "success" | "failed" | null;
+  user_relation?: "seller" | "winner" | "bidder" | "other";
 }
 
 // Filter products parameters

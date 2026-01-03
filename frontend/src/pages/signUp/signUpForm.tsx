@@ -13,13 +13,30 @@ import useAuthStore from '@/stores/authStore';
 const signUpSchema = z.object({
     email: z.string().min(1, 'Email is required').email('Invalid email address'),
     username: z.string().min(3, 'Username is required'),
-    password: z.string().min(8, 'Password must be at least 8 characters long'),
-    confirmPassword: z.string().min(8, 'Password must be at least 8 characters long'),
+    password: z.string().min(6, 'Password must be at least 6 characters long'),
+    confirmPassword: z.string().min(6, 'Password must be at least 6 characters long'),
     birthdate: z.string().min(1, 'Birthdate is required'),
     address: z.string().min(3, 'Address is required'),
     terms: z.boolean().refine((val) => val === true, {
         message: "You must accept the terms and conditions",
     }),
+}).refine((data) => {
+  const birthDate = new Date(data.birthdate);
+  if (isNaN(birthDate.getTime())) return false;
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  const dayDiff = today.getDate() - birthDate.getDate();
+
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+    age--;
+  }
+
+  return age >= 18 && age <= 150;
+}, {
+  message: "You must be at least 18 years old",
+  path: ["birthdate"],
 }).refine((data) =>
     data.password === data.confirmPassword, {
     message: "Passwords do not match",

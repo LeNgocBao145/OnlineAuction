@@ -35,7 +35,6 @@ export default function BidderTransactionPage() {
   useEffect(() => {
     refetch();
   }, [id, productId]);
-
   return (
     <div className="lg:px-[10%] px-4 pb-10">
       <h1 className="text-(--primary) text-3xl font-bold mt-6">Complete Order</h1>

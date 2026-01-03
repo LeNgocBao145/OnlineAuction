@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams, useLocation } from "react-router-dom";
 import ProductBody from "./productBody";
 import useProductStore from "@/stores/productStore";
 import useAuthStore from "@/stores/authStore";
@@ -10,6 +10,8 @@ export default function ProductPage() {
     const { fetchProduct, loading, error, product } = useProductStore();
     const { user } = useAuthStore();
     const { fetchFavorites } = useUserStore();
+    const { pathname } = useLocation();
+    const [refreshKey, setRefreshKey] = useState(0);
 
     useEffect(() => {
         if (!id) return;
@@ -19,13 +21,18 @@ export default function ProductPage() {
                 await fetchFavorites(user.id);
             }
         })();
-    }, [id, user?.id]);
+    }, [id, user?.id, pathname, refreshKey]);
+
+    // Force refresh on component mount
+    useEffect(() => {
+        setRefreshKey(prev => prev + 1);
+    }, []);
 
     return (
         <div className="px-[10%] mt-6 text-white pb-20">
-            {loading && <p>Loading product...</p>}
+            {loading && !product && <p>Loading product...</p>}
             {error && <p className="text-red-400">{error}</p>}
-            {!loading && !error && product && <ProductBody />}
+            {product && <ProductBody />}
         </div>
     );
 }
