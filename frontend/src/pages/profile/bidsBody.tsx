@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { FaStar } from "react-icons/fa";
 import useUserStore from "@/stores/userStore";
 import useAuthStore from "@/stores/authStore";
 import { formatDate } from "@/utils/dateUtils";
@@ -41,8 +40,8 @@ export default function BidsBody() {
         if (statusFilter === 1) return bid.state === "incoming";
         if (statusFilter === 2) return bid.state === "bidding";
         if (statusFilter === 3) return bid.state === "sold";
-        if (statusFilter === 4) return bid.state === "sold" && bid.highest_bidder !== user?.id.toString(); // Losing - sold but not in won list
-        if (statusFilter === 5) return bid.state === "sold" && bid.highest_bidder === user?.id.toString(); // Won - sold and in won list
+        if (statusFilter === 4) return bid.state === "sold" && bid.highest_bidder_id !== user?.id.toString(); // Losing - sold but not in won list
+        if (statusFilter === 5) return bid.state === "sold" && bid.highest_bidder_id === user?.id.toString(); // Won - sold and in won list
         return true;
     });
 
@@ -84,10 +83,7 @@ export default function BidsBody() {
                             <div className="flex flex-col">
                                 <div>
                                     <div className="flex justify-between items-center">
-                                        <h2 className="text-white font-bold text-xl">{bid.name.length > 20 ? bid.name.substring(0, 20) + "..." : bid.name}</h2>
-                                        <button onClick={(e) => { e.stopPropagation(); }}>
-                                            <FaStar className="inline w-4 h-4 text-yellow-400 mr-2" />
-                                        </button>
+                                        <h2 className="text-white font-bold text-xl">{bid.name.length > 20 ? bid.name.substring(0, 20) + "..." : bid.name}</h2>                                        
                                     </div>
                                 </div>
                                 <div className="flex flex-col mt-4">

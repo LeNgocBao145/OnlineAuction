@@ -78,7 +78,8 @@ export const getBiddingsByUserId = (sortLogic) => `
         MAX(b.bid_date) AS bid_date,
         MAX(b.price) AS bid_price,
         sp.instant_price,
-        bidder.name AS highest_bidder,
+        bidder.name AS highest_bidder_name,
+        bidder.id AS highest_bidder_id,
         sp.created_at,
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
@@ -94,7 +95,7 @@ export const getBiddingsByUserId = (sortLogic) => `
             LEFT JOIN categories c ON pc.category = c.id
             LEFT JOIN bids pb ON p.id = pb.product
             LEFT JOIN LATERAL(
-                SELECT u.name
+                SELECT u.name, u.id
                 FROM bids b2 JOIN users u ON b2.buyer = u.id
                 WHERE b2.product = p.id
                 ORDER BY b2.price DESC
@@ -114,7 +115,7 @@ export const getBiddingsByUserId = (sortLogic) => `
     GROUP BY 
         p.id,
         sp.expired_at, sp.created_at, sp.instant_price,
-        bidder.name,
+        bidder.name, bidder.id,
         query, p.search_vector
 
     ORDER BY ${sortLogic}, rank DESC

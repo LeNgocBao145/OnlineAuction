@@ -1,6 +1,6 @@
 // Sử dụng cho danh sách sản phẩm (simple card)
 export interface Product {
-  id: number;
+  id: number | string;
   name: string;
   current_price: number;
   image_url?: string;
@@ -32,7 +32,7 @@ export interface ProductQA {
   answer?: string | null;
   answerer_name?: string | null;
   asked_at: string;
-  answered_at?: string | null;
+  answered_at?: string | undefined;
 }
 
 // Chi tiết sản phẩm trả về từ API /product/:id

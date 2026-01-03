@@ -57,13 +57,13 @@ export default function ReviewsBody() {
                     {reviewsToShow.length > 0 ? reviewsToShow.map((review, index) => (
                         <li key={index} className="border-b border-white/10 py-4">
                             <div className="flex justify-between items-center">
-                                <p className="text-white font-bold text-2xl">{review.buyer_name}</p>
+                                <p className="text-white font-bold text-2xl">{review.rater_name}</p>
                                 <p className="text-white/60 text-sm">On {formatDate(review.created_at)}</p>
                             </div>
                             <p className="text-white/60 flex justify-start items-center gap-1">Gave you a <span className="text-yellow-400">
-                                {review.rating === 1 ? "Like" : review.rating === 0 ? "Dislike" : "Neutral"}</span>
+                                {review.liked === 1 ? "Like" : "Dislike"} </span>
                             </p>
-                            <p className="text-white mt-2">{review.comment}</p>
+                            <p className="text-white mt-2">{review.content}</p>
                         </li>
                     )) : <p className="text-white/60">No reviews found for the selected rating range.</p>}
                 </ul>

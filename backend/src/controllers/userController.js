@@ -107,7 +107,7 @@ class UserController {
       }
 
       // Validate address format (support Vietnamese characters)
-      const addressRegex = /^[\p{L}\p{N}\s,.'-]{3,}$/u;
+      const addressRegex = /^[\p{L}\p{N}\s,.\/'-]{3,}$/u;
       if (!addressRegex.test(address)) {
         return res.status(400).json({ error: "Invalid address format." });
       }

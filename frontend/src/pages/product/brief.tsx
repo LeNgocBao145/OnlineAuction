@@ -21,6 +21,7 @@ export default function ProductBrief() {
   const [requesting, setRequesting] = useState(false);
   const product = useProductStore((state) => state.product);
   const { user } = useAuthStore();
+  const { placeBid } = useProductStore();
   const { favorites, markFavorite, unmarkFavorite } = useUserStore();
 
   useEffect(() => {
@@ -62,6 +63,16 @@ export default function ProductBrief() {
       setRequesting(false);
     }
   };
+
+  const handleBuyNow = async () => {
+    try {
+      console.log(product?.instant_price);
+      await placeBid(product?.id, product?.instant_price);
+      toast.success("Bid placed successfully!");
+    } catch (error) {
+      console.error("Error place instant price bid: ", error);      
+    }
+  }
 
   if (!product) return null;
 
@@ -231,7 +242,10 @@ export default function ProductBrief() {
                     </button>
                   )}
                   {product.instant_price && (
-                    <button className="w-full h-14 bg-white/10 hover:bg-white/15 text-white rounded-xl border border-white/10 font-bold transition-all">
+                    <button 
+                      className="w-full h-14 bg-white/10 hover:bg-white/15 text-white rounded-xl border border-white/10 font-bold transition-all"
+                      onClick={handleBuyNow}
+                    >
                       Buy it now
                     </button>
                   )}

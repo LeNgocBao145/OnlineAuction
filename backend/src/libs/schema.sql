@@ -365,6 +365,60 @@ BEFORE DELETE ON users
 FOR EACH ROW
 EXECUTE FUNCTION delete_seller_products();
 
+CREATE OR REPLACE FUNCTION fn_update_user_rating()
+RETURNS TRIGGER AS $$
+DECLARE
+    affected_user_id INT;
+BEGIN
+    -- Xác định user nào bị ảnh hưởng
+    IF TG_OP = 'DELETE' THEN
+        affected_user_id := OLD.ratee;
+    ELSE
+        affected_user_id := NEW.ratee;
+    END IF;
+    
+    -- Cập nhật rating cho user (chuyển sang thang 0-5)
+    UPDATE users
+    SET rating = (
+        SELECT COALESCE(
+            (COUNT(*) FILTER (WHERE liked = true)::REAL / 
+            NULLIF(COUNT(*)::REAL, 0)),
+            0
+        )
+        FROM reviews
+        WHERE ratee = affected_user_id
+    )
+    WHERE id = affected_user_id;
+    
+    -- Nếu là UPDATE và ratee thay đổi, cập nhật cả user cũ
+    IF TG_OP = 'UPDATE' AND OLD.ratee != NEW.ratee THEN
+        UPDATE users
+        SET rating = (
+            SELECT COALESCE(
+                (COUNT(*) FILTER (WHERE liked = true)::REAL / 
+                NULLIF(COUNT(*)::REAL, 0)),
+                0
+            )
+            FROM reviews
+            WHERE ratee = OLD.ratee
+        )
+        WHERE id = OLD.ratee;
+    END IF;
+    
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    ELSE
+        RETURN NEW;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Tạo trigger
+CREATE TRIGGER trg_update_rating_on_review_change
+AFTER INSERT OR UPDATE OR DELETE ON reviews
+FOR EACH ROW
+EXECUTE FUNCTION fn_update_user_rating();
+
 -- 1. Insert Users
 INSERT INTO users (name, address, email, hashed_password, birthdate, role, rating)
 VALUES
