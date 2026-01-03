@@ -1,22 +1,11 @@
 import useProductStore from "@/stores/productStore";
 import { formatCurrency } from "@/utils/numberUtils";
-import { toast } from "sonner";
 import { maskName } from "@/utils/maskUtils";
 
 
 export default function BidHistory() {
   const { product } = useProductStore();
   const bids = product?.bids || [];
-
-  const isSeller = product?.user_relation === "seller";
-
-  const handleDenial = (bidIndex: number) => {
-    // logic
-    console.log(`Denying bid at index: ${bidIndex}`);
-    // ...
-    toast.error("Deny bid not implemented yet");
-  }
-
 
   return (
     <div className="w-full p-6 bg-(--third) border border-white/10 rounded-xl shadow-xl">
@@ -65,17 +54,6 @@ export default function BidHistory() {
                   </p>
                 </div>
               </div>
-
-              {isSeller && (
-                <div className="mt-3 pt-3 border-t border-white/5 flex justify-end">
-                  <button
-                    onClick={() => handleDenial(index)}
-                    className="text-xs bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg px-3 py-1.5 hover:bg-red-500 hover:text-white transition-all duration-200 font-bold uppercase tracking-wider"
-                  >
-                    Deny Bid
-                  </button>
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -84,3 +62,4 @@ export default function BidHistory() {
 
   );
 }
+

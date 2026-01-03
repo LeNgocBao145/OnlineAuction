@@ -1,4 +1,4 @@
-import { FaUser } from "react-icons/fa";
+import { FaUser, FaStar, FaRegStar } from "react-icons/fa";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -177,6 +177,7 @@ export default function ChangeBasicInfo() {
                         </button>
                     )}
                 </div>
+
                 <form className="mt-6 flex flex-col gap-4"
                     onSubmit={handleSubmitProfile(onSubmitProfile)}
                 >

@@ -10,6 +10,7 @@ import { getHighestBidder } from "@/utils/productUtils";
 import { formatDate } from "@/utils/dateUtils";
 import { useNavigate } from "react-router-dom";
 import BidRequestsModal from "./modal/bidRequests";
+import ManageBiddersModal from "./modal/manageBidders";
 import { toast } from "sonner";
 import { maskName } from "@/utils/maskUtils";
 
@@ -18,6 +19,7 @@ export default function ProductBrief() {
   const [placingBid, setPlacingBid] = useState(false);
   const [favorited, setFavorited] = useState(false);
   const [viewingRequests, setViewingRequests] = useState(false);
+  const [viewingBidders, setViewingBidders] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const product = useProductStore((state) => state.product);
   const { user } = useAuthStore();
@@ -56,6 +58,9 @@ export default function ProductBrief() {
       setRequesting(true);
       await useProductStore.getState().askToBid(product.id);
       toast.success("Bid request sent successfully!");
+
+      // Refresh product data to get updated bid request state
+      await useProductStore.getState().fetchProduct(product.id);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to send bid request");
     } finally {
@@ -202,13 +207,20 @@ export default function ProductBrief() {
           ) : (
             <div className="flex flex-col gap-4">
               {product.user_relation === "seller" ? (
-                <button
-                  className="w-full h-14 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold border border-white/20 transition-all flex items-center justify-center gap-2"
-                  onClick={() => setViewingRequests(true)}
-                >
-                  Manage Bid Requests
-                  {/* Optional: Add a badge for pending counts if available */}
-                </button>
+                <div className="flex flex-col gap-3">
+                  <button
+                    className="w-full h-14 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold border border-white/20 transition-all flex items-center justify-center gap-2"
+                    onClick={() => setViewingRequests(true)}
+                  >
+                    Manage Bid Requests
+                  </button>
+                  <button
+                    className="w-full h-14 bg-(--primary)/10 hover:bg-(--primary)/20 text-(--primary) rounded-xl font-bold border border-(--primary)/30 transition-all flex items-center justify-center gap-2"
+                    onClick={() => setViewingBidders(true)}
+                  >
+                    Manage Bidders
+                  </button>
+                </div>
               ) : (
                 <>
                   {Number(user.rating_count || 0) === 0 && product.user_bid_request_state !== "success" ? (
@@ -230,7 +242,8 @@ export default function ProductBrief() {
                       Place a Bid
                     </button>
                   )}
-                  {product.instant_price && (
+                  {/* Only show Buy it now for approved users */}
+                  {product.instant_price && product.user_bid_request_state === "success" && (
                     <button className="w-full h-14 bg-white/10 hover:bg-white/15 text-white rounded-xl border border-white/10 font-bold transition-all">
                       Buy it now
                     </button>
@@ -246,6 +259,13 @@ export default function ProductBrief() {
         <BidRequestsModal
           productId={product.id}
           onClose={() => setViewingRequests(false)}
+        />
+      )}
+
+      {viewingBidders && (
+        <ManageBiddersModal
+          productId={product.id}
+          onClose={() => setViewingBidders(false)}
         />
       )}
     </>

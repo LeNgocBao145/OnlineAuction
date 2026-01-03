@@ -2,7 +2,7 @@ import {
   getUserById,
   updateUserInformationById,
   getFavoritesQuery,
-  getProductById,
+  getProductExistsById,
   markFavoriteProduct,
   unmarkFavoriteProduct,
   getFavoriteByUserAndProduct,
@@ -261,7 +261,7 @@ class UserController {
       }
 
       // Check if product exists
-      const product = await query(getProductById, [productId]);
+      const product = await query(getProductExistsById, [productId]);
       if (product.rows.length === 0) {
         return res.status(404).json({ message: "Product not found" });
       }
@@ -360,9 +360,9 @@ class UserController {
 
       const states = req.query.states
         ? req.query.states
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => s !== "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s !== "")
         : null;
       const finalStates = states && states.length > 0 ? states : null;
 
@@ -569,9 +569,9 @@ class UserController {
 
       const states = req.query.states
         ? req.query.states
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => s !== "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s !== "")
         : null;
       const finalStates = states && states.length > 0 ? states : null;
 
@@ -674,9 +674,9 @@ class UserController {
 
       const states = req.query.states
         ? req.query.states
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => s !== "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s !== "")
         : null;
       const finalStates = states && states.length > 0 ? states : null;
 
@@ -781,9 +781,9 @@ class UserController {
 
       const states = req.query.states
         ? req.query.states
-            .split(",")
-            .map((s) => s.trim())
-            .filter((s) => s !== "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s !== "")
         : null;
       const finalStates = states && states.length > 0 ? states : null;
 
@@ -962,7 +962,7 @@ class UserController {
     try {
       const productId = req.params.productId;
       const { deliveryAddress, invoiceImage } = req.body;
-      if(!deliveryAddress || !invoiceImage) {
+      if (!deliveryAddress || !invoiceImage) {
         return res
           .status(400)
           .json({ message: "Delivery address and invoice image are required" });
@@ -980,7 +980,7 @@ class UserController {
       const productId = req.params.productId;
       const deliveryInvoiceImage = req.body;
 
-      if(!deliveryInvoiceImage) {
+      if (!deliveryInvoiceImage) {
         return res
           .status(400)
           .json({ message: "Delivery invoice image is required" });
