@@ -19,6 +19,9 @@ router.post('/:productId/bid-requests/:requestId/reject', authenticateToken, Pro
 router.put('/:productId', authenticateToken, ProductController.updateProduct);
 router.post('/:productId/close', authenticateToken, ProductController.closeAuction);
 router.delete('/:productId', authenticateToken, ProductController.deleteProduct);
+router.get('/:productId/bidders', authenticateToken, ProductController.getProductBidders);
+router.post('/:productId/bidders/:bidderId/refuse', authenticateToken, ProductController.refuseBidder);
+router.post('/:productId/bidders/:bidderId/unrefuse', authenticateToken, ProductController.unrefuseBidder);
 
 
 export default router;

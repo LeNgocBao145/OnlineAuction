@@ -107,6 +107,46 @@ const productService = {
   async deleteProduct(productId: string | number): Promise<any> {
     const res = await api.delete(`/products/${productId}`, { withCredentials: true });
     return res.data;
+  },
+
+  // Seller bidder management
+  async getBidders(
+    productId: string | number,
+    params?: { page?: number; limit?: number }
+  ): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+
+    const res = await api.get(
+      `/products/${productId}/bidders?${queryParams.toString()}`,
+      { withCredentials: true }
+    );
+    return res.data;
+  },
+
+  async refuseBidder(
+    productId: string | number,
+    bidderId: number
+  ): Promise<any> {
+    const res = await api.post(
+      `/products/${productId}/bidders/${bidderId}/refuse`,
+      {},
+      { withCredentials: true }
+    );
+    return res.data;
+  },
+
+  async unrefuseBidder(
+    productId: string | number,
+    bidderId: number
+  ): Promise<any> {
+    const res = await api.post(
+      `/products/${productId}/bidders/${bidderId}/unrefuse`,
+      {},
+      { withCredentials: true }
+    );
+    return res.data;
   }
 };
 

@@ -1,5 +1,7 @@
 CREATE DATABASE OnlineAuction;
 
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
 CREATE TYPE user_role AS ENUM ('bidder', 'seller', 'admin');
 
 CREATE TYPE product_state AS ENUM ('incoming', 'bidding', 'sold');
@@ -86,7 +88,6 @@ CREATE TABLE bids (
     buyer INTEGER NOT NULL,
     bid_date TIMESTAMP NOT NULL,
     price NUMERIC(12,2) NOT NULL,
-    max_price NUMERIC(12,2)
 );
 
 CREATE TABLE auto_bids (
@@ -418,6 +419,18 @@ CREATE TRIGGER trg_update_rating_on_review_change
 AFTER INSERT OR UPDATE OR DELETE ON reviews
 FOR EACH ROW
 EXECUTE FUNCTION fn_update_user_rating();
+CREATE OR REPLACE FUNCTION users_tsvector_trigger() RETURNS trigger AS $$
+BEGIN
+  NEW.search_vector :=
+    setweight(to_tsvector('simple', unaccent(coalesce(NEW.name, ''))), 'A') ||
+    setweight(to_tsvector('simple', unaccent(coalesce(NEW.email, ''))), 'B');
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tsvectorupdate
+BEFORE INSERT OR UPDATE ON users
+FOR EACH ROW EXECUTE FUNCTION users_tsvector_trigger();
 
 -- 1. Insert Users
 INSERT INTO users (name, address, email, hashed_password, birthdate, role, rating)

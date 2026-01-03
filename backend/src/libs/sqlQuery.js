@@ -313,8 +313,6 @@ export const getCategoryProductCount = `SELECT COUNT(*) FROM product_categories 
 // Product Queries
 export const getProducts = `SELECT ${getProductColumns()} FROM products p`;
 
-export const getProductById = `SELECT ${getProductColumns()} FROM products p WHERE id = $1`;
-
 export const createProduct = `INSERT INTO products (name, current_price, image) VALUES ($1, $2, $3) RETURNING *`;
 
 export const createProductCategory = `INSERT INTO product_categories (product, category) VALUES ($1, $2) RETURNING *`;
@@ -494,7 +492,10 @@ export const getProductDetailsById = `
         ) AS qa,
 
         -- User specific info
-        (SELECT state FROM bid_requests WHERE bidder = $2 AND product = b.id LIMIT 1) as user_bid_request_state,
+        (SELECT CASE 
+            WHEN EXISTS (SELECT 1 FROM allowed_bidder WHERE bidder = $2 AND product = b.id) THEN 'success'
+            ELSE (SELECT state FROM bid_requests WHERE bidder = $2 AND product = b.id LIMIT 1)
+        END) as user_bid_request_state,
         CASE 
             WHEN b.seller_id = $2 THEN 'seller'
             WHEN EXISTS (SELECT 1 FROM bidder_winner WHERE bidder = $2 AND product = b.id) THEN 'winner'
@@ -558,6 +559,10 @@ export const getFilteredProductsQuery = (sortLogic) => `
 
     LIMIT $8 OFFSET $9;
 `;
+
+export const getProductExistsById = `SELECT id FROM products WHERE id = $1`;
+
+export const getProductById = getProductDetailsById;
 
 export const createQuestion = `
     INSERT INTO product_questions (questioner, product, question, asked_at) VALUES ($1, $2, $3, NOW()) RETURNING *;
@@ -677,8 +682,8 @@ export const handleInstantBuyQuery = `
 
 export const placeBidTransaction = `
     WITH new_bid AS (
-        INSERT INTO bids (buyer, product, price, bid_date, max_price)
-        VALUES ($1, $2, $3, NOW(), $4)
+        INSERT INTO bids (buyer, product, price, bid_date)
+        VALUES ($1, $2, $3, NOW())
         RETURNING product
     )
     UPDATE products
@@ -716,8 +721,8 @@ export const deleteAutoBid = `
 `;
 
 export const insertBidRecord = `
-    INSERT INTO bids (buyer, product, price, bid_date, max_price)
-    VALUES ($1, $2, $3, NOW(), $4)
+    INSERT INTO bids (buyer, product, price, bid_date)
+    VALUES ($1, $2, $3, NOW())
     RETURNING *;
 `;
 
@@ -1062,4 +1067,121 @@ export const getMessagesByProduct = (sortLogic = "created_at DESC") => `
     WHERE m.product = $1
     ORDER BY ${sortLogic}
     LIMIT $2 OFFSET $3
+`;
+
+// Bidder Management Queries (for seller to manage bidders)
+export const getProductBidders = `
+    WITH all_bidders AS (
+        -- Get bidders from bids table
+        SELECT DISTINCT 
+            b.buyer AS bidder_id,
+            u.name AS bidder_name,
+            u.email AS bidder_email,
+            u.rating AS bidder_rating,
+            MAX(b.price) AS highest_bid,
+            MAX(b.bid_date) AS last_bid_date,
+            NULL::numeric AS auto_bid_max,
+            'manual' AS bid_type,
+            false AS from_refuse
+        FROM bids b
+        JOIN users u ON u.id = b.buyer
+        WHERE b.product = $1
+        GROUP BY b.buyer, u.name, u.email, u.rating
+        
+        UNION ALL
+        
+        -- Get bidders from auto_bids table
+        SELECT DISTINCT
+            ab.bidder AS bidder_id,
+            u.name AS bidder_name,
+            u.email AS bidder_email,
+            u.rating AS bidder_rating,
+            NULL::numeric AS highest_bid,
+            ab.created_at AS last_bid_date,
+            ab.max_price AS auto_bid_max,
+            'auto' AS bid_type,
+            false AS from_refuse
+        FROM auto_bids ab
+        JOIN users u ON u.id = ab.bidder
+        WHERE ab.product = $1
+        
+        UNION ALL
+        
+        -- Get refused bidders from refuse table
+        SELECT DISTINCT
+            r.buyer AS bidder_id,
+            u.name AS bidder_name,
+            u.email AS bidder_email,
+            u.rating AS bidder_rating,
+            NULL::numeric AS highest_bid,
+            NULL::timestamp AS last_bid_date,
+            NULL::numeric AS auto_bid_max,
+            'refused' AS bid_type,
+            true AS from_refuse
+        FROM refuse r
+        JOIN users u ON u.id = r.buyer
+        WHERE r.product = $1
+    ),
+    merged_bidders AS (
+        SELECT 
+            bidder_id,
+            bidder_name,
+            bidder_email,
+            bidder_rating,
+            MAX(highest_bid) AS highest_bid,
+            MAX(last_bid_date) AS last_bid_date,
+            MAX(auto_bid_max) AS auto_bid_max,
+            CASE 
+                WHEN bool_or(from_refuse) THEN 'refused'
+                WHEN MAX(auto_bid_max) IS NOT NULL THEN 'auto'
+                ELSE 'manual'
+            END AS bid_type,
+            bool_or(from_refuse) AS is_refused
+        FROM all_bidders
+        GROUP BY bidder_id, bidder_name, bidder_email, bidder_rating
+    )
+    SELECT 
+        mb.bidder_id,
+        mb.bidder_name,
+        mb.bidder_email,
+        mb.bidder_rating,
+        mb.highest_bid,
+        mb.last_bid_date,
+        mb.auto_bid_max,
+        mb.bid_type,
+        mb.is_refused,
+        COUNT(*) OVER() AS total_count
+    FROM merged_bidders mb
+    ORDER BY mb.is_refused ASC, mb.highest_bid DESC NULLS LAST, mb.last_bid_date DESC
+    LIMIT $2 OFFSET $3;
+`;
+
+export const refuseBidder = `
+    WITH inserted_refuse AS (
+        INSERT INTO refuse (product, buyer)
+        VALUES ($1, $2)
+        ON CONFLICT (product, buyer) DO NOTHING
+        RETURNING product, buyer
+    ),
+    deleted_bids AS (
+        DELETE FROM bids
+        WHERE product = $1 AND buyer = $2
+        RETURNING id
+    ),
+    deleted_auto_bids AS (
+        DELETE FROM auto_bids
+        WHERE product = $1 AND bidder = $2
+        RETURNING product
+    )
+    SELECT 
+        (SELECT COUNT(*) FROM deleted_bids) AS deleted_bids_count,
+        (SELECT COUNT(*) FROM deleted_auto_bids) AS deleted_auto_bids_count;
+`;
+
+export const checkIsRefused = `
+    SELECT 1 FROM refuse WHERE product = $1 AND buyer = $2;
+`;
+
+export const unrefuseBidder = `
+    DELETE FROM refuse WHERE product = $1 AND buyer = $2;
 `;

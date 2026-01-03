@@ -1,4 +1,4 @@
-import { FaUser } from "react-icons/fa";
+import { FaUser, FaStar, FaRegStar } from "react-icons/fa";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -111,7 +111,7 @@ export default function ChangeBasicInfo() {
         address: profile.address || "",
       });
     }
-  }, [profile, resetProfile]);  
+  }, [profile, resetProfile]);
 
   const onSubmitProfile = async (data: any) => {
     const emailChanged = profile?.email !== data.email;
@@ -182,7 +182,7 @@ export default function ChangeBasicInfo() {
     } finally {
       setUpgradeLoading(false);
     }
-  };  
+  };
 
   const handleVerifyOTP = async (otp: string) => {
     try {
@@ -233,6 +233,7 @@ export default function ChangeBasicInfo() {
             </button>
           )}
         </div>
+
         <form
           className="mt-6 flex flex-col gap-4"
           onSubmit={handleSubmitProfile(onSubmitProfile)}
@@ -375,51 +376,6 @@ export default function ChangeBasicInfo() {
             {loading ? "Changing..." : "Save Changes"}
           </button>
         </form>
-      </div>
-      <div className="flex flex-col">
-        <label className="text-white mb-2" htmlFor="email">
-          Email
-        </label>
-        <input
-          type="email"
-          id="email"
-          className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white"
-          placeholder="Enter email"
-          {...registerProfile("email")}
-        />
-        {profileErrors.email && (
-          <p className="text-red-500">{profileErrors.email.message}</p>
-        )}
-      </div>
-      <div className="flex flex-col">
-        <label className="text-white mb-2" htmlFor="birthdate">
-          Birthdate
-        </label>
-        <input
-          type="date"
-          id="birthdate"
-          className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white"
-          placeholder="Enter birthdate"
-          {...registerProfile("birthdate")}
-        />
-        {profileErrors.birthdate && (
-          <p className="text-red-500">{profileErrors.birthdate.message}</p>
-        )}
-      </div>
-      <div className="flex flex-col">
-        <label className="text-white mb-2" htmlFor="address">
-          Address
-        </label>
-        <input
-          type="text"
-          id="address"
-          className="p-2 rounded-md bg-(--bgc) border border-white/10 text-white"
-          placeholder="Enter address"
-          {...registerProfile("address")}
-        />
-        {profileErrors.address && (
-          <p className="text-red-500">{profileErrors.address.message}</p>
-        )}
       </div>
     </>
   );

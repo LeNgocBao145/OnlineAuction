@@ -85,10 +85,18 @@ export default function BidRequestsModal({
                                 <div>
                                     <p className="text-white font-semibold">{req.name}</p>
                                     <p className="text-white/40 text-sm">{req.email}</p>
-                                    <p className="text-white/40 text-xs">
-                                        Requested{" "}
-                                        {formatDate(req.request_date)}
-                                    </p>
+                                    <div className="flex items-center gap-3 mt-1">
+                                        <p className="text-white/40 text-xs">
+                                            Requested{" "}
+                                            {formatDate(req.request_date)}
+                                        </p>
+                                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${req.rating >= 0.8
+                                                ? 'bg-green-500/20 text-green-400'
+                                                : 'bg-yellow-500/20 text-yellow-400'
+                                            }`}>
+                                            Rating: {(req.rating * 100).toFixed(0)}%
+                                        </span>
+                                    </div>
                                 </div>
                                 <div className="flex gap-2">
                                     <button

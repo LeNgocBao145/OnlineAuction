@@ -57,6 +57,9 @@ export interface ProductState {
   fetchBidRequests: (productId: string | number, params?: any) => Promise<any>;
   acceptBidRequest: (productId: string | number, requestId: number) => Promise<void>;
   rejectBidRequest: (productId: string | number, requestId: number) => Promise<void>;
+  fetchBidders: (productId: string | number, params?: { page?: number; limit?: number }) => Promise<any>;
+  refuseBidder: (productId: string | number, bidderId: number) => Promise<any>;
+  unrefuseBidder: (productId: string | number, bidderId: number) => Promise<any>;
 }
 
 export interface SearchState {
