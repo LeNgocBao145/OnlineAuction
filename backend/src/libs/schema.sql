@@ -87,7 +87,7 @@ CREATE TABLE bids (
     product INTEGER NOT NULL,
     buyer INTEGER NOT NULL,
     bid_date TIMESTAMP NOT NULL,
-    price NUMERIC(12,2) NOT NULL,
+    price NUMERIC(12,2) NOT NULL
 );
 
 CREATE TABLE auto_bids (
@@ -303,134 +303,6 @@ ADD CONSTRAINT fk_sell_product_product
 FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE,
 ADD CONSTRAINT fk_sell_product_seller
 FOREIGN KEY (seller) REFERENCES users(id) ON DELETE CASCADE;
-
--- === TRIGGERS ===
-
-CREATE OR REPLACE FUNCTION fn_add_product_to_parent_categories()
-RETURNS TRIGGER AS $$
-DECLARE
-    parent_id INT;
-BEGIN
-    -- Nếu insert do trigger tạo ra thì bỏ qua
-    IF pg_trigger_depth() > 1 THEN
-        RETURN NEW;
-    END IF;
-
-    SELECT parent INTO parent_id
-    FROM categories
-    WHERE id = NEW.category;
-
-    WHILE parent_id IS NOT NULL LOOP
-
-        -- Insert vào parent nếu chưa tồn tại
-        INSERT INTO product_categories (product, category)
-        VALUES (NEW.product, parent_id)
-        ON CONFLICT DO NOTHING;
-
-        -- Chống cycle (parent trỏ về chính nó)
-        IF parent_id = NEW.category THEN
-            RAISE EXCEPTION 'Category cycle detected at id %', parent_id;
-        END IF;
-
-        -- Lấy tiếp parent
-        SELECT parent INTO parent_id
-        FROM categories
-        WHERE id = parent_id;
-    END LOOP;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-CREATE TRIGGER trg_product_category_add_parent
-AFTER INSERT ON product_categories
-FOR EACH ROW
-EXECUTE FUNCTION fn_add_product_to_parent_categories();
-
-CREATE OR REPLACE FUNCTION delete_seller_products()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Xóa tất cả products mà user này là seller
-    DELETE FROM products
-    WHERE id IN (
-        SELECT product 
-        FROM sell_product 
-        WHERE seller = OLD.id
-    );
-    
-    RETURN OLD;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_delete_seller_products
-BEFORE DELETE ON users
-FOR EACH ROW
-EXECUTE FUNCTION delete_seller_products();
-
-CREATE OR REPLACE FUNCTION fn_update_user_rating()
-RETURNS TRIGGER AS $$
-DECLARE
-    affected_user_id INT;
-BEGIN
-    -- Xác định user nào bị ảnh hưởng
-    IF TG_OP = 'DELETE' THEN
-        affected_user_id := OLD.ratee;
-    ELSE
-        affected_user_id := NEW.ratee;
-    END IF;
-    
-    -- Cập nhật rating cho user (chuyển sang thang 0-5)
-    UPDATE users
-    SET rating = (
-        SELECT COALESCE(
-            (COUNT(*) FILTER (WHERE liked = true)::REAL / 
-            NULLIF(COUNT(*)::REAL, 0)),
-            0
-        )
-        FROM reviews
-        WHERE ratee = affected_user_id
-    )
-    WHERE id = affected_user_id;
-    
-    -- Nếu là UPDATE và ratee thay đổi, cập nhật cả user cũ
-    IF TG_OP = 'UPDATE' AND OLD.ratee != NEW.ratee THEN
-        UPDATE users
-        SET rating = (
-            SELECT COALESCE(
-                (COUNT(*) FILTER (WHERE liked = true)::REAL / 
-                NULLIF(COUNT(*)::REAL, 0)),
-                0
-            )
-            FROM reviews
-            WHERE ratee = OLD.ratee
-        )
-        WHERE id = OLD.ratee;
-    END IF;
-    
-    IF TG_OP = 'DELETE' THEN
-        RETURN OLD;
-    ELSE
-        RETURN NEW;
-    END IF;
-END;
-$$ LANGUAGE plpgsql;
-
--- Tạo trigger
-CREATE TRIGGER trg_update_rating_on_review_change
-AFTER INSERT OR UPDATE OR DELETE ON reviews
-FOR EACH ROW
-EXECUTE FUNCTION fn_update_user_rating();
-CREATE OR REPLACE FUNCTION users_tsvector_trigger() RETURNS trigger AS $$
-BEGIN
-  NEW.search_vector :=
-    setweight(to_tsvector('simple', unaccent(coalesce(NEW.name, ''))), 'A') ||
-    setweight(to_tsvector('simple', unaccent(coalesce(NEW.email, ''))), 'B');
-  RETURN NEW;
-END
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER tsvectorupdate
-BEFORE INSERT OR UPDATE ON users
-FOR EACH ROW EXECUTE FUNCTION users_tsvector_trigger();
 
 -- 1. Insert Users
 INSERT INTO users (name, address, email, hashed_password, birthdate, role, rating)
@@ -979,6 +851,134 @@ DROP TRIGGER IF EXISTS trg_categories_name_update ON categories;
 CREATE TRIGGER trg_categories_name_update
 AFTER UPDATE ON categories
 FOR EACH ROW EXECUTE FUNCTION fn_trg_categories_name_update();
+
+-- === TRIGGERS ===
+
+CREATE OR REPLACE FUNCTION fn_add_product_to_parent_categories()
+RETURNS TRIGGER AS $$
+DECLARE
+    parent_id INT;
+BEGIN
+    -- Nếu insert do trigger tạo ra thì bỏ qua
+    IF pg_trigger_depth() > 1 THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT parent INTO parent_id
+    FROM categories
+    WHERE id = NEW.category;
+
+    WHILE parent_id IS NOT NULL LOOP
+
+        -- Insert vào parent nếu chưa tồn tại
+        INSERT INTO product_categories (product, category)
+        VALUES (NEW.product, parent_id)
+        ON CONFLICT DO NOTHING;
+
+        -- Chống cycle (parent trỏ về chính nó)
+        IF parent_id = NEW.category THEN
+            RAISE EXCEPTION 'Category cycle detected at id %', parent_id;
+        END IF;
+
+        -- Lấy tiếp parent
+        SELECT parent INTO parent_id
+        FROM categories
+        WHERE id = parent_id;
+    END LOOP;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trg_product_category_add_parent
+AFTER INSERT ON product_categories
+FOR EACH ROW
+EXECUTE FUNCTION fn_add_product_to_parent_categories();
+
+CREATE OR REPLACE FUNCTION delete_seller_products()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Xóa tất cả products mà user này là seller
+    DELETE FROM products
+    WHERE id IN (
+        SELECT product 
+        FROM sell_product 
+        WHERE seller = OLD.id
+    );
+    
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_delete_seller_products
+BEFORE DELETE ON users
+FOR EACH ROW
+EXECUTE FUNCTION delete_seller_products();
+
+CREATE OR REPLACE FUNCTION fn_update_user_rating()
+RETURNS TRIGGER AS $$
+DECLARE
+    affected_user_id INT;
+BEGIN
+    -- Xác định user nào bị ảnh hưởng
+    IF TG_OP = 'DELETE' THEN
+        affected_user_id := OLD.ratee;
+    ELSE
+        affected_user_id := NEW.ratee;
+    END IF;
+    
+    -- Cập nhật rating cho user (chuyển sang thang 0-5)
+    UPDATE users
+    SET rating = (
+        SELECT COALESCE(
+            (COUNT(*) FILTER (WHERE liked = true)::REAL / 
+            NULLIF(COUNT(*)::REAL, 0)),
+            0
+        )
+        FROM reviews
+        WHERE ratee = affected_user_id
+    )
+    WHERE id = affected_user_id;
+    
+    -- Nếu là UPDATE và ratee thay đổi, cập nhật cả user cũ
+    IF TG_OP = 'UPDATE' AND OLD.ratee != NEW.ratee THEN
+        UPDATE users
+        SET rating = (
+            SELECT COALESCE(
+                (COUNT(*) FILTER (WHERE liked = true)::REAL / 
+                NULLIF(COUNT(*)::REAL, 0)),
+                0
+            )
+            FROM reviews
+            WHERE ratee = OLD.ratee
+        )
+        WHERE id = OLD.ratee;
+    END IF;
+    
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    ELSE
+        RETURN NEW;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Tạo trigger
+CREATE TRIGGER trg_update_rating_on_review_change
+AFTER INSERT OR UPDATE OR DELETE ON reviews
+FOR EACH ROW
+EXECUTE FUNCTION fn_update_user_rating();
+CREATE OR REPLACE FUNCTION users_tsvector_trigger() RETURNS trigger AS $$
+BEGIN
+  NEW.search_vector :=
+    setweight(to_tsvector('simple', unaccent(coalesce(NEW.name, ''))), 'A') ||
+    setweight(to_tsvector('simple', unaccent(coalesce(NEW.email, ''))), 'B');
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tsvectorupdate
+BEFORE INSERT OR UPDATE ON users
+FOR EACH ROW EXECUTE FUNCTION users_tsvector_trigger();
 
 -- Cập nhật data
 DO $$

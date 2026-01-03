@@ -52,7 +52,12 @@ export default function ReviewsBody() {
                             <span className="text-white/60 text-sm">Your Rating Progress</span>
                             <span className="text-white/40 text-sm">•</span>
                             <span className="text-white font-semibold text-lg">
-                                {profile?.rating?.toFixed(2) || '0.00'}
+                                {(() => {
+                                    const raw = profile?.rating ?? 0;
+                                    const num = typeof raw === 'string' ? parseFloat(raw) || 0 : raw;
+                                    const clamped = Math.max(0, Math.min(num, 1));
+                                    return clamped.toFixed(2);
+                                })()}
                             </span>
                             <span className="text-white/60 text-sm">
                                 ({profile?.rating_count || 0} reviews)
@@ -62,16 +67,28 @@ export default function ReviewsBody() {
                             <div className="w-full bg-white/10 rounded-full h-4 overflow-hidden backdrop-blur-sm">
                                 <div 
                                     className={`h-full rounded-full transition-all duration-500 ease-out ${
-                                        (profile?.rating || 0) >= 0.8 
-                                            ? 'bg-gradient-to-r from-green-600 to-green-400' 
-                                            : 'bg-gradient-to-r from-yellow-600 to-orange-400'
+                                        (() => {
+                                            const raw = profile?.rating ?? 0;
+                                            const num = typeof raw === 'string' ? parseFloat(raw) || 0 : raw;
+                                            return num >= 0.8 ? 'bg-gradient-to-r from-green-600 to-green-400' : 'bg-gradient-to-r from-yellow-600 to-orange-400';
+                                        })()
                                     }`}
-                                    style={{ width: `${(profile?.rating || 0) * 100}%` }}
+                                    style={{ width: `${(() => {
+                                        const raw = profile?.rating ?? 0;
+                                        const num = typeof raw === 'string' ? parseFloat(raw) || 0 : raw;
+                                        const clamped = Math.max(0, Math.min(num, 1));
+                                        return clamped * 100;
+                                    })()}%` }}
                                 />
                             </div>
                             <div className="absolute -top-1 right-0">
                                 <span className="bg-black/50 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full border border-white/20">
-                                    {((profile?.rating || 0) * 100).toFixed(0)}%
+                                    {(() => {
+                                        const raw = profile?.rating ?? 0;
+                                        const num = typeof raw === 'string' ? parseFloat(raw) || 0 : raw;
+                                        const clamped = Math.max(0, Math.min(num, 1));
+                                        return `${Math.round(clamped * 100)}%`;
+                                    })()}
                                 </span>
                             </div>
                         </div>

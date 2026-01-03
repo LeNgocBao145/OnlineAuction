@@ -85,7 +85,7 @@ export default function SearchBody() {
                         {itemsData.map((item) => {
                             const addedRecently = (() => {
                                 const THIRTY_MIN_MS = 30 * 60 * 1000;
-                                const addedDate = new Date(item.createdAt).getTime();
+                                const addedDate = new Date(item.created_at).getTime();
                                 const now = Date.now();
                                 return (now - addedDate) <= THIRTY_MIN_MS;
                             })();

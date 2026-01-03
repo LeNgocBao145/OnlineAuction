@@ -4,6 +4,7 @@ export interface Product {
   name: string;
   current_price: number;
   image_url?: string;
+  created_at?: string;
   time_left?: string;
   bid_count?: number;
   state?: string;

@@ -52,10 +52,10 @@ export default function ChangeBasicInfo() {
             age--;
           }
 
-          return age >= 18 && age <= 150;
+          return age >= 18 && birthDate.getFullYear() >= 1900;
         },
         {
-          message: "You must be at least 18 years old",
+          message: "You must be at least 18 years old or birthyear equal to or greater than 1900",
         }
       ),
     address: z.string().min(10, "Address must be at least 10 characters long"),

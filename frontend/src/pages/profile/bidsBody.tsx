@@ -37,11 +37,10 @@ export default function BidsBody() {
     }
 
     const filteredBiddings = statusFilter === 6 ? (biddings || []) : (biddings || []).filter(bid => {
-        if (statusFilter === 1) return bid.state === "incoming";
-        if (statusFilter === 2) return bid.state === "bidding";
-        if (statusFilter === 3) return bid.state === "sold";
-        if (statusFilter === 4) return bid.state === "sold" && bid.highest_bidder_id === user?.id.toString(); // Won - sold and in won list
-        if (statusFilter === 5) return bid.state === "sold" && bid.highest_bidder_id !== user?.id.toString(); // Losing - sold but not in won list
+        if (statusFilter === 1) return bid.state === "bidding";
+        if (statusFilter === 2) return bid.state === "sold";
+        if (statusFilter === 3) return bid.state === "sold" && bid.highest_bidder_id === user?.id.toString(); // Won - sold and in won list
+        if (statusFilter === 4) return bid.state === "sold" && bid.highest_bidder_id !== user?.id.toString(); // Losing - sold but not in won list
         return true;
     });
 
@@ -55,21 +54,18 @@ export default function BidsBody() {
                 <div className="grid lg:grid-cols-6 grid-cols-3 gap-2">
                     <button className={`bg-(--bgc) border border-white/10 p-2 rounded-md mr-2 ${statusFilter === 1 ? "bg-(--primary) text-black" : "text-white"}`}
                         onClick={() => setStatusFilter(1)}>
-                        Incoming</button>
+                        Bidding</button>
                     <button className={`bg-(--bgc) border border-white/10 p-2 rounded-md mr-2 ${statusFilter === 2 ? "bg-(--primary) text-black" : "text-white"}`}
                         onClick={() => setStatusFilter(2)}>
-                        Bidding</button>
+                        Sold</button>
                     <button className={`bg-(--bgc) border border-white/10 p-2 rounded-md mr-2 ${statusFilter === 3 ? "bg-(--primary) text-black" : "text-white"}`}
                         onClick={() => setStatusFilter(3)}>
-                        Sold</button>
+                        Losing</button>
                     <button className={`bg-(--bgc) border border-white/10 p-2 rounded-md mr-2 ${statusFilter === 4 ? "bg-(--primary) text-black" : "text-white"}`}
                         onClick={() => setStatusFilter(4)}>
-                        Losing</button>
+                        Won</button>
                     <button className={`bg-(--bgc) border border-white/10 p-2 rounded-md mr-2 ${statusFilter === 5 ? "bg-(--primary) text-black" : "text-white"}`}
                         onClick={() => setStatusFilter(5)}>
-                        Won</button>
-                    <button className={`bg-(--bgc) border border-white/10 p-2 rounded-md mr-2 ${statusFilter === 6 ? "bg-(--primary) text-black" : "text-white"}`}
-                        onClick={() => setStatusFilter(6)}>
                         View All</button>
                 </div>
             </div>
