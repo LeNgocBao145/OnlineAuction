@@ -982,15 +982,15 @@ class UserController {
   async sellerConfirmation(req, res) {
     try {
       const productId = req.params.productId;
-      const deliveryInvoiceImage = req.body;
+      const transportImage = req.file?.filename;
 
-      if (!deliveryInvoiceImage) {
+      if (!transportImage) {
         return res
           .status(400)
           .json({ message: "Delivery invoice image is required" });
       }
 
-      const result = await query(sellerConfirmation, [deliveryInvoiceImage, productId]);
+      const result = await query(sellerConfirmation, [transportImage, productId]);
       return res.status(200).json(result.rows);
     } catch (error) {
       console.error("[Seller Confirmation] Error: ", error);

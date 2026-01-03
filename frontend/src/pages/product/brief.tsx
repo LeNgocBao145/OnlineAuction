@@ -72,7 +72,7 @@ export default function ProductBrief() {
   const handleBuyNow = async () => {
     try {
       console.log(product?.instant_price);
-      await placeBid(product?.id || "", { bidAmount: product?.instant_price });
+      //await placeBid(product?.id || "", { bidAmount: product?.instant_price });
       toast.success("Bid placed successfully! You are currently winning.");
     } catch (error: any) {
       console.error("Error place instant price bid: ", error);     
@@ -200,14 +200,7 @@ export default function ProductBrief() {
             >
               Login to place bid
             </button>
-          </div>
-<<<<<<< Updated upstream
-        ) : product.state === "sold" && user.role === "bidder" ? ( // user object add another check if this user is the seller/bidder of the current product
-=======
-        ) : product.state === "ended" && user.role === "seller" ? ( // user object add another check if this user is the seller/bidder of the current product
->>>>>>> Stashed changes
-          <div>
-          ) : product.state === "ended" ? (
+          ) : product.state === "sold" ? (
             <button
               className={`w-full h-14 rounded-xl font-bold transition-all border ${product.user_relation === "seller" || product.user_relation === "winner"
                 ? "bg-(--primary) text-black hover:opacity-90 border-transparent shadow-[0_0_15px_rgba(255,215,0,0.2)]"
@@ -223,43 +216,6 @@ export default function ProductBrief() {
                 ? "Proceed to transaction"
                 : "Auction ended"}
             </button>
-          </div>
-<<<<<<< Updated upstream
-        ) : product.state === "sold" && user.role !== "bidder" && product.seller_id === user.id ? (
-=======
-        ) : product.state === "ended" && user.role === "winner" ? (
->>>>>>> Stashed changes
-          <div>
-            <button
-              className="w-full h-20 bg-(--primary) text-black rounded-lg mb-4 font-bold"
-              onClick={() => navigate(`/transactions/${product.id}/seller`)}
-            >
-              Go to transaction
-            </button>
-          </div>
-        ) : product.state === "ended" && user.role === "other" ? (
-          <div>
-            <button
-              className="w-full h-40 bg-white/10 text-white rounded-lg mb-4 font-bold"
-              disabled
-            >
-              Auction ended
-            </button>
-          </div>
-        ) : (
-          <div>
-            <button
-              className="w-full h-20 bg-(--primary) text-black rounded-lg mb-4 font-bold"
-              onClick={() => setPlacingBid(!placingBid)}
-            >
-              Place bid
-            </button>
-            <button className="w-full h-20 bg-white/10 text-white rounded-lg">
-              Buy now
-            </button>
-          </div>
-        )}
-=======
           ) : (
             <div className="flex flex-col gap-4">
               {product.user_relation === "seller" ? (
@@ -312,7 +268,6 @@ export default function ProductBrief() {
             </div>
           )}
         </div>
->>>>>>> b144b005b43e121359c8ee32f0928846fabac06d
       </div>
 
       {viewingRequests && (

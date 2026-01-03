@@ -1,22 +1,32 @@
-import { type StepBoxProps } from "@/services/transactionService";
+import { useState } from "react";
+import transactionService, { type StepBoxProps } from "@/services/transactionService";
+import { toast } from "sonner";
 
 export default function Step2Box({ productId, transaction, onSuccess }: StepBoxProps) {
+  if (!transaction) {
     return (
-        <div className="border border-white/10 rounded-lg p-4 bg-(--third)">
-            <h2 className="text-(--primary) text-xl font-bold mb-4">Step 2: Seller confirms payment and submits shipping invoice.</h2>
-            <p className="text-white/80">Your payment is being processed. Please wait for the seller to confirm the payment and submit the shipping invoice.</p>
-            
-            <h2 className="text-white text-xl font-bold mt-4">Uploaded Payment Content</h2>
-            <div className="grid lg:grid-cols-[1fr_2fr] grid-cols-1 gap-4">
-                <img 
-                        src={transaction?.delivery_invoice_image}
-                        alt="Your uploaded payment receipt." 
-                        className="mt-4 w-full aspect-square rounded-md border border-white/10 flex justify-center items-center text-white"
-                />
-                <div className="mt-4 flex flex-col gap-2">
-                    <p className="text-white/60">Shipping Address: <span className="text-white">{transaction?.delivery_address}</span></p>
-                </div>
-            </div>
-        </div>
+      <div className="border border-white/10 rounded-lg p-4 bg-(--third)">
+        <p className="text-white/70">Loading transaction...</p>
+      </div>
     );
+  }
+
+  return (
+    <div className="border border-white/10 rounded-lg p-4 bg-(--third)">
+      <h2 className="text-(--primary) text-xl font-bold mb-4">Step 3: Confirm Product Delivery</h2>
+
+      <p className="text-white">
+        This action <span className="font-bold text-red-500">can not</span> be undone. Please confirm that you have
+        received the product.
+      </p>
+
+      <button
+        type="button"
+        disabled
+        className="mt-4 bg-green-400 text-white font-bold py-2 px-4 rounded-md disabled:opacity-60"
+      >
+        {"Confirm Delivery"}
+      </button>
+    </div>
+  );
 }

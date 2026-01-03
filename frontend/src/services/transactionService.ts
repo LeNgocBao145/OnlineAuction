@@ -54,8 +54,15 @@ const transactionService = {
         return res.data[0] as Transaction;
     },
 
-    async sellerConfirm(productId: number): Promise<void> {
-        await api.patch(`/users/trade-verifications/${productId}/seller-confirm`, { withCredentials: true });
+    async sellerConfirm(productId: number, data: {
+        transportImage: File
+    }): Promise<Transaction> {
+        const form = new FormData();
+        form.append("transportImage", data.transportImage);
+        const res = await api.patch(`/users/trade-verifications/${productId}/seller-confirm`, 
+                                    form,
+                                    { withCredentials: true });
+        return res.data[0] as Transaction;
     },
 
     async bidderConfirm(productId: number): Promise<void> {

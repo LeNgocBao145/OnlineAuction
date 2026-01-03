@@ -1011,7 +1011,7 @@ export const bidderSubmission = `UPDATE trade_verifications
 export const sellerConfirmation = `UPDATE trade_verifications
                                    SET
                                     sell_accept = TRUE,
-                                    delivery_invoice_image = $1,
+                                    transport_image = $1,
                                     state = 'pending_bidder_confirm'
                                    WHERE product = $2
                                    AND state = 'pending_seller_confirm'

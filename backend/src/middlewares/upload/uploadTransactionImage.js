@@ -3,18 +3,22 @@ import path from "path";
 import fs from "fs";
 
 const uploadDir = path.resolve(process.cwd(), "src", "assets", "transactions");
-// Tạo folder nếu chưa có
 fs.mkdirSync(uploadDir, { recursive: true });
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const productId = req.params.productId;
-    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
-    cb(null, `${productId}_bidder${ext}`);
-  },
-});
+export function uploadTransactionImage(role) {
+  if (!["bidder", "seller"].includes(role)) {
+    throw new Error("Role must be 'bidder' or 'seller'");
+  }
 
-export const uploadTransactionImage = multer({ storage });
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+
+    filename: (req, file, cb) => {
+      const productId = req.params.productId;
+      const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+      cb(null, `${productId}_${role}${ext}`);
+    },
+  });
+
+  return multer({ storage });
+}
