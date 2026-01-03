@@ -88,7 +88,6 @@ CREATE TABLE bids (
     buyer INTEGER NOT NULL,
     bid_date TIMESTAMP NOT NULL,
     price NUMERIC(12,2) NOT NULL,
-    max_price NUMERIC(12,2)
 );
 
 CREATE TABLE auto_bids (

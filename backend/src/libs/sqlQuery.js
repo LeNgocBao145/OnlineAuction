@@ -676,8 +676,8 @@ export const handleInstantBuyQuery = `
 
 export const placeBidTransaction = `
     WITH new_bid AS (
-        INSERT INTO bids (buyer, product, price, bid_date, max_price)
-        VALUES ($1, $2, $3, NOW(), $4)
+        INSERT INTO bids (buyer, product, price, bid_date)
+        VALUES ($1, $2, $3, NOW())
         RETURNING product
     )
     UPDATE products
@@ -715,8 +715,8 @@ export const deleteAutoBid = `
 `;
 
 export const insertBidRecord = `
-    INSERT INTO bids (buyer, product, price, bid_date, max_price)
-    VALUES ($1, $2, $3, NOW(), $4)
+    INSERT INTO bids (buyer, product, price, bid_date)
+    VALUES ($1, $2, $3, NOW())
     RETURNING *;
 `;
 

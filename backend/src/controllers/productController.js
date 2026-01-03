@@ -11,11 +11,9 @@ import {
   approveBidRequest,
   rejectBidRequest,
   handleInstantBuyQuery,
-  placeBidTransaction,
   createProduct,
   createProductCategory,
   getProductById,
-  getProductImagesById,
   createProductImages,
   createProductDescription,
   createSellProduct,
@@ -47,14 +45,11 @@ class ProductController {
     try {
       const { seller, name, images, init_price, step_price, instant_price, start_at, expired_at, description, isExtent, category } = req.body;
 
-
       if (!seller || !name || !images || !init_price || !step_price || !start_at || !expired_at || !description || typeof (isExtent) !== 'boolean' || !category) {
         return res.status(400).json({
           message: "Seller id, name, images, init_price, step_price, description, isExtent and category are required"
         });
       }
-
-
 
       if (!Array.isArray(images) || images.length < 3) {
         return res.status(400).json({
@@ -62,13 +57,11 @@ class ProductController {
         });
       }
 
-
       if (init_price <= 0 || step_price <= 0) {
         return res.status(400).json({
           message: "Init price and step price must be positive",
         });
       }
-
 
       const result = await query(createProduct, [
         name,
@@ -76,9 +69,7 @@ class ProductController {
         images[0]
       ]);
 
-
       const productId = result.rows[0].id;
-
 
       await Promise.all([
         query(createProductImages, [productId, images]),
@@ -87,8 +78,6 @@ class ProductController {
         query(createSellProduct, [productId, seller, init_price, step_price, instant_price || null, start_at, expired_at, isExtent])
       ]);
 
-
-
       return res.status(201).json({ message: "Product created successfully!", productId });
     } catch (error) {
       console.error("[addProduct] Error: ", error);
@@ -96,12 +85,10 @@ class ProductController {
     }
   }
 
-
   async addDescription(req, res) {
     try {
       const productId = req.params.productId;
       const { des } = req.body;
-
 
       if (!productId || !des) {
         return res.status(400).json({
@@ -109,20 +96,15 @@ class ProductController {
         });
       }
 
-
       const product = await query(getProductById, [productId]);
-
 
       if (!product.rows.length) {
         return res.status(404).json({ message: "No product found" });
       }
 
-
       const result = await query(createProductDescription, [productId, des]);
 
-
       const newProductDescription = result.rows[0];
-
 
       return res
         .status(201)
@@ -289,7 +271,7 @@ class ProductController {
 
       // Send email using data from the single query
       const { seller_email, product_name, user_name } = result.rows[0];
-      const productUrl = `https://${process.env.FRONTEND_HOST}/products/${productId}`;
+      const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
 
       await sendQuestionAskedEmail(seller_email, product_name, user_name, trimmedQuestion, productUrl);
 
@@ -362,7 +344,7 @@ class ProductController {
 
       // Send email using data from the single query
       const { asker_email, product_name } = result.rows[0];
-      const productUrl = `https://${process.env.FRONTEND_HOST}/products/${productId}`;
+      const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
 
       await sendQuestionAnsweredEmail(asker_email, product_name, trimmedAnswer, productUrl);
 
@@ -415,7 +397,7 @@ class ProductController {
         const to = userData.seller_email;
         const productName = userData.product_name;
         const buyerName = userData.name;
-        const productUrl = `https://${process.env.FRONTEND_HOST}/products/${productId}`;
+        const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
 
         await sendBidRequestEmail(to, productName, buyerName, productUrl)
           .catch((err) => {
@@ -645,7 +627,7 @@ class ProductController {
     const topAuto = (await query(getTopAutoBidsForProduct, [productId])).rows[0];
     if (topAuto && topAuto.bidder !== userId && amount <= parseFloat(topAuto.max_price)) {
       const outbidPrice = Math.min(amount + parseFloat(data.step_price), parseFloat(topAuto.max_price));
-      await query(insertBidRecord, [userId, productId, amount, null]);
+      await query(insertBidRecord, [userId, productId, amount]);
       await this._finalizeBid(topAuto.bidder, productId, outbidPrice, parseFloat(topAuto.max_price));
       this._notifySuccess(userEmail, data.product_name, amount, productUrl, [], false);
       this._notifySuccess(topAuto.bidder_email, data.product_name, outbidPrice, productUrl, notifyList, false);
@@ -670,9 +652,34 @@ class ProductController {
     const [first, second] = topBids;
     const m1 = parseFloat(first.max_price), m2 = second ? parseFloat(second.max_price) : 0;
     const winnerId = first.bidder;
+    const winnerMax = m1;
     const finalPrice = Math.max(minNext, topBids.length > 1 ? (m1 > m2 ? Math.min(m2 + stepP, m1) : m1) : (leaderPrice + stepP));
 
-    await this._finalizeBid(winnerId, productId, finalPrice, winnerId === userId ? maxPrice : m1);
+    if (topBids.length > 1) {
+      // Insert runner-up bid (so both auto-bidders have bid records), then winner's bid
+      const runner = second;
+      const runnerId = runner.bidder;
+      const runnerMax = m2;
+      const runnerPrice = Math.max(minNext, Math.min(runnerMax, finalPrice - stepP));
+
+      // runner's bid record (does not update product current_price yet)
+      await query(insertBidRecord, [runnerId, productId, runnerPrice]);
+
+      // winner's bid record and update product price
+      await query(insertBidRecord, [winnerId, productId, finalPrice]);
+      await query(updateProductPrice, [finalPrice, productId]);
+
+      this._notifySuccess(winnerId === userId ? userEmail : first.bidder_email, data.product_name, finalPrice, productUrl, notifyList, false);
+
+      return res.status(winnerId === userId ? 201 : 200).json({
+        message: winnerId === userId ? "Auto-bid active. You win!" : "Outbid by higher auto-bid",
+        currentPrice: finalPrice,
+        isWinning: winnerId === userId
+      });
+    }
+
+    // single auto-bidder case
+    await this._finalizeBid(winnerId, productId, finalPrice, winnerId === userId ? maxPrice : winnerMax);
     this._notifySuccess(winnerId === userId ? userEmail : first.bidder_email, data.product_name, finalPrice, productUrl, notifyList, false);
 
     return res.status(winnerId === userId ? 201 : 200).json({
@@ -682,9 +689,9 @@ class ProductController {
     });
   }
 
-  _finalizeBid = async (bidderId, productId, price, maxPrice) => {
+  _finalizeBid = async (bidderId, productId, price) => {
 
-    await query(insertBidRecord, [bidderId, productId, price, maxPrice]);
+    await query(insertBidRecord, [bidderId, productId, price]);
     await query(updateProductPrice, [price, productId]);
   }
 
