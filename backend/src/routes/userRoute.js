@@ -1,7 +1,7 @@
 import express from 'express';
 import UserController from '../controllers/userController.js';
 import { authenticateToken } from '../middlewares/authMiddleware.js';
-import { transactionMiddleware } from '../middlewares/transactionMiddleware.js';
+import { transactionMiddleware, requireTradeRole } from '../middlewares/transactionMiddleware.js';
 import { uploadTransactionImage } from '../middlewares/upload/uploadTransactionImage.js';
 
 const router = express.Router();
@@ -24,12 +24,23 @@ router.post('/:userId/request-to-be-seller', UserController.requestToBeSeller);
 router.post('/:userId/rate-seller/:productId', UserController.rateSeller);
 router.post('/:userId/favorites/:productId', UserController.markFavorite);
 router.delete('/:userId/favorites/:productId', UserController.unmarkFavorite);
+router.use('/trade-verifications/:productId', transactionMiddleware);
 router.get('/trade-verifications/:productId', UserController.tradeVerification);
 router.get('/trade-verifications/:productId/winner', UserController.getWinner);
-router.patch('/trade-verifications/:productId/bidder-submit', uploadTransactionImage("bidder").single("invoiceImage"), UserController.bidderSubmission);
-router.patch('/trade-verifications/:productId/seller-confirm', uploadTransactionImage("seller").single("transportImage"), UserController.sellerConfirmation);
-router.patch('/trade-verifications/:productId/bidder-confirm', UserController.bidderConfirmation);
-router.patch('/trade-verifications/:productId/cancel', UserController.tradeCancellation);
+router.patch('/trade-verifications/:productId/bidder-submit', 
+              uploadTransactionImage("bidder").single("invoiceImage"),
+              requireTradeRole("bidder"),
+              UserController.bidderSubmission);
+router.patch('/trade-verifications/:productId/seller-confirm', 
+              uploadTransactionImage("seller").single("transportImage"),
+              requireTradeRole("seller"),
+              UserController.sellerConfirmation);
+router.patch('/trade-verifications/:productId/bidder-confirm',
+              requireTradeRole("bidder"),
+              UserController.bidderConfirmation);
+router.patch('/trade-verifications/:productId/cancel', 
+              requireTradeRole("seller"),
+              UserController.tradeCancellation);
 router.post('/trade-verifications/:productId/review', UserController.rating);
 
 export default router;

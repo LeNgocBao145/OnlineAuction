@@ -13,6 +13,6 @@ export default function route(app) {
     app.use('/api/categories', categoryRouter);
     app.use('/api/products', productRouter);
     app.use('/api/admins', authenticateToken, adminRouter);
-    app.use('/api/users', userRouter);
+    app.use('/api/users', authenticateToken, userRouter);
     app.use('/api/messages', authenticateToken, messageRouter);
 }

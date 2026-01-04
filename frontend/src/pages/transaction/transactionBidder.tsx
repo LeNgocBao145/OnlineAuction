@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import transactionService, { type Transaction } from "@/services/transactionService";
 import { toast } from "sonner";
 import { useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const STEP = {
   pending_payment: 1,
@@ -22,6 +23,7 @@ export default function BidderTransactionPage() {
   const productId = useMemo(() => Number(id), [id]);
   const [currentStep, setCurrentStep] = useState<number | null>(null);
   const [transaction, setTransaction] = useState<Transaction | null>(null);
+  const navigate = useNavigate();
   const refetch = async () => {
     if (!id || Number.isNaN(productId)) return;
     try {
@@ -29,6 +31,7 @@ export default function BidderTransactionPage() {
       setTransaction(tx);
       setCurrentStep(STEP[tx.state]);
     } catch {
+      navigate(`/`, { replace: true });
       toast.error("Failed to fetch transaction");
     }
   };

@@ -88,12 +88,25 @@ export default function Step2Box({ productId, transaction, onSuccess }: StepBoxP
     }
   };
 
-  return (
-    <div className="border border-white/10 rounded-lg p-4 bg-(--third)">
-      <h2 className="text-(--primary) text-xl font-bold mb-4">
-        Step 2: Seller uploads transport image and confirms
-      </h2>
+  const handleCancel = async () => {
+    if (confirming) return;
+  
+    try {
+      setConfirming(true);
+      await transactionService.cancel(productId);
+      toast.success("Cancel successfully");
+      await onSuccess?.();
+    } catch (e) {
+      console.error("Cancel error:", e);
+      toast.error("Cancel failed");
+    } finally {
+      setConfirming(false);
+    }
+  };  
 
+  return (
+    <div>
+    <div className="border border-white/10 rounded-lg p-4 bg-(--third)">
       <div className="grid lg:grid-cols-[1fr_2fr] grid-cols-1 gap-4">
         {/* Invoice preview */}
         {invoiceUrl ? (
@@ -167,17 +180,53 @@ export default function Step2Box({ productId, transaction, onSuccess }: StepBoxP
           </div>
         </div>
 
-        <p className="text-red-400 col-span-full">
-          Warning: Please verify the payment details before confirming. This action cannot be undone.
+        <p className="text-red-500 col-span-full">
+          <strong>Warning:</strong> <span className="text-white/60">Please verify the payment details before confirming, this action cannot be undone.</span>
         </p>
 
         <button
           type="button"
           onClick={handleSubmit(handleConfirm)}
           disabled={confirming || !(transportFile instanceof File)}
-          className="bg-(--primary) text-black px-4 py-2 rounded-md col-span-full hover:bg-(--primary)/80 disabled:opacity-60"
+          className="
+            bg-(--primary)
+            text-black
+            px-4 py-2
+            rounded-md
+            col-span-full
+            font-bold
+            hover:bg-(--primary)/80
+            disabled:opacity-60
+          "
         >
           {confirming ? "Confirming..." : "Confirm Payment Received"}
+        </button>
+      </div>
+    </div>
+
+    {/* ===== CANCEL TRANSACTION BOX ===== */}
+      <div className="mt-6 border border-white/10 rounded-lg p-4 bg-(--third)">
+        <h2 className="text-(--primary) text-lg font-bold">
+          Cancel Transaction
+        </h2>
+
+        <p className="text-white/60 mt-1">
+          If there is any issue during shipment or payment verification, you may cancel
+          this transaction. Please confirm with the counterparty before proceeding.
+        </p>
+
+        <button
+          type="button"
+          onClick={handleCancel}
+          disabled={confirming}
+          className={[
+            "mt-3 px-4 py-2 rounded-md font-bold text-white transition",
+            confirming
+              ? "bg-red-500/40 cursor-not-allowed"
+              : "bg-red-500 hover:bg-red-600",
+          ].join(" ")}
+        >
+          {confirming ? "Cancelling..." : "Cancel Transaction"}
         </button>
       </div>
     </div>

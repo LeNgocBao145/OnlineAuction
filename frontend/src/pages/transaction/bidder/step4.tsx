@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { formatTimeLeft } from "@/utils/timeUtils";
 import transactionService from "@/services/transactionService";
 import { toast } from "sonner";
+import { generateAvatarFromName } from "@/utils/avatarUtils";
+import { formatCurrency } from "@/utils/numberUtils";
 
 export default function Step4Box({ productId, transaction, onSuccess }: StepBoxProps) {
   const reviewTextCountLimit = 500;
@@ -48,16 +50,16 @@ export default function Step4Box({ productId, transaction, onSuccess }: StepBoxP
 
       <div className="mt-4 grid lg:grid-cols-[1fr_3fr_2fr_2fr] items-center grid-cols-2 gap-4 border border-white/10 p-4 rounded-lg bg-(--third)">
         <img
-          src={transaction?.seller_name ?? undefined}
+          src={generateAvatarFromName(transaction?.seller_name) ?? ""}
           className="border-(--primary) border h-30 w-30 rounded-full flex justify-center items-center text-white"
           alt="seller-pfp"
         />
         <div>
-          <p className="text-white text-2xl font-bold">{transaction?.bidder_name}</p>
-          <p className="text-white/60">Auction Winner</p>
+          <p className="text-white text-2xl font-bold">{transaction?.seller_name}</p>
+          <p className="text-white/60">Seller</p>
         </div>
         <div>
-          <p className="text-(--primary) text-2xl font-bold">${transaction?.current_price}</p>
+          <p className="text-(--primary) text-2xl font-bold">{formatCurrency(transaction?.current_price)}</p>
           <p className="text-white/60">Winning bid</p>
         </div>
         <div>

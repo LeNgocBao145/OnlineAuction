@@ -985,6 +985,7 @@ export const getTradeVerification = `SELECT t.product,
                                             t.bidder_accept,
                                             t.state,
                                             b.name AS bidder_name,
+                                            b.address AS delivery_address,
                                             b.rating AS bidder_rating,
                                             s.name AS seller_name,
                                             s.rating AS seller_rating,
@@ -1025,12 +1026,30 @@ export const bidderConfirmation = `UPDATE trade_verifications
                                    AND state = 'pending_bidder_confirm'
                                    RETURNING *`;
 
-export const tradeCancel = `UPDATE trade_verifications
-                            SET
-                                state = 'failed'
-                            WHERE product = $1
-                            AND state IN ('pending_payment', 'pending_seller_confirm', 'pending_bidder_confirm', 'completed')
-                            RETURNING *`;
+                                   export const tradeCancel = `WITH cancelled_trade AS (
+                                    UPDATE trade_verifications
+                                    SET state = 'failed'
+                                    WHERE product = $1
+                                    AND state IN (
+                                        'pending_payment',
+                                        'pending_seller_confirm',
+                                        'pending_bidder_confirm',
+                                        'completed'
+                                    )
+                                    RETURNING product, bidder, seller
+                                )
+                                INSERT INTO reviews (product, rater, ratee, liked, content)
+                                SELECT
+                                    product,
+                                    seller, 
+                                    bidder, 
+                                    false,      
+                                    'Trade cancelled by bidder'
+                                FROM cancelled_trade
+                                ON CONFLICT (product, ratee, rater)
+                                DO UPDATE SET
+                                    liked = false,
+                                    content = 'Trade cancelled by seller'`;    
 
 export const getWinner = `SELECT u.*
                           FROM trade_verifications t

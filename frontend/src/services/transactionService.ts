@@ -39,7 +39,7 @@ const transactionService = {
     async getTransaction(productId: number): Promise<Transaction> {
         const res = await api.get(`/users/trade-verifications/${productId}`, { withCredentials: true });
         return res.data[0] as Transaction;
-    },
+    },  
 
     async bidderSubmit(productId: number, data: {
         deliveryAddress: string,

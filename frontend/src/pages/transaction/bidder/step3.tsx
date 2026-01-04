@@ -33,13 +33,6 @@ export default function Step3Box({ productId, transaction, onSuccess }: StepBoxP
 
   return (
     <div className="border border-white/10 rounded-lg p-4 bg-(--third)">
-      <h2 className="text-(--primary) text-xl font-bold mb-4">Step 3: Confirm Product Delivery</h2>
-
-      <p className="text-white">
-        This action <span className="font-bold text-red-500">can not</span> be undone. Please confirm that you have
-        received the product.
-      </p>
-
       <button
         type="button"
         onClick={handleConfirmDelivery}
@@ -48,6 +41,10 @@ export default function Step3Box({ productId, transaction, onSuccess }: StepBoxP
       >
         {confirming ? "Confirming..." : "Confirm Delivery"}
       </button>
+
+      <p className="text-white/60 mt-4">
+        Please confirm that you have successfully received the product.
+      </p>
     </div>
   );
 }

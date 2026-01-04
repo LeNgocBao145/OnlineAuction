@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import transactionService, { type Transaction } from "@/services/transactionService";
 import { toast } from "sonner";
 import { useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const STEP = {
   pending_payment: 1,
@@ -22,6 +23,7 @@ export default function SellerTransactionPage() {
   const productId = useMemo(() => Number(id), [id]);
   const [currentStep, setCurrentStep] = useState<number | null>(null);
   const [transaction, setTransaction] = useState<Transaction | null>(null);
+  const navigate = useNavigate();
   const refetch = async () => {
     if (!id || Number.isNaN(productId)) return;
     try {
@@ -29,6 +31,7 @@ export default function SellerTransactionPage() {
       setTransaction(tx);
       setCurrentStep(STEP[tx.state]);
     } catch {
+      navigate(`/`, { replace: true });
       toast.error("Failed to fetch transaction");
     }
   };
@@ -42,7 +45,7 @@ export default function SellerTransactionPage() {
       <div className="mt-6 grid lg:grid-cols-[2fr_1fr] grid-cols-1 gap-6 items-start">
         <div className="grid gap-6">
           <TransactionInfoCard currentStep={currentStep ?? 0} transaction={transaction ?? null} />
-          {currentStep === 1 && <Step1Box/>}
+          {currentStep === 1 && <Step1Box productId={productId} transaction={transaction} onSuccess={refetch}/>}
           {currentStep === 2 && <Step2Box productId={productId} transaction={transaction} onSuccess={refetch} />}
           {currentStep === 3 && <Step3Box productId={productId} transaction={transaction} onSuccess={refetch} />}
         </div>

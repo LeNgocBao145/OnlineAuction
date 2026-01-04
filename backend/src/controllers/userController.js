@@ -1024,12 +1024,11 @@ class UserController {
     try {
       const userId = req.user.id;
       const productId = req.params.productId;
-      const { liked, content } = req.body;
+      const { liked, comment } = req.body;
       const result = await query(getRoleFromTrade, [productId]);
       const isBidder = result.rows[0].bidder === userId;
       const toUser = isBidder ? result.rows[0].seller : result.rows[0].bidder;
-      console.log(productId, userId, toUser, liked, content);
-      const resultRate = await query(rating, [productId, userId, toUser, liked, content]);
+      const resultRate = await query(rating, [productId, userId, toUser, liked, comment]);
       return res.status(200).json(resultRate.rows);
     } catch (error) {
       console.error("[Rating] Error: ", error);
