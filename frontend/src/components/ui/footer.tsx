@@ -10,20 +10,24 @@ export default function Footer() {
                 <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-(--primary) rounded-full blur-3xl animate-pulse delay-1000"></div>
             </div>
 
-            {/* Content - Height: ~157px (3.14 × 50px) */}
             <div className="relative max-w-7xl mx-auto px-8 py-12 h-[157px] flex items-center justify-between">
-                {/* Brand - Match Header Style */}
-                <Link to="/" className="flex items-center gap-3 group">
-                    <img src={Icon} className="h-12 w-auto transition-transform group-hover:scale-110" alt="Logo" />
+                <Link to="/" className="flex items-center gap-4 group">
+                    <div className="relative">
+                        <div className="absolute inset-0 bg-(--primary) rounded-full blur-xl opacity-0 group-hover:opacity-2 transition-opacity duration-500"></div>
+                        <img
+                            src={Icon}
+                            className="relative h-20 w-auto transition-all duration-300 group-hover:scale-115 drop-shadow-[0_0_12px_rgba(255,215,0,0.4)] group-hover:drop-shadow-[0_0_25px_rgba(255,215,0,0.7)]"
+                            alt="Logo"
+                        />
+                    </div>
                     <div>
-                        <h3 className="text-2xl font-bold text-(--primary) font-sans">
+                        <h3 className="text-2xl font-extrabold text-(--primary) font-sans tracking-wide drop-shadow-[0_0_10px_rgba(255,215,0,0.4)] group-hover:drop-shadow-[0_0_18px_rgba(255,215,0,0.6)] transition-all duration-300">
                             AUCTIONIFY
                         </h3>
-                        <p className="text-white/40 text-xs">Bid. Win. Celebrate.</p>
+                        <p className="text-white/40 text-xs group-hover:text-white/60 transition-colors duration-300">Bid. Win. Celebrate.</p>
                     </div>
                 </Link>
 
-                {/* Social & Copyright */}
                 <div className="flex flex-col items-end space-y-2">
                     <div className="flex space-x-3">
                         <a href="#" className="w-8 h-8 bg-white/5 hover:bg-(--primary)/20 rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-110 group">
@@ -42,7 +46,7 @@ export default function Footer() {
                             </svg>
                         </a>
                     </div>
-                    <p className="text-white/30 text-xs">© {new Date().getFullYear()} All rights reserved</p>
+                    <p className="text-white/30 text-xs">© 2026 Auctionify. All rights reserved</p>
                 </div>
             </div>
         </footer>

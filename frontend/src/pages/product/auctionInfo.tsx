@@ -1,9 +1,22 @@
 import useProductStore from "@/stores/productStore";
+import useSearchStore from "@/stores/searchStore";
 import { formatCurrency } from "@/utils/numberUtils";
 import { formatDate } from "@/utils/dateUtils";
+import { useNavigate } from "react-router-dom";
 
 export default function AuctionInfo() {
   const { product } = useProductStore();
+  const { filterProducts } = useSearchStore();
+  const navigate = useNavigate();
+
+  const handleCategoryClick = async (categoryName: string) => {
+    await filterProducts({
+      keyword: categoryName,
+      page: 1,
+      limit: 9,
+    });
+    navigate("/search");
+  };
 
   if (!product) return null;
 
@@ -39,11 +52,20 @@ export default function AuctionInfo() {
           <div className="flex justify-between items-start">
             <p className="text-white/40 text-xs uppercase tracking-widest font-semibold mt-1">Categories</p>
             <div className="flex flex-wrap justify-end gap-1 max-w-[60%]">
-              {product.categories?.length ? product.categories.map((cat: any, i: number) => (
-                <span key={i} className="bg-white/5 px-2 py-1 rounded text-xs text-white/70 border border-white/10">
-                  {typeof cat === 'object' ? cat.name : cat}
-                </span>
-              )) : <span className="text-white/30">—</span>}
+              {product.categories?.length ? product.categories.map((cat: any, i: number) => {
+                const categoryName = typeof cat === 'object' ? cat.name : cat;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => handleCategoryClick(categoryName)}
+                    className="bg-white/5 px-2 py-1 rounded text-xs text-white/70 border border-white/10 
+                             hover:bg-(--primary)/20 hover:text-(--primary) hover:border-(--primary)/30 
+                             transition-all duration-200 cursor-pointer"
+                  >
+                    {categoryName}
+                  </button>
+                );
+              }) : <span className="text-white/30">—</span>}
             </div>
           </div>
         </div>
