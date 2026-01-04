@@ -75,8 +75,8 @@ export default function ProductBrief() {
       //await placeBid(product?.id || "", { bidAmount: product?.instant_price });
       toast.success("Bid placed successfully! You are currently winning.");
     } catch (error: any) {
-      console.error("Error place instant price bid: ", error);     
-      toast.error(error?.response?.data?.message || "Failed to place bid"); 
+      console.error("Error place instant price bid: ", error);
+      toast.error(error?.response?.data?.message || "Failed to place bid");
     }
   }
 
@@ -169,7 +169,7 @@ export default function ProductBrief() {
             </div>
             <div className="flex flex-col text-right">
               <span className="text-white/50 text-xs uppercase tracking-widest mb-1">
-                {product.state === "ended" ? "Winner" : "Highest bidder"}
+                {product.state === "sold" ? "Winner" : "Highest bidder"}
               </span>
               <p className="text-lg font-medium text-white/90">{highestBid.name ? maskName(highestBid.name) : "None"}</p>
             </div>
@@ -235,7 +235,7 @@ export default function ProductBrief() {
                 </div>
               ) : (
                 <>
-                  {Number(user.rating_count || 0) === 0 && product.user_bid_request_state !== "success" ? (
+                  {(Number(user.rating_count || 0) === 0 || Number(user.rating || 0) < 0.8) && product.user_bid_request_state !== "success" ? (
                     <button
                       className={`w-full h-14 rounded-xl font-bold transition-all border ${product.user_bid_request_state === "pending"
                         ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20 cursor-not-allowed"
@@ -256,7 +256,7 @@ export default function ProductBrief() {
                   )}
                   {/* Only show Buy it now for approved users */}
                   {product.instant_price && product.user_bid_request_state === "success" && (
-                    <button 
+                    <button
                       className="w-full h-14 bg-white/10 hover:bg-white/15 text-white rounded-xl border border-white/10 font-bold transition-all"
                       onClick={handleBuyNow}
                     >
