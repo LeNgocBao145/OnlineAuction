@@ -136,7 +136,7 @@ const useAuthStore = create<AuthState>()(
     {
       name: "auth-storage",
       // partialize indicates that you just allow neccessary state you choose to store in local storage
-      partialize: (state) => ({ user: state.user }),
+      partialize: (state) => ({ user: state.user, accessToken: state.accessToken }),
     }
   )
 );
