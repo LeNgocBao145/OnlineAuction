@@ -25,7 +25,6 @@ export default function ProductBrief() {
   const { user } = useAuthStore();
   const { placeBid } = useProductStore();
   const { favorites, markFavorite, unmarkFavorite } = useUserStore();
-
   useEffect(() => {
     if (product?.id && favorites?.products) {
       const isFavorited = favorites.products.some(fav => fav.id === product.id);

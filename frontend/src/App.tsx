@@ -2,7 +2,7 @@ import "./App.css";
 
 import { BrowserRouter, Route, Routes, Navigate } from "react-router";
 import { Toaster } from "sonner";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import useAuthStore from "./stores/authStore";
 
 import Landing from "./pages/landing/landing";
@@ -31,12 +31,30 @@ import MainLayout from "./components/layout/MainLayout";
 
 export default function App() {
   const { user, refresh } = useAuthStore();
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    if (user && !useAuthStore.getState().accessToken) {
-      refresh();
-    }
+    const initializeAuth = async () => {
+      try {
+        // Always try to refresh token on app mount
+        // This ensures accessToken is valid even after page refresh
+        if (user) {
+          await refresh();
+        }
+      } catch (error) {
+        console.error("Failed to refresh token:", error);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+
+    initializeAuth();
   }, []);
+
+  // Don't render routes until auth is initialized
+  if (!isInitialized) {
+    return <div></div>;
+  }
   return (
     <>
       <Toaster position="bottom-right" richColors />

@@ -125,7 +125,7 @@ class ProductController {
         return res.status(400).json({ message: "Invalid product ID" });
       }
 
-      const userId = req.user?.id || null;
+      const userId = req.user?.id ? parseInt(req.user?.id) : null;
       const result = await query(getProductDetailsById, [productId, userId]);
       if (result.rows.length === 0) {
         return res.status(404).json({ message: "Product not found" });

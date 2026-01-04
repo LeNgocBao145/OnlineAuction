@@ -53,7 +53,7 @@ export default function Nav() {
   };
 
   return (
-    <nav className="relative lg:h-[100px] h-[150px] w-full grid lg:grid-cols-[1fr_1fr_1fr_3fr] grid-cols-3 bg-(--bgc) border-b border-white/10 shadow-lg z-50">
+    <nav className="sticky top-0 lg:h-[100px] h-[150px] w-full grid lg:grid-cols-[1fr_1fr_1fr_3fr] grid-cols-3 bg-(--bgc) border-b border-white/10 shadow-lg z-50">
       <Link
         to="/"
         className="w-full flex justify-center items-center gap-2 group"

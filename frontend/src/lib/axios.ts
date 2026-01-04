@@ -27,6 +27,7 @@ const PUBLIC_ROUTES = [
   "/auth/send-otp",
   "/auth/verify-otp",
   "/products",
+  "/product",
 ];
 
 const isPublicRoute = (url: string) => {

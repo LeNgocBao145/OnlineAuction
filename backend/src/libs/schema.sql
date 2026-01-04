@@ -346,7 +346,7 @@ VALUES
 ('Nike Air Jordan 1', 5000000, 'https://picsum.photos/seed/p6/300', 'bidding'),
 ('Adidas Ultraboost', 3800000, 'https://picsum.photos/seed/p7/300', 'bidding'),
 ('LV Handbag White', 42000000, 'https://picsum.photos/seed/p8/300', 'bidding'),
-('Gucci Sunglasses', 9000000, 'https://picsum.photos/seed/p9/300', 'bidding'),
+('Gucci Sunglasses', 9000000, 'https://picsum.photos/seed/p9/300', 'sold'),
 ('Unisex Leather Jacket', 3200000, 'https://picsum.photos/seed/p10/300', 'bidding'),
 
 ('Vacuum Cleaner Xiaomi', 2500000, 'https://picsum.photos/seed/p11/300', 'bidding'),
