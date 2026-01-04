@@ -70,13 +70,15 @@ export default function ProductBrief() {
   };
 
   const handleBuyNow = async () => {
+    if (!product?.id || !product?.instant_price) return;
     try {
-      console.log(product?.instant_price);
-      //await placeBid(product?.id || "", { bidAmount: product?.instant_price });
-      toast.success("Bid placed successfully! You are currently winning.");
+      await placeBid(product.id, { bidAmount: product.instant_price });
+      toast.success("Instant buy successful! You are the winner.");
+      // Refresh product data to reflect the sold state
+      await useProductStore.getState().fetchProduct(product.id);
     } catch (error: any) {
-      console.error("Error place instant price bid: ", error);     
-      toast.error(error?.response?.data?.message || "Failed to place bid"); 
+      console.error("Error on instant buy: ", error);
+      toast.error(error?.response?.data?.message || "Failed to complete instant buy");
     }
   }
 
@@ -235,7 +237,7 @@ export default function ProductBrief() {
                 </div>
               ) : (
                 <>
-                  {Number(user.rating_count || 0) === 0 && product.user_bid_request_state !== "success" ? (
+                  {(Number(user.rating_count || 0) === 0 || Number(user.rating || 0) < 0.8) && product.user_bid_request_state !== "success" ? (
                     <button
                       className={`w-full h-14 rounded-xl font-bold transition-all border ${product.user_bid_request_state === "pending"
                         ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20 cursor-not-allowed"
@@ -254,15 +256,18 @@ export default function ProductBrief() {
                       Place a Bid
                     </button>
                   )}
-                  {/* Only show Buy it now for approved users */}
-                  {product.instant_price && product.user_bid_request_state === "success" && (
-                    <button 
-                      className="w-full h-14 bg-white/10 hover:bg-white/15 text-white rounded-xl border border-white/10 font-bold transition-all"
-                      onClick={handleBuyNow}
-                    >
-                      Buy it now
-                    </button>
-                  )}
+                  {/* Show Buy it now for users who can bid (approved OR doesn't need permission) */}
+                  {product.instant_price && (
+                    product.user_bid_request_state === "success" ||
+                    (Number(user.rating_count || 0) > 0 && Number(user.rating || 0) >= 0.8)
+                  ) && (
+                      <button
+                        className="w-full h-14 bg-white/10 hover:bg-white/15 text-white rounded-xl border border-white/10 font-bold transition-all"
+                        onClick={handleBuyNow}
+                      >
+                        Buy it now
+                      </button>
+                    )}
                 </>
               )}
             </div>
