@@ -25,7 +25,9 @@ import {
   tradeCancel,
   getWinner,
   getRoleFromTrade,
-  rating
+  rating,
+  getRating,
+  updateRating
 } from "../libs/sqlQuery.js";
 import query from "../libs/db.js";
 import crypto from "crypto";
@@ -1028,7 +1030,13 @@ class UserController {
       const result = await query(getRoleFromTrade, [productId]);
       const isBidder = result.rows[0].bidder === userId;
       const toUser = isBidder ? result.rows[0].seller : result.rows[0].bidder;
-      const resultRate = await query(rating, [productId, userId, toUser, liked, comment]);
+      const isExistingReview = await query(getRating, [productId, userId, toUser]);
+      let resultRate;
+      if(isExistingReview.rowCount) {
+        resultRate = await query(updateRating, [liked, comment, productId, userId, toUser]);
+      } else {
+        resultRate = await query(rating, [productId, userId, toUser, liked, comment]);
+      }
       return res.status(200).json(resultRate.rows);
     } catch (error) {
       console.error("[Rating] Error: ", error);

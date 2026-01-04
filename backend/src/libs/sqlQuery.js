@@ -1064,6 +1064,21 @@ export const rating = `INSERT INTO reviews (product, rater, ratee, liked, conten
                         VALUES ($1, $2, $3, $4, $5)
                         RETURNING *`
 
+export const getRating = `SELECT * 
+                        FROM reviews
+                        WHERE product = $1
+                        AND rater = $2
+                        AND ratee = $3`
+
+export const updateRating = `UPDATE reviews
+                            SET
+                                liked = $1,
+                                content = $2
+                            WHERE product = $3
+                                AND rater = $4
+                                AND ratee = $5
+                            RETURNING *`
+
 // Message Queries
 export const createMessage = `
     INSERT INTO messages (product, sender, content, image, type, created_at) 
