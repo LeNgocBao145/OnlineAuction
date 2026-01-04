@@ -2,7 +2,7 @@ import {
   emitNewMessage,
 } from "../utils/messageHelper.js";
 import query from '../libs/db.js';
-import { getUserById, createMessage, getProductById, getMessagesByProduct } from '../libs/sqlQuery.js';
+import { getUserById, createMessage, getMessagesByProduct, getProductExistsById } from '../libs/sqlQuery.js';
 import { io } from "../socket/index.js";
 
 class MessageController {
@@ -31,7 +31,7 @@ class MessageController {
       }
 
       // Check if product exists
-      const product = await query(getProductById, [productId]); 
+      const product = await query(getProductExistsById, [productId]); 
       if (!product || product.rows.length === 0) {
         return res.status(404).json({ message: "The product that you buy is not existed!!" });
       }
@@ -67,14 +67,13 @@ class MessageController {
     try {
       const { productId } = req.params;
       const { limit = 20, offset = 0 } = req.query;
-
       // Validate productId
       if (!productId) {
         return res.status(400).json({ message: "Product ID is required!!" });
       }
-
+      
       // Check if product exists
-      const product = await query(getProductById, [productId]);
+      const product = await query(getProductExistsById, [productId]);
       if (!product || product.rows.length === 0) {
         return res.status(404).json({ message: "Product not found!!" });
       }
