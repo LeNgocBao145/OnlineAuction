@@ -27,14 +27,31 @@ export default function TransactionInfoCard({
                         <div className="flex justify-between items-center">
                             <div>
                                 <h2 className="text-white text-xl font-bold">{transaction?.name}</h2>
-                                <div className="p-[0.35rem] bg-(--primary) text-black rounded-2xl flex justify-center items-center">
-                                    {currentStep === 1 ? "Awaiting confirmation" : 
-                                    currentStep === 2 ? "Processing shipment" :
-                                    currentStep === 3 ? "Awaiting delivery confirmation" :
-                                    currentStep === 4 ? "Transaction completed" :
-                                    currentStep === 5 ? "Transaction failed" :
-                                    "Unknown status"}
-                                </div>
+                                <div
+                                    className="
+                                        inline-flex items-center justify-center
+                                        px-4 py-1.5
+                                        mt-3
+                                        rounded-full
+                                        text-sm font-semibold
+                                        tracking-wide
+                                        bg-[#F59E0B]
+                                        text-black
+                                        shadow-sm
+                                    "
+                                    >
+                                    {currentStep === 1
+                                        ? "Waiting for seller confirmation"
+                                        : currentStep === 2
+                                        ? "Shipment in progress"
+                                        : currentStep === 3
+                                        ? "Waiting for delivery confirmation"
+                                        : currentStep === 4
+                                        ? "Transaction completed successfully"
+                                        : currentStep === 5
+                                        ? "Transaction failed"
+                                        : "Unknown transaction status"}
+                                    </div>
                             </div>
                             <div>
                                 <p className="text-(--primary) text-2xl font-bold">{formatCurrency(transaction.current_price)}</p>
@@ -45,7 +62,7 @@ export default function TransactionInfoCard({
                             <p className="text-white/60">Seller: <span className="text-white">{transaction.seller_name}</span></p>
                             <p className="text-white/60">Winner: <span className="text-white">{transaction.bidder_name}</span></p>
                         </div>
-                        <p className="text-white/60">Ended: {formatTimeLeft(transaction.expired_at || 0)}</p>
+                        <p className="text-white/60">Ended: <span className="text-white">{formatTimeLeft(transaction.expired_at || 0)}</span></p>
                     </div>
                 </div>
             </div>
@@ -58,7 +75,7 @@ export default function TransactionInfoCard({
                             <CheckIcon className="absolute h-6 w-6 top-1 left-1 text-black"/>
                         )}
                     </div>
-                    <p className="text-white">Step 1: Payment Information.</p>
+                    <p className="text-white font-semibold">Step 1: Payment Information.</p>
                 </div>
                 <div className="flex items-center gap-4 mt-4">
                     <div className={`relative h-8 w-8 rounded-full border border-white ${currentStep > 2 ? "bg-(--primary) border-0" : ""}`}>
@@ -66,7 +83,7 @@ export default function TransactionInfoCard({
                             <CheckIcon className="absolute h-6 w-6 top-1 left-1 text-black"/>
                         )}
                     </div>
-                    <p className="text-white">Step 2: Seller confirms payment and submits shipping invoice.</p>
+                    <p className="text-white font-semibold">Step 2: Seller confirms payment and submits shipping invoice.</p>
                 </div>
                 <div className="flex items-center gap-4 mt-4">
                     <div className={`relative h-8 w-8 rounded-full border border-white ${currentStep > 3 ? "bg-(--primary) border-0" : ""}`}>
@@ -74,15 +91,15 @@ export default function TransactionInfoCard({
                             <CheckIcon className="absolute h-6 w-6 top-1 left-1 text-black"/>
                         )}
                     </div>
-                    <p className="text-white">Step 3: Buyer confirms product delivery.</p>
+                    <p className="text-white font-semibold">Step 3: Buyer confirms product delivery.</p>
                 </div>
                 <div className="flex items-center gap-4 mt-4">
-                    <div className={`relative h-8 w-8 rounded-full border border-white ${currentStep > 4 ? "bg-(--primary) border-0" : ""}`}>
-                        {currentStep > 4 && (
+                    <div className={`relative h-8 w-8 rounded-full border border-white ${currentStep >= 4 ? "bg-(--primary) border-0" : ""}`}>
+                        {currentStep >= 4 && (
                             <CheckIcon className="absolute h-6 w-6 top-1 left-1 text-black"/>
                         )}
                     </div>
-                    <p className="text-white">Step 4: Buyer and seller rate the transaction.</p>
+                    <p className="text-white font-semibold">Step 4: Buyer and seller rate the transaction.</p>
                 </div>
             </div>
         </>
