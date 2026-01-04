@@ -475,6 +475,8 @@ export const getProductDetailsById = `
                 SELECT json_agg(
                     json_build_object(
                         'id', q.id,
+                        'questioner_id', q.questioner,
+                        'answerer_id', q.answerer,
                         'question', q.question,
                         'questioner_name', u_q.name,
                         'answer', q.answer,

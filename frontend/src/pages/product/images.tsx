@@ -13,7 +13,7 @@ export default function ProductImages() {
   }, [product]);
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Reset khi product / images đổi
   useEffect(() => {
@@ -69,7 +69,7 @@ export default function ProductImages() {
                   ? "border-(--primary)"
                   : "border-transparent"
               }`}
-              onClick={() => setSelectedImageIndex(index)}
+              onClick={() => handleSelectImage(index)}
             >
               <img
                 className="h-full aspect-square object-cover rounded-lg text-(--primary) flex justify-center items-center bg-white/10"

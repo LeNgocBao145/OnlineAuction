@@ -58,6 +58,19 @@ const productService = {
     return res.data;
   },
 
+  async answerQuestion(
+    productId: string | number,
+    questionId: string | number,
+    answer: string
+  ): Promise<void> {
+    const res = await api.post(
+      `/products/${productId}/${questionId}/answer`,
+      { answer },
+      { withCredentials: true }
+    );
+    return res.data;
+  },
+
   async askToBid(productId: string | number): Promise<void> {
     const res = await api.post(`/products/${productId}/ask-to-bid`, {}, { withCredentials: true });
     return res.data;

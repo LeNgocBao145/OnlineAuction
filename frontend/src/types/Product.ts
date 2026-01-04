@@ -28,6 +28,8 @@ export interface ProductBid {
 
 export interface ProductQA {
   id: number;
+  questioner_id: number | string;
+  answerer_id?: number | string;
   question: string;
   questioner_name: string;
   answer?: string | null;

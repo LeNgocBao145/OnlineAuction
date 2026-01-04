@@ -63,6 +63,25 @@ const useProductStore = create<ProductState>((set) => ({
     }
   },
 
+  answerQuestion: async (productId: string | number, questionId: string | number, answer: string) => {
+    try {
+      set({ loading: true, error: null });
+      await productService.answerQuestion(productId, questionId, answer);
+      // Refresh product data to get updated Q&A
+      const product = await productService.getProductById(productId);
+      set({ product });
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to answer question!";
+      set({ error: message });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
   askToBid: async (productId: string | number) => {
     try {
       set({ loading: true, error: null });

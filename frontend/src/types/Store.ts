@@ -53,6 +53,7 @@ export interface ProductState {
   fetchProduct: (id: string | number) => Promise<void>;
   placeBid: (productId: string | number, data: { bidAmount?: number; maxPrice?: number }) => Promise<{ message: string; currentPrice?: number; isWinning?: boolean } | void>;
   askQuestion: (productId: string | number, question: string) => Promise<void>;
+  answerQuestion: (productId: string | number, questionId: string | number, answer: string) => Promise<void>;
   askToBid: (productId: string | number) => Promise<void>;
   fetchBidRequests: (productId: string | number, params?: any) => Promise<any>;
   acceptBidRequest: (productId: string | number, requestId: number) => Promise<void>;
