@@ -18,7 +18,6 @@ export default function ProductQuestions() {
 
   return (
     <div className="flex flex-col justify-center items-center gap-4 mt-4 border border-white/10 rounded-xl bg-(--third) w-full p-6">
-
       {askingQuestion && (
         <AskQuestionModal
           setAskingQuestion={setAskingQuestion}
@@ -43,18 +42,19 @@ export default function ProductQuestions() {
         <h1 className="font-bold font-inter text-(--primary) text-3xl">
           Questions & Answers
         </h1>
-        <button
-          onClick={() => setAskingQuestion(true)}
-          className="text-(--primary) underline"
-        >
-          Ask a question?
-        </button>
-        {user?.relation === "seller" && (
+        {user?.id === product?.seller_id ? (
           <button
             onClick={() => setAnsweringQuestion(true)}
             className="text-(--primary) underline"
           >
             Answer questions
+          </button>
+        ) : (
+          <button
+            onClick={() => setAskingQuestion(true)}
+            className="text-(--primary) underline"
+          >
+            Ask a question?
           </button>
         )}
       </div>
@@ -63,17 +63,18 @@ export default function ProductQuestions() {
         <p className="text-white/60 w-full">No Q&A yet.</p>
       ) : (
         questions.map((q, index) => (
-          <div key={index} className="w-9/10 border-t border-white/10 pb-4 pt-4">
+          <div
+            key={index}
+            className="w-9/10 border-t border-white/10 pb-4 pt-4"
+          >
             <div>
               <p className="text-(--primary) font-bold text-lg">
-
                 {maskName(q.questioner_name)}
                 <span className="text-white/30 text-sm ml-2">
                   {formatDate(q.asked_at)}
                 </span>
               </p>
               <p className="text-white/80 mt-1 text-sm">{q.question}</p>
-
             </div>
             {q.answer && (
               <div className="flex flex-row items-start mt-4 gap-4">
@@ -87,7 +88,6 @@ export default function ProductQuestions() {
                     </span>
                   </p>
                   <p className="text-white/80 text-sm">{q.answer}</p>
-
                 </div>
               </div>
             )}

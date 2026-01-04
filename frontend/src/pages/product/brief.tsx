@@ -169,7 +169,7 @@ export default function ProductBrief() {
             </div>
             <div className="flex flex-col text-right">
               <span className="text-white/50 text-xs uppercase tracking-widest mb-1">
-                {product.state === "ended" ? "Winner" : "Highest bidder"}
+                {product.state === "sold" ? "Winner" : "Highest bidder"}
               </span>
               <p className="text-lg font-medium text-white/90">{highestBid.name ? maskName(highestBid.name) : "None"}</p>
             </div>

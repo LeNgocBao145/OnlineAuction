@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import useProductStore from "@/stores/productStore";
 import useAuthStore from "@/stores/authStore";
+import { formatCurrency } from "@/utils/numberUtils";
 
 export default function PlaceBidModal(
     { setPlacingBid, productId, currentBid, stepPrice }: {
@@ -46,14 +47,14 @@ export default function PlaceBidModal(
 
         if (bidMode === 'manual') {
             if (finalBidPrice < minNextPrice) {
-                toast.error(`Bid amount must be at least ${minNextPrice.toLocaleString()}đ`);
+                toast.error(`Bid amount must be at least ${formatCurrency(minNextPrice)}`);
                 return;
             }
         }
 
         if (bidMode === 'auto') {
             if (!maxPrice || maxPrice < minNextPrice) {
-                toast.error(`Max price must be at least ${minNextPrice.toLocaleString()}đ`);
+                toast.error(`Max price must be at least ${formatCurrency(minNextPrice)}`);
                 return;
             }
         }
@@ -91,7 +92,7 @@ export default function PlaceBidModal(
             <form onSubmit={handleSubmit(handleBid)}>
                 <div className="flex justify-between items-center">
                     <h2 className="text-white text-2xl font-bold">Place Bid</h2>
-                    <p className="text-white/60">Step Price: {stepPrice.toLocaleString()}đ</p>
+                    <p className="text-white/60">Step Price: {formatCurrency(stepPrice)}</p>
                 </div>
 
                 <div className="mt-4 flex gap-6 items-center">
@@ -132,7 +133,7 @@ export default function PlaceBidModal(
                                 >
                                     +1 step
                                 </button>
-                                <p className="text-white/60 text-sm text-center">{(currentBid + bid + stepPrice).toLocaleString()}đ</p>
+                                <p className="text-white/60 text-sm text-center">{formatCurrency(currentBid + bid + stepPrice)}</p>
                             </div>
                             <div className="flex flex-col">
                                 <button className="bg-(--primary) text-black font-bold p-2 rounded-md"
@@ -141,7 +142,7 @@ export default function PlaceBidModal(
                                 >
                                     +5 step
                                 </button>
-                                <p className="text-white/60 text-sm text-center">{(currentBid + bid + stepPrice * 5).toLocaleString()}đ</p>
+                                <p className="text-white/60 text-sm text-center">{formatCurrency(currentBid + bid + stepPrice * 5)}</p>
                             </div>
                             <div className="flex flex-col">
                                 <button className="bg-(--primary) text-black font-bold p-2 rounded-md"
@@ -150,7 +151,7 @@ export default function PlaceBidModal(
                                 >
                                     +10 step
                                 </button>
-                                <p className="text-white/60 text-sm text-center">{(currentBid + bid + stepPrice * 10).toLocaleString()}đ</p>
+                                <p className="text-white/60 text-sm text-center">{formatCurrency(currentBid + bid + stepPrice * 10)}</p>
                             </div>
                             <div className="flex flex-col">
                                 <button className="bg-(--primary) text-black font-bold p-2 rounded-md"
@@ -159,7 +160,7 @@ export default function PlaceBidModal(
                                 >
                                     Clear
                                 </button>
-                                <p className="text-white/60 text-sm text-center">-{bid.toLocaleString()}đ</p>
+                                <p className="text-white/60 text-sm text-center">-{formatCurrency(bid)}</p>
                             </div>
                         </div>
                         <div className="mt-4 flex gap-4 w-full justify-between items-center">
@@ -189,7 +190,7 @@ export default function PlaceBidModal(
                                 min={currentBid + stepPrice}
                                 value={maxPrice || ''}
                                 onChange={(e) => setMaxPrice(Number(e.target.value))}
-                                placeholder={`Min: ${(currentBid + stepPrice).toLocaleString()}đ`}
+                                placeholder={`Min: ${formatCurrency(currentBid + stepPrice)}`}
                                 className="w-full mt-2 p-2 rounded-md bg-(--third) border border-white/10 text-white"
                             />
                             <p className="text-white/60 text-xs mt-2">
@@ -205,12 +206,12 @@ export default function PlaceBidModal(
                 <div className="mt-4 flex gap-4 w-full justify-around items-center">
                     {bidMode === 'manual' && (
                         <>
-                            <p className="text-white">You added: {(useCustom ? customBid : bid).toLocaleString()}đ</p>
-                            <p className="text-(--primary) font-bold">Your bid: {finalBidPrice.toLocaleString()}đ</p>
+                            <p className="text-white">You added: {formatCurrency(useCustom ? customBid : bid)}</p>
+                            <p className="text-(--primary) font-bold">Your bid: {formatCurrency(finalBidPrice)}</p>
                         </>
                     )}
                     {bidMode === 'auto' && maxPrice > 0 && (
-                        <p className="text-green-400 font-bold">Max: {maxPrice.toLocaleString()}đ</p>
+                        <p className="text-green-400 font-bold">Max: {formatCurrency(maxPrice)}</p>
                     )}
                 </div>
 
