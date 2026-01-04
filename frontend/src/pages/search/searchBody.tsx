@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import useSearchStore from "@/stores/searchStore";
 import { formatTimeLeft } from "@/utils/timeUtils";
+import { formatCurrency } from "@/utils/numberUtils";
 
 export default function SearchBody() {
     const navigate = useNavigate();
@@ -97,7 +98,7 @@ export default function SearchBody() {
                                 <h2 className="text-2xl font-bold text-white mb-2">{item.name}</h2>
                                 <div className="flex justify-between mb-4">
                                     <div className="flex flex-col">
-                                        <p className="text-2xl text-(--primary)">${item.current_price?.toFixed(2) || "0.00"}</p>
+                                        <p className="text-2xl text-(--primary)">{formatCurrency(item.current_price)}</p>
                                         <p className="text-white/60">Current Price</p>
                                     </div>
                                     <div className="flex flex-col text-right">

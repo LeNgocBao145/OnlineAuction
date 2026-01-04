@@ -1,7 +1,5 @@
 CREATE DATABASE OnlineAuction;
 
-CREATE EXTENSION IF NOT EXISTS unaccent;
-
 CREATE TYPE user_role AS ENUM ('bidder', 'seller', 'admin');
 
 CREATE TYPE product_state AS ENUM ('incoming', 'bidding', 'sold');

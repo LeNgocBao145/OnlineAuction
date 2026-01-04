@@ -1,6 +1,7 @@
 import { CheckIcon } from "@heroicons/react/24/solid";
 import { formatTimeLeft } from "@/utils/timeUtils";
 import type { Transaction } from "@/services/transactionService";
+import { formatCurrency } from "@/utils/numberUtils";
 
 export default function TransactionInfoCard({
     currentStep,
@@ -36,7 +37,7 @@ export default function TransactionInfoCard({
                                 </div>
                             </div>
                             <div>
-                                <p className="text-(--primary) text-2xl font-bold">${transaction.current_price}</p>
+                                <p className="text-(--primary) text-2xl font-bold">{formatCurrency(transaction.current_price)}</p>
                                 <p className="text-white/60">Final Price</p>
                             </div>
                         </div>

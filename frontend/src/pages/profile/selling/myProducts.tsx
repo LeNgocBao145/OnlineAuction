@@ -5,6 +5,7 @@ import useUserStore from "@/stores/userStore";
 import useAuthStore from "@/stores/authStore";
 import productService from "@/services/productService";
 import { toast } from "sonner";
+import { formatCurrency } from "@/utils/numberUtils";
 
 
 export default function MyProducts() {
@@ -130,7 +131,7 @@ export default function MyProducts() {
                                 </div>
                                 <div className="flex justify-between items-center mt-4">
                                     <div className="flex flex-col">
-                                        <p className="text-white">${Number(product.current_price)?.toFixed(2) || "0.00"}</p>
+                                        <p className="text-white">{formatCurrency(Number(product.current_price))}</p>
                                         <p className="text-white/60">Current Price</p>
                                     </div>
                                     <div className="flex flex-col text-right">
