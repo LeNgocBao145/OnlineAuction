@@ -76,10 +76,13 @@ export default function Chatbox(
                         onChange={(e) => setNewMessage(e.target.value)}
                         value={newMessage}
                     />
-                    <button className="bg-(--secondary) h-full w-1/10 text-black font-bold py-2 px-4 rounded-md border border-(--primary)"
+                    <button
                         type="submit"
-                    >
-                    <PaperAirplaneIcon className="absolute h-6 w-6 right-2.5 top-2.5 rotate-320 text-(--primary)"/>
+                        className="bg-(--secondary) h-full w-1/10 text-black font-bold
+                                    flex items-center justify-center
+                                    rounded-md border border-(--primary)"
+                        >
+                        <PaperAirplaneIcon className="h-6 w-6 rotate-320 text-(--primary)" />
                     </button>
                 </form>
             </div>
