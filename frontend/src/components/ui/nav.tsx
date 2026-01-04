@@ -20,7 +20,11 @@ export default function Nav() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (searchKeyword.trim()) {
-      await filterProducts({ keyword: searchKeyword.trim(), page: 1, limit: 9 });
+      await filterProducts({
+        keyword: searchKeyword.trim(),
+        page: 1,
+        limit: 9,
+      });
       navigate("/search");
     }
   };
@@ -50,10 +54,18 @@ export default function Nav() {
 
   return (
     <nav className="relative lg:h-[100px] h-[150px] w-full grid lg:grid-cols-[1fr_1fr_1fr_3fr] grid-cols-3 bg-(--bgc) border-b border-white/10 shadow-lg z-50">
-
-      <Link to="/" className="w-full flex justify-center items-center gap-2 group">
-        <img src={Icon} className="flex-none aspect-auto h-10 transition-transform group-hover:scale-110" alt="Logo" />
-        <p className="font-sans font-bold text-(--primary) text-lg">AUCTIONIFY</p>
+      <Link
+        to="/"
+        className="w-full flex justify-center items-center gap-2 group"
+      >
+        <img
+          src={Icon}
+          className="flex-none aspect-auto h-10 transition-transform group-hover:scale-110"
+          alt="Logo"
+        />
+        <p className="font-sans font-bold text-(--primary) text-lg">
+          AUCTIONIFY
+        </p>
       </Link>
       <div className="w-full flex justify-center items-center">
         <Link to="/" className="text-white/60 hover:text-(--primary)">
@@ -91,7 +103,9 @@ export default function Nav() {
               onClick={() => setOpenUserMenu(!openUserMenu)}
               className="flex items-center gap-2 text-white/80 hover:text-(--primary) px-3 h-[50px]"
             >
-              <span className="hidden lg:inline max-w-[100px] truncate">{user.name}</span>
+              <span className="hidden lg:inline max-w-[100px] truncate">
+                {user.name}
+              </span>
               <UserCircleIcon className="w-8 h-8" />
               <ChevronDownIcon className="w-4 h-4" />
             </button>
@@ -99,7 +113,9 @@ export default function Nav() {
             {openUserMenu && (
               <div className="absolute right-0 top-[55px] bg-(--secondary) border border-white/10 rounded-lg shadow-lg z-50 min-w-[200px]">
                 <div className="px-4 py-3 border-b border-white/10">
-                  <p className="text-white font-semibold truncate">{user.name}</p>
+                  <p className="text-white font-semibold truncate">
+                    {user.name}
+                  </p>
                   <p className="text-white/60 text-sm truncate">{user.email}</p>
                   <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded bg-(--primary) text-black font-medium">
                     {user.role}
@@ -194,7 +210,17 @@ export default function Nav() {
         )}
       </div>
 
-      {openCategory && <HeaderCategory />}
+      {openCategory && (
+        <>
+          <div
+            className="fixed inset-0 z-9998 bg-black/30"
+            onClick={() => setOpenCategory(false)}
+          />
+
+          {/* Menu */}
+          <HeaderCategory />
+        </>
+      )}
     </nav>
   );
 }
