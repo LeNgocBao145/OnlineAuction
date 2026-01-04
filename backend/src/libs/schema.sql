@@ -306,11 +306,11 @@ FOREIGN KEY (seller) REFERENCES users(id) ON DELETE CASCADE;
 -- 1. Insert Users
 INSERT INTO users (name, address, email, hashed_password, birthdate, role, rating)
 VALUES
-('Alice Nguyen', '123 Le Loi, HCM', 'alice@example.com', '$2b$12$9uVa/in7DXarqH8BaTMgFOstXOy2dyOWA3R8AXa3VYQFbyIIsM1pS', '1999-05-12', 'seller', 0.8),
-('Bob Tran', '45 Nguyen Hue, HCM', 'bob@example.com', '$2b$12$GYaai7/JxSo2VaZpkm/8AeMTmWPOck8c4p2dnK/ycbDmUU5bTOS1q', '1995-11-02', 'bidder', 0.7),
-('Charlie Pham', '12 Tran Hung Dao, HCM', 'charlie@example.com', '$2b$12$sYld5KWZlbJMiq0HTygK4OVosTSCG93T415Agtd.K1AFEVNHwN3hy', '1990-07-25', 'bidder', 0.9),
-('David Ho', '89 Vo Van Tan, HCM', 'david@example.com', '$2b$12$n6y.QYKn9TkfbqSnBDsYaOcaOKC68BnlPvt5rdxSgJK0pjtvYdrNu', '1998-04-19', 'bidder', 0.6),
-('Emma Le', '77 Dien Bien Phu, HCM', 'emma@example.com', '$2b$12$z8deg5NS5P43/O7O0yWeKehfB82ymWUVNlF3UQgrzH9HW9sNCJqiG', '1997-09-09', 'seller', 0.85);
+('Alice Nguyen', '123 Le Loi, HCM', 'alice@example.com', '$2b$12$9uVa/in7DXarqH8BaTMgFOstXOy2dyOWA3R8AXa3VYQFbyIIsM1pS', '1999-05-12', 'seller', 0),
+('Bob Tran', '45 Nguyen Hue, HCM', 'bob@example.com', '$2b$12$GYaai7/JxSo2VaZpkm/8AeMTmWPOck8c4p2dnK/ycbDmUU5bTOS1q', '1995-11-02', 'bidder', 0),
+('Charlie Pham', '12 Tran Hung Dao, HCM', 'charlie@example.com', '$2b$12$sYld5KWZlbJMiq0HTygK4OVosTSCG93T415Agtd.K1AFEVNHwN3hy', '1990-07-25', 'bidder', 0),
+('David Ho', '89 Vo Van Tan, HCM', 'david@example.com', '$2b$12$n6y.QYKn9TkfbqSnBDsYaOcaOKC68BnlPvt5rdxSgJK0pjtvYdrNu', '1998-04-19', 'bidder', 0),
+('Emma Le', '77 Dien Bien Phu, HCM', 'emma@example.com', '$2b$12$z8deg5NS5P43/O7O0yWeKehfB82ymWUVNlF3UQgrzH9HW9sNCJqiG', '1997-09-09', 'seller', 0);
 
 -- 2. Insert Categories (2 levels: Parent => Child)
 -- Level 1: Parent categories
@@ -649,17 +649,113 @@ INSERT INTO requests (bidder, created_at, state) VALUES
 INSERT INTO favorites (product, user_id) VALUES
 (1, 2), (1, 3), (2, 2), (3, 3), (4, 2), (5, 3);
 
+CREATE OR REPLACE FUNCTION fn_update_user_rating()
+RETURNS TRIGGER AS $$
+DECLARE
+    affected_user_id INT;
+BEGIN
+    -- Xác định user nào bị ảnh hưởng
+    IF TG_OP = 'DELETE' THEN
+        affected_user_id := OLD.ratee;
+    ELSE
+        affected_user_id := NEW.ratee;
+    END IF;
+    
+    -- Cập nhật rating cho user (chuyển sang thang 0-5)
+    UPDATE users
+    SET rating = (
+        SELECT COALESCE(
+            (COUNT(*) FILTER (WHERE liked = true)::REAL / 
+            NULLIF(COUNT(*)::REAL, 0)),
+            0
+        )
+        FROM reviews
+        WHERE ratee = affected_user_id
+    )
+    WHERE id = affected_user_id;
+    
+    -- Nếu là UPDATE và ratee thay đổi, cập nhật cả user cũ
+    IF TG_OP = 'UPDATE' AND OLD.ratee != NEW.ratee THEN
+        UPDATE users
+        SET rating = (
+            SELECT COALESCE(
+                (COUNT(*) FILTER (WHERE liked = true)::REAL / 
+                NULLIF(COUNT(*)::REAL, 0)),
+                0
+            )
+            FROM reviews
+            WHERE ratee = OLD.ratee
+        )
+        WHERE id = OLD.ratee;
+    END IF;
+    
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    ELSE
+        RETURN NEW;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Tạo trigger
+CREATE TRIGGER trg_update_rating_on_review_change
+AFTER INSERT OR UPDATE OR DELETE ON reviews
+FOR EACH ROW
+EXECUTE FUNCTION fn_update_user_rating();
+CREATE OR REPLACE FUNCTION users_tsvector_trigger() RETURNS trigger AS $$
+BEGIN
+  NEW.search_vector :=
+    setweight(to_tsvector('simple', unaccent(coalesce(NEW.name, ''))), 'A') ||
+    setweight(to_tsvector('simple', unaccent(coalesce(NEW.email, ''))), 'B');
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
 -- 11. Insert Reviews
+-- Alice
 INSERT INTO reviews (product, rater, ratee, liked, content) VALUES
-(1, 2, 1, true, 'Great seller!'),
-(1, 1, 2, true, 'Good buyer!'),
-(3, 3, 1, false, 'Item damaged');
+(2,2,1,true,'Fast response'),
+(3,3,1,true,'Good packaging'),
+(4,4,1,true,'Exactly as described'),
+(5,2,1,false,'Shipping a bit slow');
+
+-- Bob 
+INSERT INTO reviews (product, rater, ratee, liked, content) VALUES
+(1,1,2,true,'Paid quickly'),
+(3,1,2,true,'Smooth transaction'),
+(4,5,2,true,'Nice buyer'),
+(6,1,2,false,'Late confirmation'),
+(7,5,2,false,'Bid retracted once');
+
+-- Charlie
+INSERT INTO reviews (product, rater, ratee, liked, content) VALUES
+(8,5,3,true,'Very polite'),
+(9,1,3,true,'Fast payment'),
+(10,1,3,true,'Clear communication'),
+(11,5,3,true,'Reliable bidder'),
+(12,1,3,false,'Asked too many questions');
+
+-- David
+INSERT INTO reviews (product, rater, ratee, liked, content) VALUES
+(13,1,4,true,'Fair bidder'),
+(14,5,4,true,'On-time payment'),
+(15,1,4,false,'Low bids'),
+(16,5,4,false,'Unresponsive once');
+
+-- Emma
+INSERT INTO reviews (product, rater, ratee, liked, content) VALUES
+(17,2,5,true,'Very professional'),
+(18,3,5,true,'Item well packed'),
+(19,4,5,true,'Smooth deal');
 
 -- 12. Insert Messages
 INSERT INTO messages (product, sender, content, type, created_at) VALUES
-(1, 2, 'Is phone unlocked?', 'text', NOW()),
-(1, 1, 'Yes it is', 'text', NOW()),
-(2, 3, 'More photos?', 'text', NOW());
+(3,3,'Can you lower starting price?','text',NOW()),
+(3,1,'Sorry, price is fixed.','text',NOW()),
+(6,3,'Is this authentic?','text',NOW()),
+(6,5,'Yes, 100% authentic.','text',NOW()),
+(8,4,'Any defects?','text',NOW()),
+(8,5,'No defects, brand new.','text',NOW());
 
 -- 13. Insert Refuse
 INSERT INTO refuse (product, buyer) VALUES
@@ -667,12 +763,18 @@ INSERT INTO refuse (product, buyer) VALUES
 
 -- 14. Insert Bidder Winner
 INSERT INTO bidder_winner (product, bidder) VALUES
-(1, 3), (8, 2);
+(3,3),
+(6,2),
+(9,3);
+
 
 -- 15. Insert Trade Verifications
-INSERT INTO trade_verifications (product, bidder, seller, delivery_address, sell_accept, bidder_accept, state) VALUES
-(1, 3, 1, '12 Tran Hung Dao, HCM', true, true, 'completed'),
-(8, 2, 5, '45 Nguyen Hue, HCM', false, false, 'pending_payment');
+INSERT INTO trade_verifications
+(product, bidder, seller, delivery_address, sell_accept, bidder_accept, state)
+VALUES
+(3,3,1,'12 Tran Hung Dao, HCM',true,false,'pending_bidder_confirm'),
+(6,2,5,'45 Nguyen Hue, HCM',true,true,'completed'),
+(9,3,1,'77 Dien Bien Phu, HCM',false,false,'pending_payment');
 
 -- 16. Insert Sessions
 INSERT INTO sessions (user_id, expired_at, refresh_token) VALUES
@@ -703,6 +805,18 @@ INSERT INTO allowed_bidder (product, bidder, allowed_at) VALUES
 (3, 2, NOW() - INTERVAL '1 day'),
 (3, 3, NOW() - INTERVAL '1 day'),
 (3, 4, NOW() - INTERVAL '1 day');
+
+INSERT INTO auto_bids (product, bidder, max_price) VALUES
+(1,2,26000000),
+(1,3,27000000),
+(2,3,18000000),
+(3,2,30000000),
+(4,4,7000000),
+(6,2,4500000),
+(7,3,3500000),
+(8,4,45000000),
+(9,2,9000000),
+(10,3,3800000);
 
 -- 1. Setup Extension & Column
 CREATE EXTENSION IF NOT EXISTS unaccent;
@@ -912,68 +1026,6 @@ CREATE TRIGGER trg_delete_seller_products
 BEFORE DELETE ON users
 FOR EACH ROW
 EXECUTE FUNCTION delete_seller_products();
-
-CREATE OR REPLACE FUNCTION fn_update_user_rating()
-RETURNS TRIGGER AS $$
-DECLARE
-    affected_user_id INT;
-BEGIN
-    -- Xác định user nào bị ảnh hưởng
-    IF TG_OP = 'DELETE' THEN
-        affected_user_id := OLD.ratee;
-    ELSE
-        affected_user_id := NEW.ratee;
-    END IF;
-    
-    -- Cập nhật rating cho user (chuyển sang thang 0-5)
-    UPDATE users
-    SET rating = (
-        SELECT COALESCE(
-            (COUNT(*) FILTER (WHERE liked = true)::REAL / 
-            NULLIF(COUNT(*)::REAL, 0)),
-            0
-        )
-        FROM reviews
-        WHERE ratee = affected_user_id
-    )
-    WHERE id = affected_user_id;
-    
-    -- Nếu là UPDATE và ratee thay đổi, cập nhật cả user cũ
-    IF TG_OP = 'UPDATE' AND OLD.ratee != NEW.ratee THEN
-        UPDATE users
-        SET rating = (
-            SELECT COALESCE(
-                (COUNT(*) FILTER (WHERE liked = true)::REAL / 
-                NULLIF(COUNT(*)::REAL, 0)),
-                0
-            )
-            FROM reviews
-            WHERE ratee = OLD.ratee
-        )
-        WHERE id = OLD.ratee;
-    END IF;
-    
-    IF TG_OP = 'DELETE' THEN
-        RETURN OLD;
-    ELSE
-        RETURN NEW;
-    END IF;
-END;
-$$ LANGUAGE plpgsql;
-
--- Tạo trigger
-CREATE TRIGGER trg_update_rating_on_review_change
-AFTER INSERT OR UPDATE OR DELETE ON reviews
-FOR EACH ROW
-EXECUTE FUNCTION fn_update_user_rating();
-CREATE OR REPLACE FUNCTION users_tsvector_trigger() RETURNS trigger AS $$
-BEGIN
-  NEW.search_vector :=
-    setweight(to_tsvector('simple', unaccent(coalesce(NEW.name, ''))), 'A') ||
-    setweight(to_tsvector('simple', unaccent(coalesce(NEW.email, ''))), 'B');
-  RETURN NEW;
-END
-$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER tsvectorupdate
 BEFORE INSERT OR UPDATE ON users

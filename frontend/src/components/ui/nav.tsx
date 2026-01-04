@@ -78,7 +78,12 @@ export default function Nav() {
           setOpenCategory(!openCategory);
         }}
       >
-        <p className="text-white/60 hover:text-(--primary)">Category</p>
+        <p
+          className="text-white/60 hover:text-(--primary)"
+          onMouseEnter={() => setOpenCategory(true)}
+        >
+          Category
+        </p>
         <ChevronDownIcon className="w-4 h-4 text-white/60 ml-1 mt-1" />
       </div>
       <div className="w-full lg:col-span-1 col-span-full flex justify-center items-center gap-2 lg:px-0 px-4">
@@ -212,9 +217,9 @@ export default function Nav() {
 
       {openCategory && (
         <>
-          <div
-            className="fixed inset-0 z-9998 bg-black/30"
-            onClick={() => setOpenCategory(false)}
+          {/* Backdrop */}
+          <div className="fixed inset-0 z-[-1] bg-black/30" 
+            onMouseEnter={() => setOpenCategory(false)}          
           />
 
           {/* Menu */}
