@@ -236,29 +236,40 @@ export default function ProductBrief() {
                 </div>
               ) : (
                 <>
-                  {(Number(user.rating_count || 0) === 0 || Number(user.rating || 0) < 0.8) && product.user_bid_request_state !== "success" ? (
-                    <button
-                      className={`w-full h-14 rounded-xl font-bold transition-all border ${product.user_bid_request_state === "pending"
-                        ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20 cursor-not-allowed"
-                        : "bg-(--primary) text-black hover:opacity-90 border-transparent shadow-[0_0_15px_rgba(255,215,0,0.2)]"
-                        }`}
-                      onClick={handleRequestToBid}
-                      disabled={requesting || product.user_bid_request_state === "pending"}
-                    >
-                      {requesting ? "Sending Request..." : product.user_bid_request_state === "pending" ? "Bid Request Pending" : "Apply for Bidding"}
-                    </button>
-                  ) : (
-                    <button
-                      className="w-full h-14 bg-(--primary) text-black rounded-xl font-bold hover:opacity-90 transition-all shadow-[0_0_15px_rgba(255,215,0,0.2)]"
-                      onClick={() => setPlacingBid(true)}
-                    >
-                      Place a Bid
-                    </button>
-                  )}
-                  {/* Show Buy it now for users who can bid (approved OR doesn't need permission) */}
+                  {(() => {
+                    // Check if user already has bid history in this product (user_relation === "bidder" means they have bids)
+                    const userHasBidHistory = product.user_relation === "bidder";
+
+                    // User needs permission if: low rating AND no approved request AND no bid history
+                    const needsPermission = (Number(user.rating_count || 0) === 0 || Number(user.rating || 0) < 0.8)
+                      && product.user_bid_request_state !== "success"
+                      && !userHasBidHistory;
+
+                    return needsPermission ? (
+                      <button
+                        className={`w-full h-14 rounded-xl font-bold transition-all border ${product.user_bid_request_state === "pending"
+                          ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20 cursor-not-allowed"
+                          : "bg-(--primary) text-black hover:opacity-90 border-transparent shadow-[0_0_15px_rgba(255,215,0,0.2)]"
+                          }`}
+                        onClick={handleRequestToBid}
+                        disabled={requesting || product.user_bid_request_state === "pending"}
+                      >
+                        {requesting ? "Sending Request..." : product.user_bid_request_state === "pending" ? "Bid Request Pending" : "Apply for Bidding"}
+                      </button>
+                    ) : (
+                      <button
+                        className="w-full h-14 bg-(--primary) text-black rounded-xl font-bold hover:opacity-90 transition-all shadow-[0_0_15px_rgba(255,215,0,0.2)]"
+                        onClick={() => setPlacingBid(true)}
+                      >
+                        Place a Bid
+                      </button>
+                    );
+                  })()}
+                  {/* Show Buy it now for users who can bid (approved OR doesn't need permission OR has bid history) */}
                   {product.instant_price && (
                     product.user_bid_request_state === "success" ||
-                    (Number(user.rating_count || 0) > 0 && Number(user.rating || 0) >= 0.8)
+                    (Number(user.rating_count || 0) > 0 && Number(user.rating || 0) >= 0.8) ||
+                    product.user_relation === "bidder"
                   ) && (
                       <button
                         className="w-full h-14 bg-white/10 hover:bg-white/15 text-white rounded-xl border border-white/10 font-bold transition-all"

@@ -56,14 +56,17 @@ export default function Nav() {
     <nav className="sticky top-0 lg:h-[100px] h-[150px] w-full grid lg:grid-cols-[1fr_1fr_1fr_3fr] grid-cols-3 bg-(--bgc) border-b border-white/10 shadow-lg z-50">
       <Link
         to="/"
-        className="w-full flex justify-center items-center gap-2 group"
+        className="w-full flex justify-center items-center gap-3 group"
       >
-        <img
-          src={Icon}
-          className="flex-none aspect-auto h-10 transition-transform group-hover:scale-110"
-          alt="Logo"
-        />
-        <p className="font-sans font-bold text-(--primary) text-lg">
+        <div className="relative">
+          <div className="absolute inset-0 bg-(--primary) rounded-full blur-xl opacity-0 group-hover:opacity-2 transition-opacity duration-500"></div>
+          <img
+            src={Icon}
+            className="relative flex-none aspect-auto h-16 transition-all duration-300 group-hover:scale-115 drop-shadow-[0_0_10px_rgba(255,215,0,0.3)] group-hover:drop-shadow-[0_0_20px_rgba(255,215,0,0.6)]"
+            alt="Logo"
+          />
+        </div>
+        <p className="font-sans font-extrabold text-(--primary) text-xl tracking-wide drop-shadow-[0_0_8px_rgba(255,215,0,0.3)] group-hover:drop-shadow-[0_0_15px_rgba(255,215,0,0.5)] transition-all duration-300">
           AUCTIONIFY
         </p>
       </Link>
@@ -218,8 +221,8 @@ export default function Nav() {
       {openCategory && (
         <>
           {/* Backdrop */}
-          <div className="fixed inset-0 z-[-1] bg-black/30" 
-            onMouseEnter={() => setOpenCategory(false)}          
+          <div className="fixed inset-0 z-[-1] bg-black/30"
+            onMouseEnter={() => setOpenCategory(false)}
           />
 
           {/* Menu */}
