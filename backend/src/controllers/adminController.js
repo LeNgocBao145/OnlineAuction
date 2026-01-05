@@ -52,8 +52,14 @@ class AdminController {
           .filter(Boolean)
           .join(", ") || "u.id ASC";
 
+      const allowedRoles = ["admin", "seller", "bidder"];
+      const roles = req.query.roles
+        ? req.query.roles.split(",").map(r => r.trim())
+        : null;
+      const finalRoles = roles?.filter(r => allowedRoles.includes(r)) || null;
+
       const sqlQuery = getUsers(orderBySql);
-      const users = await query(sqlQuery, [limit, offset]);
+      const users = await query(sqlQuery, [limit, offset, req.user.id, finalRoles]);
 
       if (!users || !users.rows || users.rows.length === 0) {
         return res.status(200).json({
@@ -126,6 +132,9 @@ class AdminController {
       if (!user.rows.length) {
         return res.status(404).json({ message: "No users found" });
       }
+      if (user.rows[0].role === 'admin') {
+        return res.status(403).json({ message: "Cannot perform actions on other admin accounts" });
+      }
       await query(deleteUserById, [userId]);
       return res.status(200).json({ message: "Delete user successfully!" });
     } catch (error) {
@@ -153,6 +162,9 @@ class AdminController {
       const user = await query(getUserById, [userId]);
       if (!user.rows.length) {
         return res.status(404).json({ message: "No users found" });
+      }
+      if (user.rows[0].role === 'admin') {
+        return res.status(403).json({ message: "Cannot perform actions on other admin accounts" });
       }
       await query(updateUserById, [
         name,
@@ -378,10 +390,16 @@ class AdminController {
       const finalStates = states?.filter(s => allowedStates.includes(s)) || null;
 
       const SORT_MAPPING = {
+        id_asc: "r.id ASC",
+        id_desc: "r.id DESC",
         name_asc: "u.name ASC",
         name_desc: "u.name DESC",
+        email_asc: "u.email ASC",
+        email_desc: "u.email DESC",
         rating_asc: "u.rating ASC",
         rating_desc: "u.rating DESC",
+        state_asc: "r.state ASC",
+        state_desc: "r.state DESC",
         oldest: "r.created_at ASC",
         newest: "r.created_at DESC",
       };

@@ -37,6 +37,8 @@ export const getUsers = (sortLogic) => `
     ${getUserColumns()},
     COUNT(*) OVER() AS total_count
   FROM users u 
+  WHERE u.id != $3
+    AND (u.role = ANY($4) OR $4 IS NULL)
   ORDER BY ${sortLogic}
   LIMIT $1 OFFSET $2
 `;
