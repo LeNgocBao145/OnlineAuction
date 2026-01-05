@@ -171,13 +171,25 @@ export default function ProductBrief() {
           <div className="grid grid-cols-2 gap-4 lg:gap-8">
             <div className="flex flex-col">
               <span className="text-white/50 text-xs uppercase tracking-widest mb-1">Seller</span>
-              <p className="text-base lg:text-lg font-medium text-white/90">
-                {product.user_relation === "seller" ? (
-                  <span className="text-(--primary) font-bold">You</span>
-                ) : (
-                  product.seller_name
+              <div className="flex items-center gap-2">
+                <p className="text-base lg:text-lg font-medium text-white/90">
+                  {product.user_relation === "seller" ? (
+                    <span className="text-(--primary) font-bold">You</span>
+                  ) : (
+                    product.seller_name
+                  )}
+                </p>
+                {product.user_relation !== "seller" && product.seller_rating !== undefined && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-bold ${product.seller_rating >= 0.8
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                        : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                      }`}
+                  >
+                    {product.seller_rating * 100}%
+                  </span>
                 )}
-              </p>
+              </div>
             </div>
             <div className="flex flex-col text-right">
               <span className="text-white/50 text-xs uppercase tracking-widest mb-1">

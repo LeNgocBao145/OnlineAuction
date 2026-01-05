@@ -55,6 +55,7 @@ export interface ProductDetail {
   step_price: number;
   instant_price: number | null;
   seller_name: string;
+  seller_rating?: number;
   created_at: string;
   expired_at: string;
   starting_at?: string;

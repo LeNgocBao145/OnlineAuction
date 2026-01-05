@@ -415,6 +415,7 @@ export const getProductDetailsById = `
             sp.step_price AS step_price,
             sp.instant_price AS instant_price,
             u.name AS seller_name,
+            u.rating AS seller_rating,
             sp.created_at,
             sp.starting_at,
             sp.expired_at
