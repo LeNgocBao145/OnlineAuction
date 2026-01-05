@@ -33,7 +33,7 @@ export default function ProductPage() {
     }, []);
 
     return (
-        <div className="px-[10%] mt-6 text-white pb-20">
+        <div className="container mx-auto px-4 md:px-12 lg:px-24 mt-6 text-white pb-20 max-w-[1700px]">
             {loading && !product && (
                 <div className="flex justify-center items-center py-20">
                     <p className="text-xl text-white/60">Loading product...</p>

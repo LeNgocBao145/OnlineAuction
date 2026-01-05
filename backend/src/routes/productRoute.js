@@ -2,12 +2,14 @@ import express from 'express';
 import ProductController from '../controllers/productController.js';
 import { authenticateToken, optionalAuthenticateToken } from '../middlewares/authMiddleware.js';
 
+import { uploadProductImages } from '../middlewares/upload/uploadProductImage.js';
+
 const router = express.Router();
 
 router.get('/', ProductController.filterProducts);
 router.get('/filter', ProductController.filterProducts);
 router.get('/:productId', optionalAuthenticateToken, ProductController.getProductDetails);
-router.post('/add', ProductController.addProduct);
+router.post('/add', authenticateToken, uploadProductImages.array('images', 10), ProductController.addProduct);
 router.post('/:productId/add/description', ProductController.addDescription);
 router.post('/:productId/ask', authenticateToken, ProductController.askQuestion);
 router.post('/:productId/ask-to-bid', authenticateToken, ProductController.askToBid);
@@ -16,7 +18,7 @@ router.post('/:productId/bid', authenticateToken, ProductController.placeBid);
 router.post('/:productId/:questionId/answer', authenticateToken, ProductController.answerQuestion);
 router.post('/:productId/bid-requests/:requestId/accept', authenticateToken, ProductController.acceptBidRequest);
 router.post('/:productId/bid-requests/:requestId/reject', authenticateToken, ProductController.rejectBidRequest);
-router.put('/:productId', authenticateToken, ProductController.updateProduct);
+router.put('/:productId', authenticateToken, uploadProductImages.array('images', 10), ProductController.updateProduct);
 router.post('/:productId/close', authenticateToken, ProductController.closeAuction);
 router.delete('/:productId', authenticateToken, ProductController.deleteProduct);
 router.get('/:productId/bidders', authenticateToken, ProductController.getProductBidders);

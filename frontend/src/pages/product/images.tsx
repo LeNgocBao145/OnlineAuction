@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import useProductStore from "@/stores/productStore";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { getImageUrl } from "@/utils/productUtils";
 
 const SLIDE_INTERVAL = 3000;
 
@@ -8,9 +9,10 @@ export default function ProductImages() {
   const { product } = useProductStore();
   const images = useMemo(() => {
     if (!product) return [] as string[];
-    return [product.image, ...(product.additional_images || [])].filter(
+    const allImages = [product.image, ...(product.additional_images || [])].filter(
       Boolean
     );
+    return allImages.map(img => getImageUrl(img)).filter(Boolean) as string[];
   }, [product]);
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -110,8 +112,8 @@ export default function ProductImages() {
             <li
               key={index}
               className={`h-full aspect-square mx-2 cursor-pointer border rounded-lg ${index === selectedImageIndex
-                  ? "border-(--primary)"
-                  : "border-transparent"
+                ? "border-(--primary)"
+                : "border-transparent"
                 }`}
               onClick={() => handleSelectImage(index)}
             >

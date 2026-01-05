@@ -6,6 +6,8 @@ import useAuthStore from "@/stores/authStore";
 import productService from "@/services/productService";
 import { toast } from "sonner";
 import { formatCurrency } from "@/utils/numberUtils";
+import { getImageUrl } from "@/utils/productUtils";
+import { getRemainingTime } from "@/utils/timeUtils";
 
 
 export default function MyProducts() {
@@ -54,18 +56,6 @@ export default function MyProducts() {
         } catch (error: any) {
             toast.error(error?.response?.data?.message || "Failed to remove auction");
         }
-    };
-
-    // Format time left from seconds
-
-    const formatTime = (seconds: number) => {
-        if (!seconds || seconds <= 0) return "Ended";
-        const days = Math.floor(seconds / 86400);
-        const hours = Math.floor((seconds % 86400) / 3600);
-        const mins = Math.floor((seconds % 3600) / 60);
-        if (days > 0) return `${days}d ${hours}h`;
-        if (hours > 0) return `${hours}h ${mins}m`;
-        return `${mins}m`;
     };
 
     if (loading) {
@@ -120,7 +110,7 @@ export default function MyProducts() {
                             onClick={() => navigate(`/product/${product.id}`)}
                         >
                             <div>
-                                <img src={product.image || "/placeholder.jpg"} alt={product.name} className="h-full aspect-square rounded-md mr-4 border border-white/10 object-cover" />
+                                <img src={getImageUrl(product.image) || "/placeholder.jpg"} alt={product.name} className="h-full aspect-square rounded-md mr-4 border border-white/10 object-cover" />
                             </div>
                             <div className="flex flex-col justify-between">
                                 <div>
@@ -141,7 +131,7 @@ export default function MyProducts() {
                                 </div>
                                 <div className="flex justify-between items-center mt-4">
                                     <div className="flex flex-col">
-                                        <p className="text-white">{formatTime(Number(product.time_left))}</p>
+                                        <p className="text-white">{getRemainingTime(product.state === "incoming" ? product.starting_at || "" : product.expired_at)}</p>
                                         <p className="text-white/60">{product.state === "incoming" ? "Open In" : product.state === "bidding" ? "Time Left" : "Ended"}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -149,14 +139,14 @@ export default function MyProducts() {
                                             ? "bg-yellow-400"
                                             : product.state === "bidding"
                                                 ? "bg-green-400"
-                                                : "bg-purple-500"
+                                                : "bg-red-500"
                                             }`}
                                         ></span>
                                         <p className="text-white/60">
                                             {product.state === "incoming"
                                                 ? "Incoming"
                                                 : product.state === "bidding"
-                                                    ? "Active"
+                                                    ? "Bidding"
                                                     : "Sold"
                                             }
                                         </p>

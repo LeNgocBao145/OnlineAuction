@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import useUserStore from "@/stores/userStore";
 import useAuthStore from "@/stores/authStore";
 import { formatDate } from "@/utils/dateUtils";
+import { getImageUrl } from "@/utils/productUtils";
 
 export default function BidsBody() {
     const navigate = useNavigate();
@@ -74,12 +75,12 @@ export default function BidsBody() {
                     <li key={bid.id} className="border border-white/10 rounded-lg bg-(--secondary) p-4 cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => navigate(`/product/${bid.id}`)}>
                         <div className="grid grid-cols-[1fr_2fr] gap-4">
                             <div>
-                                <img src={bid.image} alt={bid.name} className="rounded-md border border-white/10 aspect-square h-full object-cover" />
+                                <img src={getImageUrl(bid.image)} alt={bid.name} className="rounded-md border border-white/10 aspect-square h-full object-cover" />
                             </div>
                             <div className="flex flex-col">
                                 <div>
                                     <div className="flex justify-between items-center">
-                                        <h2 className="text-white font-bold text-xl">{bid.name.length > 20 ? bid.name.substring(0, 20) + "..." : bid.name}</h2>                                        
+                                        <h2 className="text-white font-bold text-xl">{bid.name.length > 20 ? bid.name.substring(0, 20) + "..." : bid.name}</h2>
                                     </div>
                                 </div>
                                 <div className="flex flex-col mt-4">

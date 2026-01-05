@@ -2,6 +2,7 @@ import { useNavigate } from "react-router";
 import useHomeStore from "@/stores/homeStore";
 import { formatTimeLeft } from "@/utils/timeUtils";
 import { formatCurrency } from "@/utils/numberUtils";
+import { getImageUrl } from "@/utils/productUtils";
 
 export default function EndingSoon() {
     const navigate = useNavigate();
@@ -51,7 +52,7 @@ export default function EndingSoon() {
                             <div className="aspect-square h-16 rounded-lg overflow-hidden bg-black/30 border border-white/10 ml-1">
                                 {item.image_url ? (
                                     <img
-                                        src={item.image_url}
+                                        src={getImageUrl(item.image_url)}
                                         alt={item.name}
                                         className="w-full h-full object-cover"
                                     />

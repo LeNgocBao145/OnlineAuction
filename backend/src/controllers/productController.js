@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import query from "../libs/db.js";
 import {
   getProductDetailsById,
@@ -29,7 +31,8 @@ import {
   deleteProductById,
   getProductBidders,
   refuseBidder as refuseBidderQuery,
-  unrefuseBidder as unrefuseBidderQuery
+  unrefuseBidder as unrefuseBidderQuery,
+  getProductImagesById
 } from "../libs/sqlQuery.js";
 
 import {
@@ -43,52 +46,126 @@ import {
   sendSuccessfullyInstantBuyEmail,
 } from "../utils/emailService.js";
 
+const uploadDir = path.resolve(process.cwd(), "src", "assets", "products");
+
 class ProductController {
-  async addProduct(req, res) {
+  _deletePhysicalFiles = (filenames) => {
+    if (!filenames || !Array.isArray(filenames)) return;
+    filenames.forEach(filename => {
+      if (!filename) return;
+      const filePath = path.join(uploadDir, filename);
+      fs.unlink(filePath, (err) => {
+        if (err && err.code !== 'ENOENT') {
+          console.error(`[ProductController] Error deleting file ${filename}:`, err);
+        }
+      });
+    });
+  }
+
+  addProduct = async (req, res) => {
     try {
-      const { seller, name, images, init_price, step_price, instant_price, start_at, expired_at, description, isExtent, category } = req.body;
+      const { seller, name, init_price, step_price, instant_price, start_at, expired_at, description, isExtent, category: categoryParam, categories: categoriesParam, coverImageIndex } = req.body;
+      const files = req.files;
 
-      if (!seller || !name || !images || !init_price || !step_price || !start_at || !expired_at || !description || typeof (isExtent) !== 'boolean' || !category) {
+      // Handle both single category (old) and multiple categories (new)
+      let categoryIds = [];
+      if (categoriesParam) {
+        try {
+          categoryIds = JSON.parse(categoriesParam);
+        } catch (e) {
+          categoryIds = [categoriesParam];
+        }
+      } else if (categoryParam) {
+        categoryIds = [categoryParam];
+      }
+
+      // Remove duplicates and convert to integers
+      categoryIds = [...new Set(categoryIds)].map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+
+      // FormData sends everything as strings, so we need to be careful with validation
+      if (!seller || !name || !init_price || !step_price || !start_at || !expired_at || !description || categoryIds.length === 0) {
+        if (files && files.length > 0) this._deletePhysicalFiles(files.map(f => f.filename));
         return res.status(400).json({
-          message: "Seller id, name, images, init_price, step_price, description, isExtent and category are required"
+          message: "Seller id, name, init_price, step_price, description, start_at, expired_at and at least one category are required"
         });
       }
 
-      if (!Array.isArray(images) || images.length < 3) {
+      if (!files || files.length < 3) {
+        if (files && files.length > 0) this._deletePhysicalFiles(files.map(f => f.filename));
         return res.status(400).json({
-          message: "Images must contain at least 3 items"
+          message: "At least 3 images are required"
         });
       }
 
-      if (init_price <= 0 || step_price <= 0) {
+      const init_price_num = parseFloat(init_price);
+      const step_price_num = parseFloat(step_price);
+
+      if (isNaN(init_price_num) || isNaN(step_price_num) || init_price_num <= 0 || step_price_num <= 0) {
+        if (files && files.length > 0) this._deletePhysicalFiles(files.map(f => f.filename));
         return res.status(400).json({
-          message: "Init price and step price must be positive",
+          message: "Init price and step price must be positive numbers",
         });
       }
+
+      const isExtentBool = isExtent === 'true' || isExtent === true;
+
+      let imageFilenames = [];
+      if (req.body.imagesOrder) {
+        try {
+          const order = JSON.parse(req.body.imagesOrder);
+          let nextFileIdx = 0;
+          imageFilenames = order.map(item => {
+            if (item === 'new') {
+              const file = files[nextFileIdx++];
+              return file ? file.filename : null;
+            }
+            return null;
+          }).filter(Boolean);
+        } catch (e) {
+          imageFilenames = files.map(file => file.filename);
+        }
+      } else {
+        imageFilenames = files.map(file => file.filename);
+      }
+
+      const coverIdx = parseInt(coverImageIndex, 10) || 0;
+      const coverImage = imageFilenames[coverIdx] || imageFilenames[0];
+
+      // Determine initial state
+      const now = new Date();
+      const startDate = new Date(start_at);
+      const state = startDate <= now ? 'bidding' : 'incoming';
 
       const result = await query(createProduct, [
         name,
-        init_price,
-        images[0]
+        init_price_num,
+        coverImage,
+        state
       ]);
 
       const productId = result.rows[0].id;
 
+      // Remove cover image from additional images to avoid duplication
+      const additionalImages = imageFilenames.filter((_, idx) => idx !== coverIdx);
+
       await Promise.all([
-        query(createProductImages, [productId, images]),
+        query(createProductImages, [productId, additionalImages]),
         query(createProductDescription, [productId, description]),
-        query(createProductCategory, [productId, category]),
-        query(createSellProduct, [productId, seller, init_price, step_price, instant_price || null, start_at, expired_at, isExtent])
+        ...categoryIds.map(catId => query(createProductCategory, [productId, catId])),
+        query(createSellProduct, [productId, seller, init_price_num, step_price_num, instant_price ? parseFloat(instant_price) : null, start_at, expired_at, isExtentBool])
       ]);
 
       return res.status(201).json({ message: "Product created successfully!", productId });
     } catch (error) {
       console.error("[addProduct] Error: ", error);
+      if (req.files && req.files.length > 0) {
+        this._deletePhysicalFiles(req.files.map(f => f.filename));
+      }
       res.status(500).json({ message: "Internal Server Error" });
     }
   }
 
-  async addDescription(req, res) {
+  addDescription = async (req, res) => {
     try {
       const productId = req.params.productId;
       const { des } = req.body;
@@ -118,7 +195,7 @@ class ProductController {
     }
   }
 
-  async getProductDetails(req, res) {
+  getProductDetails = async (req, res) => {
     try {
       const { productId } = req.params;
       if (!productId || isNaN(parseInt(productId, 10))) {
@@ -145,11 +222,24 @@ class ProductController {
     }
   }
 
-  async filterProducts(req, res) {
+  filterProducts = async (req, res) => {
     try {
       const keyword = req.query.keyword ? req.query.keyword.trim() : "";
 
-      const category = req.query.category ? parseInt(req.query.category, 10) : null;
+      const categoryParam = req.query.category;
+      let category = null;
+      if (categoryParam) {
+        if (Array.isArray(categoryParam)) {
+          category = categoryParam.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+        } else if (typeof categoryParam === 'string') {
+          if (categoryParam.includes(',')) {
+            category = categoryParam.split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+          } else {
+            category = [parseInt(categoryParam, 10)].filter(id => !isNaN(id));
+          }
+        }
+        if (category && category.length === 0) category = null;
+      }
 
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
@@ -187,6 +277,8 @@ class ProductController {
 
       const sqlQuery = getFilteredProductsQuery(orderBySql);
 
+      const excludeId = req.query.excludeId ? parseInt(req.query.excludeId, 10) : null;
+
       const { rows } = await query(sqlQuery, [
         keyword,
         category,
@@ -197,6 +289,7 @@ class ProductController {
         finalStates,
         limit,
         offset,
+        excludeId
       ]);
 
       const totalItems = rows.length > 0 ? parseInt(rows[0].total_count, 10) : 0;
@@ -225,7 +318,7 @@ class ProductController {
     }
   }
 
-  async askQuestion(req, res) {
+  askQuestion = async (req, res) => {
     try {
       const { productId } = req.params;
       const userId = req.user.id;
@@ -285,7 +378,7 @@ class ProductController {
     }
   }
 
-  async answerQuestion(req, res) {
+  answerQuestion = async (req, res) => {
     try {
       const { productId, questionId } = req.params;
       const answererId = req.user.id;
@@ -358,7 +451,7 @@ class ProductController {
     }
   }
 
-  async askToBid(req, res) {
+  askToBid = async (req, res) => {
     try {
       const { productId } = req.params;
       const userId = req.user.id;
@@ -434,7 +527,7 @@ class ProductController {
     }
   }
 
-  async getProductBidRequests(req, res) {
+  getProductBidRequests = async (req, res) => {
     try {
       const { productId } = req.params;
 
@@ -503,7 +596,7 @@ class ProductController {
     }
   }
 
-  async acceptBidRequest(req, res) {
+  acceptBidRequest = async (req, res) => {
     try {
       const { requestId, productId } = req.params;
       const userId = req.user.id;
@@ -552,7 +645,7 @@ class ProductController {
     }
   }
 
-  async rejectBidRequest(req, res) {
+  rejectBidRequest = async (req, res) => {
     try {
       const { requestId, productId } = req.params;
       const userId = req.user.id;
@@ -772,32 +865,140 @@ class ProductController {
     }
   }
 
-  async updateProduct(req, res) {
+  updateProduct = async (req, res) => {
     try {
       const { productId } = req.params;
       const userId = req.user.id;
-      const { name, init_price, step_price, instant_price, start_at, expired_at, description, isExtent, category } = req.body;
+      const { name, init_price, step_price, instant_price, start_at, expired_at, description, isExtent, category: categoryParam, categories: categoriesParam, coverImageIndex } = req.body;
+      const files = req.files;
 
-      const check = await query(`SELECT seller FROM sell_product WHERE product = $1`, [productId]);
+      // Handle both single category (old) and multiple categories (new)
+      let categoryIds = [];
+      if (categoriesParam) {
+        try {
+          categoryIds = JSON.parse(categoriesParam);
+        } catch (e) {
+          categoryIds = [categoriesParam];
+        }
+      } else if (categoryParam) {
+        categoryIds = [categoryParam];
+      }
+
+      // Remove duplicates and convert to integers
+      categoryIds = [...new Set(categoryIds)].map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+
+      if (categoryIds.length === 0) {
+        if (files && files.length > 0) this._deletePhysicalFiles(files.map(f => f.filename));
+        return res.status(400).json({
+          message: "At least one category is required"
+        });
+      }
+
+      const check = await query(`
+        SELECT sp.seller, p.image, p.state
+        FROM sell_product sp 
+        JOIN products p ON p.id = sp.product 
+        WHERE sp.product = $1
+      `, [productId]);
+
       if (check.rows.length === 0 || check.rows[0].seller !== userId) {
+        if (files && files.length > 0) this._deletePhysicalFiles(files.map(f => f.filename));
         return res.status(403).json({ message: "Unauthorized." });
       }
 
+      // Get old images for cleanup later
+      const oldImagesResult = await query(getProductImagesById, [productId]);
+      const oldImages = oldImagesResult.rows[0]?.image_path || [];
+      const allOldFiles = [...new Set([...oldImages, check.rows[0].image])].filter(Boolean);
+
+      const currentProduct = check.rows[0];
+      const init_price_num = parseFloat(init_price);
+      const step_price_num = parseFloat(step_price);
+      const isExtentBool = isExtent === 'true' || isExtent === true;
+
+      // Determine state
+      const now = new Date();
+      const startDate = new Date(start_at);
+      const endDate = new Date(expired_at);
+
+      let state = currentProduct.state;
+      // Only recalculate state if it's currently in a non-terminal state
+      if (state === 'incoming' || state === 'bidding') {
+        if (now < startDate) {
+          state = 'incoming';
+        } else if (now < endDate) {
+          state = 'bidding';
+        } else {
+          // If it expired, it should be closed. We'll set to bidding for now if it was active, 
+          // but better to let the cron handle closure or mark as failed if no bids.
+          state = currentProduct.state;
+        }
+      }
+
+      let coverImage = currentProduct.image;
+
+      // Parse images order if provided
+      let finalImageFilenames = [];
+      if (req.body.imagesOrder) {
+        try {
+          const order = JSON.parse(req.body.imagesOrder);
+          let nextFileIdx = 0;
+
+          finalImageFilenames = order.map(item => {
+            if (item === 'new') {
+              const file = files[nextFileIdx++];
+              return file ? file.filename : null;
+            } else if (item.startsWith('existing:')) {
+              return item.substring(9);
+            }
+            return null;
+          }).filter(Boolean);
+        } catch (e) {
+          console.error("Error parsing imagesOrder:", e);
+          finalImageFilenames = files.map(f => f.filename);
+        }
+      } else if (files && files.length > 0) {
+        finalImageFilenames = files.map(file => file.filename);
+      }
+
+      if (finalImageFilenames.length > 0) {
+        const coverIdx = parseInt(coverImageIndex, 10) || 0;
+        coverImage = finalImageFilenames[coverIdx] || finalImageFilenames[0];
+
+        // Remove cover image from the array to avoid duplication
+        // (cover is stored in products.image, additional images in product_images.image_path)
+        const additionalImages = finalImageFilenames.filter((_, idx) => idx !== coverIdx);
+
+        await query(`UPDATE product_images SET image_path = $1 WHERE product = $2`, [additionalImages, productId]);
+      }
+
       await Promise.all([
-        query(updateProductById, [name, init_price, req.body.image || '', productId]),
-        query(updateSellProductById, [init_price, step_price, instant_price || null, start_at, expired_at, isExtent, productId]),
-        query(`UPDATE product_descriptions SET description = $1 WHERE product = $2`, [description, productId]),
-        query(`UPDATE product_categories SET category = $1 WHERE product = $2`, [category, productId])
+        query(updateProductById, [name, init_price_num, coverImage, state, productId]),
+        query(updateSellProductById, [init_price_num, step_price_num, instant_price ? parseFloat(instant_price) : null, start_at, expired_at, isExtentBool, productId]),
+        query(`UPDATE product_descriptions SET description = $1 WHERE product = $2`, [description, productId])
       ]);
+
+      // Update categories separately to avoid race condition
+      await query(`DELETE FROM product_categories WHERE product = $1`, [productId]);
+      await Promise.all(categoryIds.map(catId => query(createProductCategory, [productId, catId])));
+
+      // Cleanup orphaned files
+      if (finalImageFilenames.length > 0) {
+        const orphans = allOldFiles.filter(oldFile => !finalImageFilenames.includes(oldFile));
+        this._deletePhysicalFiles(orphans);
+      }
 
       return res.status(200).json({ message: "Product updated successfully!" });
     } catch (error) {
       console.error("[updateProduct] Error: ", error);
+      if (req.files && req.files.length > 0) {
+        this._deletePhysicalFiles(req.files.map(f => f.filename));
+      }
       res.status(500).json({ message: "Internal Server Error" });
     }
   }
 
-  async closeAuction(req, res) {
+  closeAuction = async (req, res) => {
     try {
       const { productId } = req.params;
       const userId = req.user.id;
@@ -817,7 +1018,7 @@ class ProductController {
     }
   }
 
-  async deleteProduct(req, res) {
+  deleteProduct = async (req, res) => {
     try {
       const { productId } = req.params;
       const userId = req.user.id;
@@ -832,7 +1033,18 @@ class ProductController {
         return res.status(400).json({ message: "Cannot delete product that has bids." });
       }
 
+      // Get image list for cleanup
+      const oldImagesResult = await query(getProductImagesById, [productId]);
+      const oldImages = oldImagesResult.rows[0]?.image_path || [];
+      const coverImageResult = await query(`SELECT image FROM products WHERE id = $1`, [productId]);
+      const coverImage = coverImageResult.rows[0]?.image;
+      const allFiles = [...new Set([...oldImages, coverImage])].filter(Boolean);
+
       await query(deleteProductById, [productId]);
+
+      // Cleanup physical files
+      this._deletePhysicalFiles(allFiles);
+
       return res.status(200).json({ message: "Product deleted successfully!" });
     } catch (error) {
       console.error("[deleteProduct] Error: ", error);
@@ -840,7 +1052,7 @@ class ProductController {
     }
   }
 
-  async getProductBidders(req, res) {
+  getProductBidders = async (req, res) => {
     try {
       const { productId } = req.params;
       const userId = req.user.id;
@@ -891,7 +1103,7 @@ class ProductController {
     }
   }
 
-  async refuseBidder(req, res) {
+  refuseBidder = async (req, res) => {
     try {
       const { productId, bidderId } = req.params;
       const userId = req.user.id;
@@ -971,7 +1183,7 @@ class ProductController {
     }
   }
 
-  async unrefuseBidder(req, res) {
+  unrefuseBidder = async (req, res) => {
     try {
       const { productId, bidderId } = req.params;
       const userId = req.user.id;
@@ -1020,4 +1232,5 @@ class ProductController {
 
 
 const productController = new ProductController();
+
 export default productController;

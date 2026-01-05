@@ -164,11 +164,14 @@ const productService = {
 
   async getRelatedProducts(
     productId: string | number,
-    categoryId: number,
-    limit: number = 5
+    categoryIds: number | number[],
+    limit: number = 5,
+    excludeId?: string | number
   ): Promise<Product[]> {
     const queryParams = new URLSearchParams();
-    queryParams.append("category", categoryId.toString());
+    const categories = Array.isArray(categoryIds) ? categoryIds.join(",") : categoryIds.toString();
+    queryParams.append("category", categories);
+    if (excludeId) queryParams.append("excludeId", excludeId.toString());
     queryParams.append("limit", limit.toString());
     queryParams.append("states", "incoming,bidding");
 

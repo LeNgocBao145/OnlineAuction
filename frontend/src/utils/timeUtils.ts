@@ -4,7 +4,7 @@ export function getRemainingTime(endTime: string): string {
   const now = new Date().getTime();
   const parseSecureDate = (val: string) => {
     if (!val.includes('Z') && !val.includes('+') && !val.match(/-\d{2}:?\d{2}$/)) {
-      return val.replace(' ', 'T') + 'Z';
+      return val.replace(' ', 'T');
     }
     return val;
   };
@@ -34,7 +34,7 @@ export function formatTimeLeft(val: number | string | undefined | null): string 
     if (val.includes('-') || val.includes('T')) {
       const parseSecureDate = (v: string) => {
         if (!v.includes('Z') && !v.includes('+') && !v.match(/-\d{2}:?\d{2}$/)) {
-          return v.replace(' ', 'T') + 'Z';
+          return v.replace(' ', 'T');
         }
         return v;
       };

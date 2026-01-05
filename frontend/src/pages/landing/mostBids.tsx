@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import useHomeStore from "@/stores/homeStore";
 import { formatCurrency } from "@/utils/numberUtils";
+import { getImageUrl } from "@/utils/productUtils";
 
 export default function MostBids() {
     const navigate = useNavigate();
@@ -25,7 +26,7 @@ export default function MostBids() {
                     const secondsLeft = Math.floor((expiry - now) / 1000);
                     const secondsSinceCreated = Math.floor((now - created) / 1000);
 
-                    const isEndingSoonClient = secondsLeft > 0 && secondsLeft <= 300;
+                    const isEndingSoonClient = item.state === "bidding" && secondsLeft > 0 && secondsLeft <= 300;
                     const isNewClient = secondsSinceCreated >= 0 && secondsSinceCreated <= 300;
 
                     return (
@@ -50,7 +51,7 @@ export default function MostBids() {
                             <div className="aspect-square h-16 rounded-lg overflow-hidden bg-black/30 border border-white/10 ml-1">
                                 {item.image_url ? (
                                     <img
-                                        src={item.image_url}
+                                        src={getImageUrl(item.image_url)}
                                         alt={item.name}
                                         className="w-full h-full object-cover"
                                     />

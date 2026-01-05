@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { FaStar } from "react-icons/fa";
 import useUserStore from "@/stores/userStore";
 import useAuthStore from "@/stores/authStore";
+import { getImageUrl } from "@/utils/productUtils";
 
 export default function FavoritesBody() {
     const navigate = useNavigate();
@@ -10,7 +11,7 @@ export default function FavoritesBody() {
     const { favorites, loading, error, fetchFavorites, unmarkFavorite } = useUserStore();
     const [statusFilter, setStatusFilter] = useState<number>(4);
     const [visibleCount, setVisibleCount] = useState<number>(5);
-    const [page, setPage] = useState<number>(1);
+    const [page] = useState<number>(1);
 
     // Initial fetch when component mounts or user changes
     useEffect(() => {
@@ -83,13 +84,13 @@ export default function FavoritesBody() {
                     <li key={product.id} className="border border-white/10 rounded-lg bg-(--secondary) p-4 cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => navigate(`/product/${product.id}`)}>
                         <div className="grid grid-cols-[1fr_2fr] gap-4">
                             <div>
-                                <img src={product.image || "/placeholder.jpg"} alt={product.name} className="rounded-md border border-white/10 aspect-square h-full object-cover" />
+                                <img src={getImageUrl(product.image) || "/placeholder.jpg"} alt={product.name} className="rounded-md border border-white/10 aspect-square h-full object-cover" />
                             </div>
                             <div className="flex flex-col">
                                 <div>
                                     <div className="flex justify-between items-center">
                                         <h2 className="text-white font-bold text-xl">{product.name.length > 20 ? product.name.substring(0, 20) + "..." : product.name}</h2>
-                                        <button onClick={(e) => { e.stopPropagation(); handleRemoveFavorite(product.id); }}>
+                                        <button onClick={(e) => { e.stopPropagation(); handleRemoveFavorite(Number(product.id)); }}>
                                             <FaStar className="inline w-4 h-4 text-yellow-400 mr-2" />
                                         </button>
                                     </div>

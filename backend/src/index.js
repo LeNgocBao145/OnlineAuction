@@ -39,6 +39,14 @@ app.use(
 
 route(app);
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error("Global Error Handler:", err);
+  res.status(err.status || 400).json({
+    message: err.message || "An unexpected error occurred"
+  });
+});
+
 server.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);
 });

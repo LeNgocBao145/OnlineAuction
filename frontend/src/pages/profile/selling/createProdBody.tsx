@@ -9,18 +9,34 @@ import useAuthStore from "@/stores/authStore";
 import { Editor } from "@tinymce/tinymce-react";
 
 
+import { getImageUrl } from "@/utils/productUtils";
 
-export default function CreateAuctionBody({ productId }: { productId?: string | number }) {
+const toLocalISO = (dateStr?: string) => {
+    if (!dateStr) return "";
+    let s = dateStr.trim();
+    if (s.includes(' ') && !s.includes('T')) s = s.replace(' ', 'T');
+    if (!s.includes('Z') && !s.includes('+') && !s.match(/-\d{2}:?\d{2}$/)) s += 'Z';
+
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return "";
+
+    const offset = d.getTimezoneOffset() * 60000;
+    const local = new Date(d.getTime() - offset);
+    return local.toISOString().slice(0, 16);
+};
+
+export default function CreateProdBody({ productId }: { productId?: string | number }) {
     const isEditing = !!productId;
 
-    const [imageFiles, setImageFiles] = useState<{ file: File, url: string, name: string }[]>([]);
+    const [imageFiles, setImageFiles] = useState<{ file: File, url: string, name: string, originalName?: string }[]>([]);
+    const [coverImageIndex, setCoverImageIndex] = useState<number>(0);
     const [description, setDescription] = useState<string>("");
     const [wordCount, setWordCount] = useState<number>(0);
     const editorRef = useRef<any>(null);
 
     const formSchema = z.object({
         productName: z.string().min(1, "Product name is required"),
-        category: z.string().min(1, "Category is required"),
+        categories: z.array(z.string()).min(1, "At least one category is required"),
         startingBid: z.number().min(1, "Starting bid must be at least $1"),
         images: z.array(z.instanceof(File)).min(3, "At least 3 images are required").max(10, "No more than 10 images are allowed"),
         bidStep: z.number().min(1, "Bid step must be at least $1"),
@@ -32,16 +48,23 @@ export default function CreateAuctionBody({ productId }: { productId?: string | 
     });
 
 
-    const { register, handleSubmit, formState: { errors }, reset, trigger, setValue } = useForm({
+    const { register, handleSubmit, formState: { errors }, reset, trigger, setValue, watch } = useForm({
         resolver: zodResolver(formSchema),
         defaultValues: { images: [] }
     });
 
     const [categories, setCategories] = useState<any[]>([]);
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [submitting, setSubmitting] = useState(false);
+    const [hasChanges, setHasChanges] = useState(false);
+    const [originalData, setOriginalData] = useState<any>(null);
     const { user } = useAuthStore();
     const navigate = useNavigate();
 
+    // Explicitly register images field because it's not bound to an input
+    useEffect(() => {
+        register("images");
+    }, [register]);
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -53,33 +76,57 @@ export default function CreateAuctionBody({ productId }: { productId?: string | 
             }
         };
         fetchCategories();
+    }, []);
 
+    useEffect(() => {
         const fetchProductData = async () => {
             if (!productId) return;
             try {
                 const product = await productService.getProductById(productId);
                 if (product) {
+                    // For images, we show them as placeholders for now
+                    const allImages = [product.image, ...(product.additional_images || [])].filter(Boolean);
+                    const mappedImages = allImages.map((url: string, i: number) => ({
+                        file: new File([], `image-${i}.jpg`, { type: 'image/jpeg' }), // Dummy file
+                        url: getImageUrl(url) || "",
+                        name: `Existing Image ${i + 1}`,
+                        originalName: url // Keep the original filename
+                    }));
+
+                    const categoryIds = (product.categories || []).map((cat: any) => cat.id?.toString());
+                    setSelectedCategories(categoryIds);
+
                     reset({
                         productName: product.name,
-                        category: product.categories?.[0]?.id?.toString() || "",
+                        categories: categoryIds,
                         startingBid: product.current_price,
                         bidStep: product.step_price || 0,
                         instantBuy: product.instant_price,
                         productDescription: product.descriptions?.[0]?.description || "",
-                        startTime: product.starting_at ? new Date(product.starting_at).toISOString().slice(0, 16) : "",
-                        endTime: product.expired_at ? new Date(product.expired_at).toISOString().slice(0, 16) : "",
-                        autoExtend: product.isExtent
+                        startTime: toLocalISO(product.starting_at),
+                        endTime: toLocalISO(product.expired_at),
+                        autoExtend: product.isExtent,
+                        images: mappedImages.map(img => img.file)
                     });
                     setDescription(product.descriptions?.[0]?.description || "");
-                    // For images, we just show placeholders since we don't have the original Files
-                    const allImages = [product.image, ...(product.additional_images || [])].filter(Boolean);
-                    if (allImages.length > 0) {
-                        setImageFiles(allImages.map((url: string, i: number) => ({
-                            file: new File([], `image-${i}.jpg`), // Dummy file
-                            url,
-                            name: `Existing Image ${i + 1}`
-                        })));
-                    }
+                    setImageFiles(mappedImages);
+                    // Explicitly set value for the registered field
+                    setValue("images", mappedImages.map(img => img.file));
+
+                    // Store original data for change detection
+                    setOriginalData({
+                        productName: product.name,
+                        categories: categoryIds,
+                        startingBid: product.current_price,
+                        bidStep: product.step_price || 0,
+                        instantBuy: product.instant_price,
+                        productDescription: product.descriptions?.[0]?.description || "",
+                        startTime: toLocalISO(product.starting_at),
+                        endTime: toLocalISO(product.expired_at),
+                        autoExtend: product.isExtent,
+                        images: mappedImages.map(img => img.originalName || img.name),
+                        coverImageIndex: 0
+                    });
                 }
             } catch (error) {
                 console.error("Failed to fetch product for editing", error);
@@ -87,14 +134,61 @@ export default function CreateAuctionBody({ productId }: { productId?: string | 
             }
         };
         fetchProductData();
-
-        // clean up image url to prevent leaks
-        return () => {
-            imageFiles.forEach(img => URL.revokeObjectURL(img.url));
-        };
     }, [productId]);
 
+    // Cleanup image URLs when component unmounts
+    useEffect(() => {
+        return () => {
+            imageFiles.forEach(img => {
+                if (img.url && img.url.startsWith('blob:')) {
+                    URL.revokeObjectURL(img.url);
+                }
+            });
+        };
+    }, [imageFiles]);
 
+    // Watch for form changes
+    useEffect(() => {
+        if (!isEditing || !originalData) {
+            setHasChanges(false);
+            return;
+        }
+
+        const subscription = watch((formData) => {
+            // Compare form data with original data
+            const currentImages = imageFiles.map(img => img.originalName || img.name);
+            const originalImages = originalData.images || [];
+
+            const imagesChanged =
+                currentImages.length !== originalImages.length ||
+                currentImages.some((img, idx) => img !== originalImages[idx]) ||
+                coverImageIndex !== originalData.coverImageIndex;
+
+            const fieldsChanged =
+                formData.productName !== originalData.productName ||
+                JSON.stringify(selectedCategories.sort()) !== JSON.stringify((originalData.categories || []).sort()) ||
+                formData.startingBid !== originalData.startingBid ||
+                formData.bidStep !== originalData.bidStep ||
+                formData.instantBuy !== originalData.instantBuy ||
+                formData.startTime !== originalData.startTime ||
+                formData.endTime !== originalData.endTime ||
+                formData.autoExtend !== originalData.autoExtend ||
+                description !== originalData.productDescription;
+
+            setHasChanges(imagesChanged || fieldsChanged);
+        });
+
+        return () => subscription.unsubscribe();
+    }, [isEditing, originalData, imageFiles, coverImageIndex, description, selectedCategories, watch]);
+
+    // Additional check for coverImageIndex changes (since it's not a form field)
+    useEffect(() => {
+        if (!isEditing || !originalData) return;
+
+        if (coverImageIndex !== originalData.coverImageIndex) {
+            setHasChanges(true);
+        }
+    }, [coverImageIndex, isEditing, originalData]);
 
     const maxImages = 10;
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,31 +218,36 @@ export default function CreateAuctionBody({ productId }: { productId?: string | 
         try {
             setSubmitting(true);
 
-            // Mock image URLs for now since there's no upload service
-            // In a real app, you'd upload them to S3/Cloudinary first
-            const mockImages = data.images.map((_: any, index: number) =>
-                `https://picsum.photos/seed/${data.productName.replace(/\s+/g, '')}${index}/300`
-            );
+            const formData = new FormData();
+            formData.append("seller", user.id.toString());
+            formData.append("name", data.productName);
+            formData.append("categories", JSON.stringify(selectedCategories));
+            formData.append("init_price", data.startingBid.toString());
+            formData.append("step_price", data.bidStep.toString());
+            if (data.instantBuy) formData.append("instant_price", data.instantBuy.toString());
+            formData.append("start_at", new Date(data.startTime).toISOString());
+            formData.append("expired_at", new Date(data.endTime).toISOString());
+            formData.append("description", data.productDescription);
+            formData.append("isExtent", data.autoExtend ? "true" : "false");
+            formData.append("coverImageIndex", coverImageIndex.toString());
 
-            const payload = {
-                seller: user.id,
-                name: data.productName,
-                category: parseInt(data.category, 10),
-                images: mockImages,
-                init_price: data.startingBid,
-                step_price: data.bidStep,
-                instant_price: data.instantBuy || null,
-                start_at: new Date(data.startTime).toISOString(),
-                expired_at: new Date(data.endTime).toISOString(),
-                description: data.productDescription,
-                isExtent: !!data.autoExtend
-            };
+            // Handle images carefully to support editing
+            const imagesOrder: string[] = [];
+            imageFiles.forEach(img => {
+                if (img.originalName) {
+                    imagesOrder.push(`existing:${img.originalName}`);
+                } else {
+                    imagesOrder.push("new");
+                    formData.append("images", img.file);
+                }
+            });
+            formData.append("imagesOrder", JSON.stringify(imagesOrder));
 
             if (isEditing) {
-                const result = await productService.updateProduct(productId, payload);
+                const result = await productService.updateProduct(productId, formData);
                 toast.success(result.message || "Auction updated successfully!");
             } else {
-                const result = await productService.addProduct(payload);
+                const result = await productService.addProduct(formData);
                 toast.success(result.message || "Auction created successfully!");
             }
             navigate("/profile/sellings");
@@ -174,15 +273,31 @@ export default function CreateAuctionBody({ productId }: { productId?: string | 
                             placeholder="Enter product name" {...register("productName")} />
                         {errors.productName && <p className="text-red-400 text-sm mt-1">{errors.productName.message as any}</p>}
                     </div>
-                    <div>
-                        <label htmlFor="category" className="text-white/80">Category<span className="text-red-500">*</span></label>
-                        <select id="category" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white h-10" {...register("category")}>
-                            <option value="">Select a category</option>
+                    <div className="lg:col-span-2">
+                        <label className="text-white/80">Categories<span className="text-red-500">*</span></label>
+                        <div className="mt-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 p-4 rounded-md bg-(--secondary) border border-white/10">
                             {categories.map((cat: any) => (
-                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                <label key={cat.id} className="flex items-center gap-2 p-2 rounded hover:bg-white/5 cursor-pointer transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        value={cat.id}
+                                        checked={selectedCategories.includes(cat.id.toString())}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            const newSelected = e.target.checked
+                                                ? [...selectedCategories, value]
+                                                : selectedCategories.filter(id => id !== value);
+                                            setSelectedCategories(newSelected);
+                                            setValue("categories", newSelected);
+                                            trigger("categories");
+                                        }}
+                                        className="form-checkbox h-4 w-4 text-(--primary) bg-(--third) border-white/20 rounded"
+                                    />
+                                    <span className="text-white/90 text-sm">{cat.name}</span>
+                                </label>
                             ))}
-                        </select>
-                        {errors.category && <p className="text-red-400 text-sm mt-1">{errors.category.message as any}</p>}
+                        </div>
+                        {errors.categories && <p className="text-red-400 text-sm mt-1">{errors.categories.message as any}</p>}
                     </div>
                 </div>
 
@@ -203,30 +318,53 @@ export default function CreateAuctionBody({ productId }: { productId?: string | 
                 </div>
                 <div className="mt-4 border-t border-white/10 pt-4 w-full">
                     {imageFiles && imageFiles.length > 0 ? (
-                        <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                            {imageFiles.map((img, index) => (
-                                <li key={index} className="relative group">
-                                    <img
-                                        src={img.url}
-                                        alt={img.name}
-                                        className="w-full aspect-square object-cover rounded-md border border-white/10"
-                                    />
-                                    <p className="text-white/60 text-xs mt-1 text-center truncate">{img.name}</p>
+                        <div className="space-y-4">
+                            <p className="text-white/80 text-sm">Select an image to be the cover image (The one displayed first):</p>
+                            <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                {imageFiles.map((img, index) => (
+                                    <li key={index} className="relative group">
+                                        <div className={`relative p-1 rounded-md border-2 transition-all ${coverImageIndex === index ? 'border-(--primary)' : 'border-transparent'}`}>
+                                            <img
+                                                src={img.url}
+                                                alt={img.name}
+                                                className="w-full aspect-square object-cover rounded-md"
+                                            />
+                                            {coverImageIndex === index && (
+                                                <div className="absolute top-2 left-2 bg-(--primary) text-black text-[10px] font-bold px-2 py-0.5 rounded shadow-lg">
+                                                    COVER
+                                                </div>
+                                            )}
+                                        </div>
+                                        <p className="text-white/60 text-xs mt-1 text-center truncate px-1">{img.name}</p>
 
-                                    <button type="button"
-                                        onClick={() =>
-                                            setImageFiles((prev) => {
-                                                const newImageFiles = prev.filter((_, i) => i !== index);
-                                                setValue("images", newImageFiles.map(img => img.file));
-                                                trigger("images");
-                                                return newImageFiles;
-                                            })}
-                                        className="absolute h-8 w-8 top-1 right-1 bg-black/60 text-white text-xs rounded px-2 opacity-0 group-hover:opacity-100 transition">
-                                        &times;
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
+                                        <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button type="button"
+                                                onClick={() => setCoverImageIndex(index)}
+                                                title="Set as cover"
+                                                className={`h-7 w-7 flex items-center justify-center bg-black/80 text-white rounded shadow-lg hover:bg-(--primary) hover:text-black transition-colors ${coverImageIndex === index ? 'hidden' : ''}`}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                                                </svg>
+                                            </button>
+                                            <button type="button"
+                                                onClick={() =>
+                                                    setImageFiles((prev) => {
+                                                        const newImageFiles = prev.filter((_, i) => i !== index);
+                                                        setValue("images", newImageFiles.map(img => img.file));
+                                                        trigger("images");
+                                                        if (coverImageIndex === index) setCoverImageIndex(0);
+                                                        else if (coverImageIndex > index) setCoverImageIndex(coverImageIndex - 1);
+                                                        return newImageFiles;
+                                                    })}
+                                                title="Remove image"
+                                                className="h-7 w-7 flex items-center justify-center bg-black/80 text-white rounded shadow-lg hover:bg-red-500 transition-colors">
+                                                &times;
+                                            </button>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
                     ) : (
                         <p className="text-white/60 text-center text-sm">No images uploaded yet.</p>
                     )}
@@ -333,14 +471,14 @@ export default function CreateAuctionBody({ productId }: { productId?: string | 
                             onEditorChange={(content) => {
                                 // Keep the full HTML content
                                 setDescription(content);
-                                
+
                                 // Extract plain text for word counting only
                                 let plainText = content
                                     .replace(/<br\s*\/?>/gi, '\n')
                                     .replace(/<\/p>/gi, '\n')
                                     .replace(/<p[^>]*>/gi, '')
                                     .replace(/<[^>]*>/g, ''); // Remove remaining HTML tags
-                                
+
                                 plainText = plainText
                                     .replace(/&nbsp;/g, ' ')
                                     .replace(/&amp;/g, '&')
@@ -352,11 +490,11 @@ export default function CreateAuctionBody({ productId }: { productId?: string | 
                                     .replace(/\s+\n/g, '\n')
                                     .replace(/[ \t]+/g, ' ')
                                     .trim();
-                                
+
                                 // Count words from plain text only
                                 const words = plainText.split(/\s+/).filter(word => word.length > 0);
                                 const currentWordCount = words.length;
-                                
+
                                 // Hard limit: max 500 words
                                 if (currentWordCount > 500) {
                                     const truncated = words.slice(0, 500).join(' ');
@@ -378,11 +516,10 @@ export default function CreateAuctionBody({ productId }: { productId?: string | 
                         />
                     </div>
                     <div className="flex justify-between items-center">
-                        <p className={`text-left text-sm mt-4 ${
-                            wordCount === 0 ? 'text-white/60' : 
-                            wordCount > 500 ? 'text-red-500' : 
-                            'text-white/60'
-                        }`}>
+                        <p className={`text-left text-sm mt-4 ${wordCount === 0 ? 'text-white/60' :
+                            wordCount > 500 ? 'text-red-500' :
+                                'text-white/60'
+                            }`}>
                             {wordCount} words / 500 words
                         </p>
                         {errors.productDescription && <p className="text-red-400 text-sm mt-1">{errors.productDescription.message}</p>}
@@ -441,7 +578,7 @@ export default function CreateAuctionBody({ productId }: { productId?: string | 
                     Cancel
                 </button>
                 <button className="bg-(--primary) text-black w-full px-6 py-2 rounded-md hover:scale-101 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={submitting}>
+                    disabled={submitting || (isEditing && !hasChanges)}>
                     {submitting ? (isEditing ? "Updating..." : "Creating...") : (isEditing ? "Update Auction" : "Create Auction")}
                 </button>
 

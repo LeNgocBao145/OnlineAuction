@@ -35,6 +35,11 @@ export default function AuctionInfo() {
           </div>
 
           <div className="flex justify-between items-center border-b border-white/5 pb-2">
+            <p className="text-white/40 text-xs uppercase tracking-widest font-semibold">Starts at</p>
+            <p className="text-(--primary) font-mono font-bold tracking-tight">{formatDate(product.starting_at)}</p>
+          </div>
+
+          <div className="flex justify-between items-center border-b border-white/5 pb-2">
             <p className="text-white/40 text-xs uppercase tracking-widest font-semibold">Ends at</p>
             <p className="text-(--primary) font-mono font-bold tracking-tight">{formatDate(product.expired_at)}</p>
           </div>

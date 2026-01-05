@@ -16,6 +16,7 @@ export interface Product {
   is_new?: boolean;
   is_ending_soon?: boolean;
   expired_at?: string;
+  starting_at?: string;
 }
 
 export interface ProductDescription {

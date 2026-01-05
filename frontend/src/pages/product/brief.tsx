@@ -101,13 +101,13 @@ export default function ProductBrief() {
           </div>
         </div>
       )}
-      <div className="relative border border-white/10 bg-(--third) w-full min-h-[600px] rounded-2xl p-8 z-10 flex flex-col justify-between shadow-2xl">
+      <div className="relative border border-white/10 bg-(--third) w-full min-h-[600px] rounded-2xl p-6 lg:p-8 z-10 flex flex-col justify-between shadow-2xl">
 
 
         {/* Header Section */}
         <div className="space-y-6">
           <div className="flex justify-between items-start">
-            <h1 className="text-white text-4xl font-extrabold tracking-tight leading-tight max-w-[85%]">
+            <h1 className="text-white text-3xl lg:text-4xl font-extrabold tracking-tight leading-tight max-w-[85%]">
               {product.name}
             </h1>
             <button
@@ -125,9 +125,12 @@ export default function ProductBrief() {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-lg px-4 py-2 flex items-center justify-center">
-              <p className="text-(--primary) font-mono text-lg font-bold">
-                {getRemainingTime(product.expired_at)}
+            <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-lg px-4 py-2 flex flex-col items-center justify-center min-w-[120px]">
+              <p className="text-white/40 text-[10px] uppercase tracking-widest font-bold mb-0.5">
+                {product.state === "incoming" ? "Opening in" : "Time Left"}
+              </p>
+              <p className="text-(--primary) font-mono text-lg font-bold leading-none">
+                {getRemainingTime(product.state === "incoming" ? product.starting_at || "" : product.expired_at)}
               </p>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-white/5">
@@ -151,24 +154,24 @@ export default function ProductBrief() {
           <div className="flex justify-between items-end border-b border-white/5 pb-4">
             <div className="flex flex-col">
               <span className="text-white/50 text-xs uppercase tracking-widest mb-1">Current price</span>
-              <p className="text-3xl font-bold text-(--primary) drop-shadow-sm">
+              <p className="text-2xl lg:text-3xl font-bold text-(--primary) drop-shadow-sm">
                 {formatCurrency(product.current_price)}
               </p>
             </div>
             {product.instant_price && (
               <div className="flex flex-col text-right">
                 <span className="text-white/50 text-xs uppercase tracking-widest mb-1">Buy now</span>
-                <p className="text-xl font-semibold text-white">
+                <p className="text-lg lg:text-xl font-semibold text-white">
                   {formatCurrency(product.instant_price)}
                 </p>
               </div>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-8">
+          <div className="grid grid-cols-2 gap-4 lg:gap-8">
             <div className="flex flex-col">
               <span className="text-white/50 text-xs uppercase tracking-widest mb-1">Seller</span>
-              <p className="text-lg font-medium text-white/90">
+              <p className="text-base lg:text-lg font-medium text-white/90">
                 {product.user_relation === "seller" ? (
                   <span className="text-(--primary) font-bold">You</span>
                 ) : (
@@ -180,7 +183,7 @@ export default function ProductBrief() {
               <span className="text-white/50 text-xs uppercase tracking-widest mb-1">
                 {product.state === "sold" ? "Winner" : "Highest bidder"}
               </span>
-              <p className="text-lg font-medium text-white/90">
+              <p className="text-base lg:text-lg font-medium text-white/90">
                 {highestBid.name === "—" ? "None" :
                   (user?.id && highestBid.id === user.id) ?
                     <span className="text-(--primary) font-bold">You</span> :
@@ -190,7 +193,7 @@ export default function ProductBrief() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-8">
+          <div className="grid grid-cols-2 gap-4 lg:gap-8">
             <div className="flex flex-col">
               <span className="text-white/50 text-xs uppercase tracking-widest mb-1">Bids</span>
               <p className="text-lg font-bold text-white/90">

@@ -201,7 +201,7 @@ CHECK (created_at <= CURRENT_DATE);
 
 ALTER TABLE sell_product
 ADD CONSTRAINT chk_sell_product_expired_at
-CHECK (expired_at > created_at),
+CHECK (expired_at > starting_at),
 ADD CONSTRAINT chk_sell_product_init_price
 CHECK (init_price > 0),
 ADD CONSTRAINT chk_sell_product_step_price

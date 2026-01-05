@@ -39,6 +39,8 @@ export interface UserBidding {
     highest_bidder_id: string | number;
     created_at: string;
     time_left: string;
+    starting_at?: string;
+    expired_at?: string;
     categories: string[];
     bid_count: string;
     rank: number;
@@ -52,6 +54,7 @@ export interface UserSelling {
     state: string;
     created_at: string;
     expired_at: string;
+    starting_at?: string;
     time_left: string;
     categories: string[];
     bid_count: string;

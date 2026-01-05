@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import useSearchStore from "@/stores/searchStore";
 import { formatTimeLeft } from "@/utils/timeUtils";
 import { formatCurrency } from "@/utils/numberUtils";
+import { getImageUrl } from "@/utils/productUtils";
 
 export default function SearchBody() {
     const navigate = useNavigate();
@@ -98,7 +99,7 @@ export default function SearchBody() {
                             const secondsLeft = Math.floor((expiry - now) / 1000);
                             const secondsSinceCreated = Math.floor((now - created) / 1000);
 
-                            const isEndingSoon = secondsLeft > 0 && secondsLeft <= 300;
+                            const isEndingSoon = item.state === "bidding" && secondsLeft > 0 && secondsLeft <= 300;
                             const isNew = secondsSinceCreated >= 0 && secondsSinceCreated <= 300;
 
                             return (
@@ -123,7 +124,7 @@ export default function SearchBody() {
 
                                     <div className="relative overflow-hidden rounded-lg mb-4">
                                         <img
-                                            src={item.image || "/placeholder.jpg"}
+                                            src={getImageUrl(item.image) || "/placeholder.jpg"}
                                             alt={item.name}
                                             className="w-full h-48 object-cover bg-(--secondary) transition-transform duration-500 group-hover:scale-110"
                                         />
@@ -150,9 +151,11 @@ export default function SearchBody() {
                                     <div className="flex justify-between mt-auto pt-4 border-t border-white/5">
                                         <div className="flex flex-col">
                                             <p className={`text-sm font-bold ${isEndingSoon ? "text-red-400 animate-pulse" : "text-white"}`}>
-                                                {formatTimeLeft(item.expired_at)}
+                                                {formatTimeLeft(item.state === "incoming" ? item.starting_at : item.expired_at)}
                                             </p>
-                                            <p className="text-white/40 text-[10px] uppercase tracking-widest">Time Left</p>
+                                            <p className="text-white/40 text-[10px] uppercase tracking-widest">
+                                                {item.state === "incoming" ? "Opening in" : "Time Left"}
+                                            </p>
                                         </div>
                                         <div className="flex flex-col text-right justify-center">
                                             <div className="flex items-center gap-1.5 justify-end">

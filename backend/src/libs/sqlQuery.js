@@ -83,7 +83,9 @@ export const getBiddingsByUserId = (sortLogic) => `
         bidder.name AS highest_bidder_name,
         bidder.id AS highest_bidder_id,
         sp.created_at,
-        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
+        sp.starting_at,
+        sp.expired_at,
+        EXTRACT(EPOCH FROM (CASE WHEN p.state = 'incoming' THEN sp.starting_at ELSE sp.expired_at END - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
         COUNT(DISTINCT pb.id) AS bid_count,
         ts_rank(p.search_vector, plainto_tsquery('simple', unaccent($2))) AS rank,
@@ -116,7 +118,7 @@ export const getBiddingsByUserId = (sortLogic) => `
 
     GROUP BY 
         p.id,
-        sp.expired_at, sp.created_at, sp.instant_price,
+        sp.expired_at, sp.starting_at, sp.created_at, sp.instant_price,
         bidder.name, bidder.id,
         query, p.search_vector
 
@@ -131,7 +133,9 @@ export const getSellingsByUserId = (sortLogic) => `
         sp.instant_price,
         bidder.name AS highest_bidder,
         sp.created_at,
-        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
+        sp.starting_at,
+        sp.expired_at,
+        EXTRACT(EPOCH FROM (CASE WHEN p.state = 'incoming' THEN sp.starting_at ELSE sp.expired_at END - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
         COUNT(DISTINCT b.id) AS bid_count,
         ts_rank(p.search_vector, plainto_tsquery('simple', unaccent($2))) AS rank,
@@ -163,7 +167,7 @@ export const getSellingsByUserId = (sortLogic) => `
 
     GROUP BY 
         p.id,
-        sp.expired_at, sp.created_at, sp.instant_price,
+        sp.expired_at, sp.starting_at, sp.created_at, sp.instant_price,
         bidder.name, 
         query, p.search_vector
 
@@ -178,8 +182,9 @@ export const getWonsByUserId = (sortLogic) => `
         sp.instant_price,
         bidder.name AS highest_bidder,
         sp.created_at,
-        sp.expired_at as win_time,
-        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
+        sp.expired_at,
+        sp.starting_at,
+        EXTRACT(EPOCH FROM (CASE WHEN p.state = 'incoming' THEN sp.starting_at ELSE sp.expired_at END - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
         COUNT(DISTINCT b.id) AS bid_count,
         ts_rank(p.search_vector, plainto_tsquery('simple', unaccent($2))) AS rank,
@@ -212,7 +217,7 @@ export const getWonsByUserId = (sortLogic) => `
 
     GROUP BY 
         p.id,
-        sp.expired_at, sp.created_at, sp.instant_price,
+        sp.expired_at, sp.starting_at, sp.created_at, sp.instant_price,
         bidder.name, 
         query, p.search_vector
 
@@ -315,11 +320,11 @@ export const getCategoryProductCount = `SELECT COUNT(*) FROM product_categories 
 // Product Queries
 export const getProducts = `SELECT ${getProductColumns()} FROM products p`;
 
-export const createProduct = `INSERT INTO products (name, current_price, image) VALUES ($1, $2, $3) RETURNING *`;
+export const createProduct = `INSERT INTO products (name, current_price, image, state) VALUES ($1, $2, $3, $4) RETURNING *`;
 
-export const createProductCategory = `INSERT INTO product_categories (product, category) VALUES ($1, $2) RETURNING *`;
+export const createProductCategory = `INSERT INTO product_categories (product, category) VALUES ($1, $2) ON CONFLICT (product, category) DO NOTHING RETURNING *`;
 
-export const updateProductById = `UPDATE products SET name = $1, current_price = $2, image = $3 WHERE id = $4 RETURNING *`;
+export const updateProductById = `UPDATE products SET name = $1, current_price = $2, image = $3, state = $4 WHERE id = $5 RETURNING *`;
 
 
 export const deleteProductById = `DELETE FROM products WHERE id = $1`;
@@ -349,8 +354,9 @@ export const getFavoritesQuery = (sortLogic) => `
         sp.instant_price,
         bidder.name AS highest_bidder,
         sp.created_at,
+        sp.starting_at,
         sp.expired_at,
-        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
+        EXTRACT(EPOCH FROM (CASE WHEN p.state = 'incoming' THEN sp.starting_at ELSE sp.expired_at END - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
         COUNT(DISTINCT b.id) AS bid_count,
         (EXTRACT(EPOCH FROM (NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
@@ -386,7 +392,7 @@ export const getFavoritesQuery = (sortLogic) => `
     GROUP BY 
         p.id,
         f.created_at,
-        sp.expired_at, sp.created_at, sp.instant_price,
+        sp.expired_at, sp.starting_at, sp.created_at, sp.instant_price,
         bidder.name, 
         query, p.search_vector, is_ending_soon, is_new
 
@@ -410,6 +416,7 @@ export const getProductDetailsById = `
             sp.instant_price AS instant_price,
             u.name AS seller_name,
             sp.created_at,
+            sp.starting_at,
             sp.expired_at
         FROM products p
             LEFT JOIN sell_product sp ON sp.product = p.id
@@ -514,6 +521,14 @@ export const getProductDetailsById = `
 `;
 
 export const getFilteredProductsQuery = (sortLogic) => `
+    WITH RECURSIVE search_query AS (
+        SELECT plainto_tsquery('simple', unaccent($1)) as q
+    ),
+    cat_tree AS (
+        SELECT id FROM categories WHERE ($2::int[] IS NOT NULL AND id = ANY($2))
+        UNION ALL
+        SELECT c.id FROM categories c JOIN cat_tree ct ON c.parent = ct.id
+    )
     SELECT
         ${getProductColumns()},
         sp.instant_price,
@@ -524,13 +539,17 @@ export const getFilteredProductsQuery = (sortLogic) => `
          JOIN categories c ON pc.category = c.id  
          WHERE pc.product = p.id LIMIT 1) AS category_name,
         sp.created_at,
+        sp.starting_at,
         sp.expired_at,
-        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
-        ARRAY_AGG(DISTINCT c.name) AS categories,
+        EXTRACT(EPOCH FROM (CASE WHEN p.state = 'incoming' THEN sp.starting_at ELSE sp.expired_at END - NOW())) AS time_left,
+        (SELECT json_agg(json_build_object('id', c2.id, 'name', c2.name)) 
+         FROM product_categories pc2 
+         JOIN categories c2 ON c2.id = pc2.category 
+         WHERE pc2.product = p.id) AS categories,
         COUNT(DISTINCT b.id) AS bid_count,
         (EXTRACT(EPOCH FROM (NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
         (EXTRACT(EPOCH FROM (sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon,
-        ts_rank(p.search_vector, plainto_tsquery('simple', unaccent($1))) AS rank,
+        ts_rank(p.search_vector, (SELECT q FROM search_query)) AS rank,
         COUNT(*) OVER() AS total_count
 
     FROM
@@ -539,8 +558,6 @@ export const getFilteredProductsQuery = (sortLogic) => `
             LEFT JOIN users seller ON sp.seller = seller.id
             LEFT JOIN bidder_winner bw ON p.id = bw.product
             LEFT JOIN users winner ON bw.bidder = winner.id
-            LEFT JOIN product_categories pc ON p.id = pc.product
-            LEFT JOIN categories c ON pc.category = c.id
             LEFT JOIN bids b ON p.id = b.product
             LEFT JOIN LATERAL (
                 SELECT u.name
@@ -548,21 +565,20 @@ export const getFilteredProductsQuery = (sortLogic) => `
                 WHERE b2.product = p.id
                 ORDER BY b2.price DESC
                 LIMIT 1
-            ) bidder ON true,
-            plainto_tsquery('simple', unaccent($1)) AS query
+            ) bidder ON true
 
-    WHERE (p.search_vector @@ query OR p.name ILIKE '%' || $1 || '%')
-      AND ($2::int IS NULL OR pc.category = $2)
+    WHERE (p.search_vector @@ (SELECT q FROM search_query) OR p.name ILIKE '%' || $1 || '%')
+      AND ($2::int[] IS NULL OR p.id IN (SELECT pc3.product FROM product_categories pc3 WHERE pc3.category IN (SELECT id FROM cat_tree)))
       AND (sp.created_at >= $3::timestamp OR $3::timestamp IS NULL)
       AND (sp.created_at <= $4::timestamp OR $4::timestamp IS NULL)
       AND (p.current_price >= $5 AND p.current_price <= $6 OR $5 IS NULL OR $6 IS NULL)
       AND (p.state = ANY($7) OR $7 IS NULL)
+      AND ($10::int IS NULL OR p.id != $10)
 
     GROUP BY 
         p.id,
-        sp.expired_at, sp.created_at, sp.instant_price,
-        seller.name, bidder.name, winner.name,
-        query, p.search_vector
+        sp.expired_at, sp.starting_at, sp.created_at, sp.instant_price,
+        seller.name, bidder.name, winner.name
 
     ORDER BY ${sortLogic}, rank DESC, is_new DESC
 
@@ -574,7 +590,7 @@ export const getProductExistsById = `SELECT id FROM products WHERE id = $1`;
 export const getProductById = getProductDetailsById;
 
 export const createQuestion = `
-    INSERT INTO product_questions (questioner, product, question, asked_at) VALUES ($1, $2, $3, NOW()) RETURNING *;
+    INSERT INTO product_questions(questioner, product, question, asked_at) VALUES($1, $2, $3, NOW()) RETURNING *;
 `;
 
 export const updateQuestionAnswer = `
@@ -582,22 +598,22 @@ export const updateQuestionAnswer = `
 `;
 
 export const getBidRequestsByProductId = (sortLogic) => `
-   SELECT
+SELECT
         ${getUserColumns()},
-        br.id AS request_id,
-        br.request_date,
-        br.state AS request_state,
+br.id AS request_id,
+    br.request_date,
+    br.state AS request_state,
         ts_rank(u.search_vector, plainto_tsquery('simple', unaccent($1))) AS rank,
-        COUNT(*) OVER() AS total_count
+            COUNT(*) OVER() AS total_count
 
-    FROM
+FROM
         bid_requests br
             JOIN users u ON u.id = br.bidder
             CROSS JOIN plainto_tsquery('simple', unaccent($1)) AS query
 
-    WHERE (u.search_vector @@ query OR u.email ILIKE '%' || $1 || '%' OR u.name ILIKE '%' || $1 || '%')
-      AND (br.product = $2 OR $2 IS NULL)
-      AND (br.state = ANY($3) OR $3 IS NULL)
+WHERE(u.search_vector @@query OR u.email ILIKE '%' || $1 || '%' OR u.name ILIKE '%' || $1 || '%')
+AND(br.product = $2 OR $2 IS NULL)
+AND(br.state = ANY($3) OR $3 IS NULL)
 
     ORDER BY ${sortLogic}, rank DESC
 
@@ -606,22 +622,22 @@ export const getBidRequestsByProductId = (sortLogic) => `
 
 export const checkIsAllowedBidder = `
     SELECT 1 FROM allowed_bidder WHERE bidder = $1 AND product = $2
-`;
+    `;
 
 export const getProductAndSellInfoById = `
-    SELECT
-        p.id,                 
-        p.name,
-        p.current_price,
-        p.image,
-        p.state,
-        sp.instant_price,
-        sp.init_price,
-        sp.seller,             
-        sp.step_price,
-        sp.created_at,         
-        sp.expired_at,       
-        u.name AS seller_name,
+SELECT
+p.id,
+    p.name,
+    p.current_price,
+    p.image,
+    p.state,
+    sp.instant_price,
+    sp.init_price,
+    sp.seller,
+    sp.step_price,
+    sp.created_at,
+    sp.expired_at,
+    u.name AS seller_name,
         u.email
         
     FROM products p
@@ -636,7 +652,7 @@ export const getBidRequestByBidderAndProduct = `
 `;
 
 export const createBidRequest = `
-    INSERT INTO bid_requests (bidder, product, request_date, state) VALUES ($1, $2, NOW(), 'pending');
+    INSERT INTO bid_requests(bidder, product, request_date, state) VALUES($1, $2, NOW(), 'pending');
 `;
 
 export const updateBidRequestReset = `
@@ -646,15 +662,15 @@ export const updateBidRequestReset = `
 `;
 
 export const approveBidRequest = `
-    WITH updated_request AS (
-        UPDATE bid_requests
+    WITH updated_request AS(
+    UPDATE bid_requests
         SET state = 'success'
         WHERE id = $1 AND state = 'pending'
         RETURNING bidder, product
-    )
-    INSERT INTO allowed_bidder (bidder, product)
+)
+    INSERT INTO allowed_bidder(bidder, product)
     SELECT bidder, product FROM updated_request
-    ON CONFLICT (bidder, product) DO NOTHING;
+    ON CONFLICT(bidder, product) DO NOTHING;
 `;
 
 export const rejectBidRequest = `
@@ -664,37 +680,37 @@ export const rejectBidRequest = `
 `;
 
 export const handleInstantBuyQuery = `
-    WITH updated_product AS (
-        UPDATE products
+    WITH updated_product AS(
+    UPDATE products
         SET current_price = $3, state = 'sold'
         WHERE id = $2 AND state = 'bidding'
         RETURNING id
-    ),
-    inserted_bid AS (
-        INSERT INTO bids (buyer, product, price, bid_date)
+),
+    inserted_bid AS(
+        INSERT INTO bids(buyer, product, price, bid_date)
         SELECT $1, id, $3, NOW() 
         FROM updated_product
     ),
-    inserted_winner AS (
-        INSERT INTO bidder_winner (bidder, product)
+        inserted_winner AS(
+            INSERT INTO bidder_winner(bidder, product)
         SELECT $1, id 
         FROM updated_product
-    )
-    INSERT INTO trade_verifications (product, bidder, seller, delivery_address)
-    SELECT 
-        up.id,                                                  
-        $1,                                                    
-        (SELECT seller FROM sell_product WHERE product = up.id),
-        (SELECT address FROM users WHERE id = $1)              
-    FROM updated_product up;                     
+        )
+    INSERT INTO trade_verifications(product, bidder, seller, delivery_address)
+SELECT
+up.id,
+    $1,
+    (SELECT seller FROM sell_product WHERE product = up.id),
+(SELECT address FROM users WHERE id = $1)              
+    FROM updated_product up;
 `;
 
 export const placeBidTransaction = `
-    WITH new_bid AS (
-        INSERT INTO bids (buyer, product, price, bid_date)
-        VALUES ($1, $2, $3, NOW())
+    WITH new_bid AS(
+    INSERT INTO bids(buyer, product, price, bid_date)
+        VALUES($1, $2, $3, NOW())
         RETURNING product
-    )
+)
     UPDATE products
     SET current_price = $3
     WHERE id = $2 
@@ -705,15 +721,15 @@ export const placeBidTransaction = `
 
 // Auto-bidding queries
 export const upsertAutoBid = `
-    INSERT INTO auto_bids (product, bidder, max_price, created_at)
-    VALUES ($1, $2, $3, NOW())
-    ON CONFLICT (product, bidder) 
+    INSERT INTO auto_bids(product, bidder, max_price, created_at)
+VALUES($1, $2, $3, NOW())
+    ON CONFLICT(product, bidder) 
     DO UPDATE SET max_price = $3, created_at = NOW()
-    RETURNING *;
+RETURNING *;
 `;
 
 export const getAutoBidByProductAndBidder = `
-    SELECT * FROM auto_bids WHERE product = $1 AND bidder = $2;
+SELECT * FROM auto_bids WHERE product = $1 AND bidder = $2;
 `;
 
 export const getTopAutoBidsForProduct = `
@@ -730,9 +746,9 @@ export const deleteAutoBid = `
 `;
 
 export const insertBidRecord = `
-    INSERT INTO bids (buyer, product, price, bid_date)
-    VALUES ($1, $2, $3, NOW())
-    RETURNING *;
+    INSERT INTO bids(buyer, product, price, bid_date)
+VALUES($1, $2, $3, NOW())
+RETURNING *;
 `;
 
 export const updateProductPrice = `
@@ -741,8 +757,8 @@ export const updateProductPrice = `
 
 // Leader bid queries
 export const getCurrentLeaderBid = `
-  SELECT 
-    b.id as bid_id,
+SELECT
+b.id as bid_id,
     b.buyer as bidder_id,
     b.price as bid_price,
     b.bid_date,
@@ -758,10 +774,10 @@ export const getCurrentLeaderBid = `
 export const getProductDescriptionsByProductId = `SELECT * FROM product_descriptions WHERE product = $1`;
 
 export const createSellProduct = `INSERT INTO sell_product(product, seller, init_price, step_price, instant_price, starting_at, expired_at, isExtent)
-                                            VALUES($1, $2, $3, $4, $5, $6, $7, $8)`;
+VALUES($1, $2, $3, $4, $5, $6, $7, $8)`;
 
 //Product images
-export const createProductImages = `INSERT INTO product_images (product, image_path) VALUES ($1, $2::varchar(500)[]) RETURNING *`;
+export const createProductImages = `INSERT INTO product_images(product, image_path) VALUES($1, $2:: varchar(500)[]) RETURNING * `;
 
 export const updateProductImages = ``;
 
@@ -774,9 +790,9 @@ export const getListProducts = (type, order) => {
     switch (type) {
         case 'ENDING_SOON':
             query = `SELECT
-                        p.name,
-                        p.current_price,
-                        CEIL(EXTRACT(EPOCH FROM (sp.expired_at - NOW())) / 60) AS minutes_left
+p.name,
+    p.current_price,
+    CEIL(EXTRACT(EPOCH FROM(sp.expired_at - NOW())) / 60) AS minutes_left
                      FROM sell_product sp
                      JOIN products p ON p.id = sp.product
                      WHERE p.state = 'bidding'
@@ -785,11 +801,11 @@ export const getListProducts = (type, order) => {
                      LIMIT $1`;
             break;
         case 'MOST_BIDDED':
-            query = `SELECT 
-                        p.id, 
-                        p.name, 
-                        count(b.id) AS bids,
-                        p.current_price
+            query = `SELECT
+p.id,
+    p.name,
+    count(b.id) AS bids,
+        p.current_price
                      FROM products p
                      LEFT JOIN bids b ON b.product = p.id
                      GROUP BY p.id, p.name, p.current_price
@@ -798,10 +814,10 @@ export const getListProducts = (type, order) => {
             break;
         case 'HIGHEST_PRICE':
             query = `SELECT
-                        p.id,
-                        p.name,
-                        count(b.id) AS bids,
-                        p.current_price
+p.id,
+    p.name,
+    count(b.id) AS bids,
+        p.current_price
                      FROM products p
                      LEFT JOIN bids b ON b.product = p.id
                      GROUP BY p.id, p.name, p.current_price
@@ -813,48 +829,48 @@ export const getListProducts = (type, order) => {
 }
 
 //Product descriptions
-export const createProductDescription = `INSERT INTO product_descriptions (product, description, created_at) VALUES ($1, $2, NOW()) RETURNING *`;
+export const createProductDescription = `INSERT INTO product_descriptions(product, description, created_at) VALUES($1, $2, NOW()) RETURNING * `;
 
 
 export const getProductDescription = `SELECT * FROM product_descriptions WHERE id = $1 AND product = $2`;
 
 //Category
 export const getListCategories = `
-    SELECT 
-        c.id, 
-        c.name, 
-        c.parent,
-        p.name AS parent_name
+SELECT
+c.id,
+    c.name,
+    c.parent,
+    p.name AS parent_name
     FROM categories c
     LEFT JOIN categories p ON c.parent = p.id
     ORDER BY c.name
-`;
+    `;
 
 // Admin Queries
 export const getRequests = (sortLogic) => `
-    SELECT
-        u.id AS user_id,
-        u.name,
-        u.email,
-        u.rating,
-        r.id AS id,
+SELECT
+u.id AS user_id,
+    u.name,
+    u.email,
+    u.rating,
+    r.id AS id,
         r.created_at AS created_at,
-        r.state AS state,
-        ts_rank(u.search_vector, plainto_tsquery('simple', unaccent($1))) AS rank,
-        COUNT(*) OVER() AS total_count
+            r.state AS state,
+                ts_rank(u.search_vector, plainto_tsquery('simple', unaccent($1))) AS rank,
+                    COUNT(*) OVER() AS total_count
 
-    FROM
+FROM
         requests r
             JOIN users u ON u.id = r.bidder
             CROSS JOIN plainto_tsquery('simple', unaccent($1)) AS query
 
-    WHERE (u.search_vector @@ query OR u.email ILIKE '%' || $1 || '%' OR u.name ILIKE '%' || $1 || '%')
-      AND (r.state = ANY($2) OR $2 IS NULL)
+WHERE(u.search_vector @@query OR u.email ILIKE '%' || $1 || '%' OR u.name ILIKE '%' || $1 || '%')
+AND(r.state = ANY($2) OR $2 IS NULL)
 
-    GROUP BY 
-        u.id, u.name, u.email, u.rating,
-        r.id, r.created_at, r.state,
-        query, u.search_vector
+    GROUP BY
+u.id, u.name, u.email, u.rating,
+    r.id, r.created_at, r.state,
+    query, u.search_vector
 
     ORDER BY ${sortLogic}, rank DESC
 
@@ -864,12 +880,12 @@ export const getRequests = (sortLogic) => `
 export const getRequestById = `SELECT * FROM requests WHERE id = $1`;
 
 export const approveRequest = `
-    WITH updated_request AS (
-        UPDATE requests
+    WITH updated_request AS(
+    UPDATE requests
         SET state = 'success'
         WHERE id = $1 AND state = 'pending'
         RETURNING bidder
-    )
+)
     UPDATE users
     SET role = 'seller'
     WHERE id = (SELECT bidder FROM updated_request);
@@ -883,32 +899,32 @@ export const rejectRequest = `
 
 // Home Queries
 export const getTop5EndingSoon = `
-    SELECT
+SELECT
         ${getProductColumns()},
-        p.image AS image_url,
-        sp.instant_price,
-        bidder.name AS highest_bidder,
+p.image AS image_url,
+    sp.instant_price,
+    bidder.name AS highest_bidder,
         sp.created_at,
         sp.expired_at,
-        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
-        ARRAY_AGG(DISTINCT c.name) AS categories,
-        COUNT(DISTINCT b.id) AS bid_count,
-        (EXTRACT(EPOCH FROM (NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
-        (EXTRACT(EPOCH FROM (sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon
+        EXTRACT(EPOCH FROM(sp.expired_at - NOW())) AS time_left,
+            ARRAY_AGG(DISTINCT c.name) AS categories,
+                COUNT(DISTINCT b.id) AS bid_count,
+                    (EXTRACT(EPOCH FROM(NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
+                        (EXTRACT(EPOCH FROM(sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon
 
-    FROM
+FROM
         products p
             JOIN sell_product sp ON p.id = sp.product
             LEFT JOIN product_categories pc ON p.id = pc.product
             LEFT JOIN categories c ON pc.category = c.id
             LEFT JOIN bids b ON p.id = b.product
-            LEFT JOIN LATERAL (
-                SELECT u.name
+            LEFT JOIN LATERAL(
+    SELECT u.name
                 FROM bids b2 JOIN users u ON b2.buyer = u.id
                 WHERE b2.product = p.id
                 ORDER BY b2.price DESC
                 LIMIT 1
-            ) bidder ON true
+) bidder ON true
 
     WHERE p.state = 'bidding' AND sp.expired_at > NOW()
 
@@ -920,32 +936,32 @@ export const getTop5EndingSoon = `
 `;
 
 export const getTop5MostBids = `
-    SELECT
+SELECT
         ${getProductColumns()},
-        p.image AS image_url,
-        sp.instant_price,
-        bidder.name AS highest_bidder,
+p.image AS image_url,
+    sp.instant_price,
+    bidder.name AS highest_bidder,
         sp.created_at,
         sp.expired_at,
-        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
-        ARRAY_AGG(DISTINCT c.name) AS categories,
-        COUNT(DISTINCT b.id) AS bid_count,
-        (EXTRACT(EPOCH FROM (NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
-        (EXTRACT(EPOCH FROM (sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon
+        EXTRACT(EPOCH FROM(sp.expired_at - NOW())) AS time_left,
+            ARRAY_AGG(DISTINCT c.name) AS categories,
+                COUNT(DISTINCT b.id) AS bid_count,
+                    (EXTRACT(EPOCH FROM(NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
+                        (EXTRACT(EPOCH FROM(sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon
 
-    FROM
+FROM
         products p
             JOIN sell_product sp ON p.id = sp.product
             LEFT JOIN product_categories pc ON p.id = pc.product
             LEFT JOIN categories c ON pc.category = c.id
             LEFT JOIN bids b ON p.id = b.product
-            LEFT JOIN LATERAL (
-                SELECT u.name
+            LEFT JOIN LATERAL(
+    SELECT u.name
                 FROM bids b2 JOIN users u ON b2.buyer = u.id
                 WHERE b2.product = p.id
                 ORDER BY b2.price DESC
                 LIMIT 1
-            ) bidder ON true
+) bidder ON true
 
     WHERE p.state = 'bidding'
 
@@ -957,32 +973,32 @@ export const getTop5MostBids = `
 `;
 
 export const getTop5HighestPrice = `
-    SELECT
+SELECT
         ${getProductColumns()},
-        p.image AS image_url,
-        sp.instant_price,
-        bidder.name AS highest_bidder,
+p.image AS image_url,
+    sp.instant_price,
+    bidder.name AS highest_bidder,
         sp.created_at,
         sp.expired_at,
-        EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
-        ARRAY_AGG(DISTINCT c.name) AS categories,
-        COUNT(DISTINCT b.id) AS bid_count,
-        (EXTRACT(EPOCH FROM (NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
-        (EXTRACT(EPOCH FROM (sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon
+        EXTRACT(EPOCH FROM(sp.expired_at - NOW())) AS time_left,
+            ARRAY_AGG(DISTINCT c.name) AS categories,
+                COUNT(DISTINCT b.id) AS bid_count,
+                    (EXTRACT(EPOCH FROM(NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
+                        (EXTRACT(EPOCH FROM(sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon
 
-    FROM
+FROM
         products p
             JOIN sell_product sp ON p.id = sp.product
             LEFT JOIN product_categories pc ON p.id = pc.product
             LEFT JOIN categories c ON pc.category = c.id
             LEFT JOIN bids b ON p.id = b.product
-            LEFT JOIN LATERAL (
-                SELECT u.name
+            LEFT JOIN LATERAL(
+    SELECT u.name
                 FROM bids b2 JOIN users u ON b2.buyer = u.id
                 WHERE b2.product = p.id
                 ORDER BY b2.price DESC
                 LIMIT 1
-            ) bidder ON true
+) bidder ON true
 
     WHERE p.state = 'bidding'
 
@@ -994,23 +1010,23 @@ export const getTop5HighestPrice = `
 `;
 
 // Transaction
-export const getTradeVerification = `SELECT t.product, 
-                                            t.bidder, 
-                                            t.seller,
-                                            t.delivery_address,
-                                            t.invoice_image,
-                                            t.sell_accept,
-                                            t.bidder_accept,
-                                            t.state,
-                                            b.name AS bidder_name,
-                                            b.address AS delivery_address,
-                                            b.rating AS bidder_rating,
-                                            s.name AS seller_name,
-                                            s.rating AS seller_rating,
-                                            p.name,
-                                            p.current_price,
-                                            p.image,
-                                            sp.expired_at
+export const getTradeVerification = `SELECT t.product,
+    t.bidder,
+    t.seller,
+    t.delivery_address,
+    t.invoice_image,
+    t.sell_accept,
+    t.bidder_accept,
+    t.state,
+    b.name AS bidder_name,
+        b.address AS delivery_address,
+            b.rating AS bidder_rating,
+                s.name AS seller_name,
+                    s.rating AS seller_rating,
+                        p.name,
+                        p.current_price,
+                        p.image,
+                        sp.expired_at
                                     FROM trade_verifications t
                                     JOIN users b ON b.id = t.bidder
                                     JOIN users s ON s.id = t.seller
@@ -1019,58 +1035,58 @@ export const getTradeVerification = `SELECT t.product,
                                     WHERE t.product = $1`;
 
 export const bidderSubmission = `UPDATE trade_verifications
-                                 SET
-                                    delivery_address = $1,
-                                    invoice_image = $2,
-                                    state = 'pending_seller_confirm'
+SET
+delivery_address = $1,
+    invoice_image = $2,
+    state = 'pending_seller_confirm'
                                  WHERE product = $3
                                  AND state = 'pending_payment'
-                                 RETURNING *`;
+RETURNING * `;
 
 export const sellerConfirmation = `UPDATE trade_verifications
-                                   SET
-                                    sell_accept = TRUE,
-                                    transport_image = $1,
-                                    state = 'pending_bidder_confirm'
+SET
+sell_accept = TRUE,
+    transport_image = $1,
+    state = 'pending_bidder_confirm'
                                    WHERE product = $2
                                    AND state = 'pending_seller_confirm'
-                                   RETURNING *`;
+RETURNING * `;
 
 export const bidderConfirmation = `UPDATE trade_verifications
-                                   SET
-                                    bidder_accept = TRUE,
-                                    state = 'completed'
+SET
+bidder_accept = TRUE,
+    state = 'completed'
                                    WHERE product = $1
                                    AND state = 'pending_bidder_confirm'
-                                   RETURNING *`;
+RETURNING * `;
 
-export const tradeCancel = `WITH cancelled_trade AS (
-                                    UPDATE trade_verifications
+export const tradeCancel = `WITH cancelled_trade AS(
+    UPDATE trade_verifications
                                     SET state = 'failed'
                                     WHERE product = $1
-                                    AND state IN (
-                                        'pending_payment',
-                                        'pending_seller_confirm',
-                                        'pending_bidder_confirm',
-                                        'completed'
-                                    )
+                                    AND state IN(
+        'pending_payment',
+        'pending_seller_confirm',
+        'pending_bidder_confirm',
+        'completed'
+    )
                                     RETURNING product, bidder, seller
-                                )
-                                INSERT INTO reviews (product, rater, ratee, liked, content)
-                                SELECT
-                                    product,
-                                    seller, 
-                                    bidder, 
-                                    false,      
-                                    'Trade cancelled by bidder'
+)
+                                INSERT INTO reviews(product, rater, ratee, liked, content)
+SELECT
+product,
+    seller,
+    bidder,
+    false,
+    'Trade cancelled by bidder'
                                 FROM cancelled_trade
-                                ON CONFLICT (product, ratee, rater)
+                                ON CONFLICT(product, ratee, rater)
                                 DO UPDATE SET
-                                    liked = false,
-                                    content = 'Trade cancelled by seller'`;
+liked = false,
+    content = 'Trade cancelled by seller'`;
 
 export const getWinner = `SELECT u.*
-                          FROM trade_verifications t
+    FROM trade_verifications t
                           JOIN users u ON u.id = t.bidder
                           WHERE t.product = $1`
 
@@ -1078,38 +1094,38 @@ export const getRoleFromTrade = `SELECT product, bidder, seller
                                 FROM trade_verifications
                                 WHERE product = $1`
 
-export const rating = `INSERT INTO reviews (product, rater, ratee, liked, content)
-                        VALUES ($1, $2, $3, $4, $5)
-                        RETURNING *`
+export const rating = `INSERT INTO reviews(product, rater, ratee, liked, content)
+VALUES($1, $2, $3, $4, $5)
+RETURNING * `
 
-export const getRating = `SELECT * 
-                        FROM reviews
+export const getRating = `SELECT *
+    FROM reviews
                         WHERE product = $1
                         AND rater = $2
                         AND ratee = $3`
 
 export const updateRating = `UPDATE reviews
-                            SET
-                                liked = $1,
-                                content = $2
+SET
+liked = $1,
+    content = $2
                             WHERE product = $3
                                 AND rater = $4
                                 AND ratee = $5
-                            RETURNING *`
+RETURNING * `
 
 // Message Queries
 export const createMessage = `
-    INSERT INTO messages (product, sender, content, image, type, created_at) 
-    VALUES ($1, $2, $3, $4, $5, NOW()) 
-    RETURNING *
-`;
+    INSERT INTO messages(product, sender, content, image, type, created_at)
+VALUES($1, $2, $3, $4, $5, NOW())
+RETURNING *
+    `;
 
 export const getMessagesByProduct = (sortLogic = "created_at DESC") => `
-    SELECT 
-        m.id,
-        m.product,
-        m.sender,
-        u.name AS sender_name,
+SELECT
+m.id,
+    m.product,
+    m.sender,
+    u.name AS sender_name,
         m.content,
         m.image,
         m.type,
@@ -1119,22 +1135,22 @@ export const getMessagesByProduct = (sortLogic = "created_at DESC") => `
     WHERE m.product = $1
     ORDER BY ${sortLogic}
     LIMIT $2 OFFSET $3
-`;
+    `;
 
 // Bidder Management Queries (for seller to manage bidders)
 export const getProductBidders = `
-    WITH all_bidders AS (
-        -- Get bidders from bids table
+    WITH all_bidders AS(
+        --Get bidders from bids table
         SELECT DISTINCT 
             b.buyer AS bidder_id,
-            u.name AS bidder_name,
-            u.email AS bidder_email,
-            u.rating AS bidder_rating,
-            MAX(b.price) AS highest_bid,
-            MAX(b.bid_date) AS last_bid_date,
-            NULL::numeric AS auto_bid_max,
-            'manual' AS bid_type,
-            false AS from_refuse
+        u.name AS bidder_name,
+        u.email AS bidder_email,
+        u.rating AS bidder_rating,
+        MAX(b.price) AS highest_bid,
+        MAX(b.bid_date) AS last_bid_date,
+        NULL:: numeric AS auto_bid_max,
+        'manual' AS bid_type,
+        false AS from_refuse
         FROM bids b
         JOIN users u ON u.id = b.buyer
         WHERE b.product = $1
@@ -1142,91 +1158,91 @@ export const getProductBidders = `
         
         UNION ALL
         
-        -- Get bidders from auto_bids table
+        --Get bidders from auto_bids table
         SELECT DISTINCT
             ab.bidder AS bidder_id,
-            u.name AS bidder_name,
-            u.email AS bidder_email,
-            u.rating AS bidder_rating,
-            NULL::numeric AS highest_bid,
-            ab.created_at AS last_bid_date,
-            ab.max_price AS auto_bid_max,
-            'auto' AS bid_type,
-            false AS from_refuse
+        u.name AS bidder_name,
+        u.email AS bidder_email,
+        u.rating AS bidder_rating,
+        NULL:: numeric AS highest_bid,
+        ab.created_at AS last_bid_date,
+        ab.max_price AS auto_bid_max,
+        'auto' AS bid_type,
+        false AS from_refuse
         FROM auto_bids ab
         JOIN users u ON u.id = ab.bidder
         WHERE ab.product = $1
         
         UNION ALL
         
-        -- Get refused bidders from refuse table
+        --Get refused bidders from refuse table
         SELECT DISTINCT
             r.buyer AS bidder_id,
-            u.name AS bidder_name,
-            u.email AS bidder_email,
-            u.rating AS bidder_rating,
-            NULL::numeric AS highest_bid,
-            NULL::timestamp AS last_bid_date,
-            NULL::numeric AS auto_bid_max,
-            'refused' AS bid_type,
-            true AS from_refuse
+        u.name AS bidder_name,
+        u.email AS bidder_email,
+        u.rating AS bidder_rating,
+        NULL:: numeric AS highest_bid,
+        NULL:: timestamp AS last_bid_date,
+        NULL:: numeric AS auto_bid_max,
+        'refused' AS bid_type,
+        true AS from_refuse
         FROM refuse r
         JOIN users u ON u.id = r.buyer
         WHERE r.product = $1
     ),
-    merged_bidders AS (
+    merged_bidders AS(
         SELECT 
             bidder_id,
-            bidder_name,
-            bidder_email,
-            bidder_rating,
-            MAX(highest_bid) AS highest_bid,
-            MAX(last_bid_date) AS last_bid_date,
-            MAX(auto_bid_max) AS auto_bid_max,
-            CASE 
+        bidder_name,
+        bidder_email,
+        bidder_rating,
+        MAX(highest_bid) AS highest_bid,
+        MAX(last_bid_date) AS last_bid_date,
+        MAX(auto_bid_max) AS auto_bid_max,
+        CASE 
                 WHEN bool_or(from_refuse) THEN 'refused'
                 WHEN MAX(auto_bid_max) IS NOT NULL THEN 'auto'
                 ELSE 'manual'
             END AS bid_type,
-            bool_or(from_refuse) AS is_refused
+        bool_or(from_refuse) AS is_refused
         FROM all_bidders
         GROUP BY bidder_id, bidder_name, bidder_email, bidder_rating
     )
-    SELECT 
-        mb.bidder_id,
-        mb.bidder_name,
-        mb.bidder_email,
-        mb.bidder_rating,
-        mb.highest_bid,
-        mb.last_bid_date,
-        mb.auto_bid_max,
-        mb.bid_type,
-        mb.is_refused,
-        COUNT(*) OVER() AS total_count
+SELECT
+mb.bidder_id,
+    mb.bidder_name,
+    mb.bidder_email,
+    mb.bidder_rating,
+    mb.highest_bid,
+    mb.last_bid_date,
+    mb.auto_bid_max,
+    mb.bid_type,
+    mb.is_refused,
+    COUNT(*) OVER() AS total_count
     FROM merged_bidders mb
     ORDER BY mb.is_refused ASC, mb.highest_bid DESC NULLS LAST, mb.last_bid_date DESC
     LIMIT $2 OFFSET $3;
 `;
 
 export const refuseBidder = `
-    WITH inserted_refuse AS (
-        INSERT INTO refuse (product, buyer)
-        VALUES ($1, $2)
-        ON CONFLICT (product, buyer) DO NOTHING
+    WITH inserted_refuse AS(
+    INSERT INTO refuse(product, buyer)
+        VALUES($1, $2)
+        ON CONFLICT(product, buyer) DO NOTHING
         RETURNING product, buyer
-    ),
-    deleted_bids AS (
+),
+    deleted_bids AS(
         DELETE FROM bids
         WHERE product = $1 AND buyer = $2
         RETURNING id
     ),
-    deleted_auto_bids AS (
-        DELETE FROM auto_bids
+        deleted_auto_bids AS(
+            DELETE FROM auto_bids
         WHERE product = $1 AND bidder = $2
         RETURNING product
-    )
-    SELECT 
-        (SELECT COUNT(*) FROM deleted_bids) AS deleted_bids_count,
+        )
+SELECT
+    (SELECT COUNT(*) FROM deleted_bids) AS deleted_bids_count,
         (SELECT COUNT(*) FROM deleted_auto_bids) AS deleted_auto_bids_count;
 `;
 
