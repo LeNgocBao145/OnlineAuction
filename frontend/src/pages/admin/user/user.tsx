@@ -5,13 +5,16 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import EditUserModal from "./editUserModal";
 import adminService, { type AdminUser } from "@/services/adminService";
+import useAuthStore from "@/stores/authStore";
 
 export default function UserManagementTab() {
+    const { user: currentUser } = useAuthStore();
     const [editingUser, setEditingUser] = useState(false);
     const [editingUserData, setEditingUserData] = useState<AdminUser | null>(null);
     const [userData, setUserData] = useState<AdminUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchKeyword, setSearchKeyword] = useState("");
+    const [roleFilter, setRoleFilter] = useState("All Roles");
     const [sortConfig, setSortConfig] = useState<{ key: keyof AdminUser; direction: "asc" | "desc" } | null>(null);
     const [pagination, setPagination] = useState({ page: 1, limit: 10, totalItems: 0, totalPages: 0 });
 
@@ -24,7 +27,13 @@ export default function UserManagementTab() {
                 const sortKey = `${sortConfig.key}_${sortConfig.direction}`;
                 sortParam = sortKey;
             }
-            const result = await adminService.getUsers(sortParam, pagination.page, pagination.limit);
+            const roleMap: Record<string, string[]> = {
+                "All Roles": [],
+                "Admin": ["admin"],
+                "Seller": ["seller"],
+                "Bidder": ["bidder"]
+            };
+            const result = await adminService.getUsers(sortParam, pagination.page, pagination.limit, roleMap[roleFilter]);
             setUserData(result.users);
             setPagination(result.pagination);
         } catch (error: any) {
@@ -36,7 +45,7 @@ export default function UserManagementTab() {
 
     useEffect(() => {
         fetchUsers();
-    }, [sortConfig, pagination.page]);
+    }, [sortConfig, pagination.page, roleFilter]);
 
     const handleDeleteUser = async (userId: number) => {
         if (!confirm("Are you sure you want to delete this user?")) return;
@@ -58,8 +67,9 @@ export default function UserManagementTab() {
     };
 
     const filteredUsers = userData.filter(user =>
-        user.name.toLowerCase().includes(searchKeyword.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchKeyword.toLowerCase())
+        (user.name.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchKeyword.toLowerCase())) &&
+        user.id !== currentUser?.id
     );
 
     const handlePageChange = (newPage: number) => {
@@ -77,14 +87,31 @@ export default function UserManagementTab() {
             <div className="px-[10%]">
                 <AdminHeader activeTab="user" />
                 <div className="p-4 border border-white/10 rounded-b-lg bg-(--third)">
-                    <div className="relative lg:w-1/3 w-full">
-                        <input
-                            className="border border-white/10 text-white/60 bg-(--secondary) w-full h-10 p-2 rounded-md"
-                            placeholder="Search users by name or email..."
-                            value={searchKeyword}
-                            onChange={(e) => setSearchKeyword(e.target.value)}
-                        />
-                        <MagnifyingGlassIcon className="w-5 h-5 text-white/60 absolute right-2 top-2.5" />
+                    <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+                        <div className="relative lg:w-2/3 w-full flex gap-4">
+                            <input
+                                className="border border-white/10 text-white/60 bg-(--secondary) w-full h-10 p-2 rounded-md"
+                                placeholder="Search users by name or email..."
+                                value={searchKeyword}
+                                onChange={(e) => setSearchKeyword(e.target.value)}
+                            />
+                            <MagnifyingGlassIcon className="w-5 h-5 text-white/60 absolute right-32 top-2.5" />
+                            <div>
+                                <select
+                                    className="bg-(--secondary) text-white/60 border border-white/10 rounded-md h-10 p-2"
+                                    value={roleFilter}
+                                    onChange={(e) => {
+                                        setRoleFilter(e.target.value);
+                                        setPagination(prev => ({ ...prev, page: 1 }));
+                                    }}
+                                >
+                                    <option value="All Roles">All Roles</option>
+                                    <option value="Admin">Admin</option>
+                                    <option value="Seller">Seller</option>
+                                    <option value="Bidder">Bidder</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                     <div className="bg-(--secondary) rounded-md p-4 mt-4">
                         <div className="overflow-x-auto">
@@ -115,20 +142,21 @@ export default function UserManagementTab() {
                                                             "text-red-400"
                                                 }>{user.role}</p>
                                                 <p className={
-                                                    user.rating >= 4.5 ? "text-green-400" :
-                                                        user.rating >= 4.0 ? "text-(--primary)" :
-                                                            "text-red-400"
+                                                    user.rating < 0.8 ? "text-yellow-400" : "text-white/60"
                                                 }>{user.rating}</p>
                                                 <p className="text-white/60">{new Date(user.birthdate).toLocaleDateString()}</p>
                                                 <div>
-                                                    <button className="text-sm bg-(--primary) text-black rounded-md px-2 py-1 mr-2 hover:bg-(--primary)/10"
+                                                    <button
+                                                        disabled={user.role === "admin"}
+                                                        className="text-sm bg-(--primary) text-black rounded-md px-2 py-1 mr-2 hover:bg-(--primary)/10 disabled:opacity-50 disabled:cursor-not-allowed"
                                                         onClick={() => {
                                                             setEditingUserData(user);
                                                             setEditingUser(true);
                                                         }}
                                                     >Edit</button>
                                                     <button
-                                                        className="text-sm bg-red-500 text-white rounded-md px-2 py-1 hover:bg-red-500/10"
+                                                        disabled={user.role === "admin"}
+                                                        className="text-sm bg-red-500 text-white rounded-md px-2 py-1 hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
                                                         onClick={() => handleDeleteUser(user.id)}
                                                     >Delete</button>
                                                 </div>

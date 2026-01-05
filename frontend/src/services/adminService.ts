@@ -48,11 +48,12 @@ export interface PaginationInfo {
 
 const adminService = {
   // User Management
-  async getUsers(sort?: string, page?: number, limit?: number): Promise<{ users: AdminUser[]; pagination: PaginationInfo }> {
+  async getUsers(sort?: string, page?: number, limit?: number, roles?: string[]): Promise<{ users: AdminUser[]; pagination: PaginationInfo }> {
     const params = new URLSearchParams();
     if (sort) params.append('sort', sort);
     if (page) params.append('page', page.toString());
     if (limit) params.append('limit', limit.toString());
+    if (roles && roles.length > 0) params.append('roles', roles.join(','));
     const res = await api.get(`/admins/accounts?${params.toString()}`, { withCredentials: true });
     return { users: res.data?.users as AdminUser[], pagination: res.data?.pagination };
   },

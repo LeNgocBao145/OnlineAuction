@@ -1,6 +1,6 @@
 import AdminHeader from "../adminHeader";
 
-import { MagnifyingGlassIcon } from "@heroicons/react/24/solid";
+import { MagnifyingGlassIcon, ChevronUpIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import adminService, { type UpgradeRequest, type PaginationInfo } from "@/services/adminService";
@@ -10,22 +10,29 @@ export default function RequestsManagementTab() {
     const [loading, setLoading] = useState(true);
     const [searchKeyword, setSearchKeyword] = useState("");
     const [currentFilter, setCurrentFilter] = useState("All Status");
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>({ key: "created_at", direction: "desc" });
     const [pagination, setPagination] = useState<PaginationInfo>({ page: 1, limit: 10, totalItems: 0, totalPages: 0 });
 
     const fetchRequests = async () => {
         try {
             setLoading(true);
+            const sortParam = sortConfig ? (sortConfig.key === "created_at"
+                ? (sortConfig.direction === "asc" ? "oldest" : "newest")
+                : `${sortConfig.key}_${sortConfig.direction}`) : "newest";
+
             const stateMap: Record<string, string[]> = {
                 "All Status": [],
                 "Accepted": ["success"],
                 "Rejected": ["failed"],
                 "Pending": ["pending"]
             };
+
             const result = await adminService.getUpgradeRequests({
                 keyword: searchKeyword,
                 states: stateMap[currentFilter],
                 page: pagination.page,
-                limit: pagination.limit
+                limit: pagination.limit,
+                sort: sortParam
             });
             setRequestsData(result.requests);
             setPagination(result.pagination);
@@ -38,7 +45,15 @@ export default function RequestsManagementTab() {
 
     useEffect(() => {
         fetchRequests();
-    }, [currentFilter, pagination.page]);
+    }, [currentFilter, pagination.page, sortConfig]);
+
+    const handleSort = (key: string) => {
+        let direction: "asc" | "desc" = "asc";
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+            direction = "desc";
+        }
+        setSortConfig({ key, direction });
+    };
 
     const handleApprove = async (requestId: number) => {
         try {
@@ -105,12 +120,12 @@ export default function RequestsManagementTab() {
                         <div className="overflow-x-auto">
                             <div className="w-365">
                                 <div className="mt-6 grid grid-cols-[1fr_2.5fr_2.5fr_1fr_2fr_1.5fr_2.5fr] font-bold text-white/80 border-b border-white/10 pb-2">
-                                    <p>Request ID</p>
-                                    <p>Full Name</p>
-                                    <p>Email</p>
-                                    <p>Rating</p>
-                                    <p>Request Date</p>
-                                    <p>Status</p>
+                                    <div onClick={() => handleSort("id")} className="cursor-pointer flex items-center gap-1">Request ID {sortConfig?.key === "id" && (sortConfig.direction === "asc" ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />)}</div>
+                                    <div onClick={() => handleSort("name")} className="cursor-pointer flex items-center gap-1">Full Name {sortConfig?.key === "name" && (sortConfig.direction === "asc" ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />)}</div>
+                                    <div onClick={() => handleSort("email")} className="cursor-pointer flex items-center gap-1">Email {sortConfig?.key === "email" && (sortConfig.direction === "asc" ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />)}</div>
+                                    <div onClick={() => handleSort("rating")} className="cursor-pointer flex items-center gap-1">Rating {sortConfig?.key === "rating" && (sortConfig.direction === "asc" ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />)}</div>
+                                    <div onClick={() => handleSort("created_at")} className="cursor-pointer flex items-center gap-1">Request Date {sortConfig?.key === "created_at" && (sortConfig.direction === "asc" ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />)}</div>
+                                    <div onClick={() => handleSort("state")} className="cursor-pointer flex items-center gap-1">Status {sortConfig?.key === "state" && (sortConfig.direction === "asc" ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />)}</div>
                                     <p>Actions</p>
                                 </div>
                                 <ul>
@@ -127,8 +142,8 @@ export default function RequestsManagementTab() {
                                                 <p className="text-(--primary)">{request.rating}</p>
                                                 <p className="text-white/60">{new Date(request.created_at).toLocaleDateString()}</p>
                                                 <p className={`font-medium ${request.state === "success" ? "text-green-400" :
-                                                        request.state === "failed" ? "text-red-400" :
-                                                            "text-yellow-400"
+                                                    request.state === "failed" ? "text-red-400" :
+                                                        "text-yellow-400"
                                                     }`}>
                                                     {getStatusDisplay(request.state)}
                                                 </p>
