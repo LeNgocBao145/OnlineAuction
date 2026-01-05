@@ -87,7 +87,7 @@ export default function ProductQuestions() {
               <div className="flex flex-row justify-between items-start">
                 <div className="flex-1">
                   <p className="text-(--primary) font-bold text-lg">
-                    {maskName(q.questioner_name)}
+                    {user?.id === product?.seller_id ? q.questioner_name : maskName(q.questioner_name)}
                     <span className="text-white/30 text-sm ml-2">
                       {formatDate(q.asked_at)}
                     </span>

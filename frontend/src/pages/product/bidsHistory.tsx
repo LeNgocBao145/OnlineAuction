@@ -44,7 +44,7 @@ export default function BidHistory() {
 
                 <div className="truncate pr-2">
                   <p className="text-white/90 text-sm font-semibold truncate group-hover:text-(--primary) transition-colors">
-                    {maskName(bid.bidder_name)}
+                    {product?.user_relation === "seller" ? bid.bidder_name : maskName(bid.bidder_name)}
                   </p>
                 </div>
 
