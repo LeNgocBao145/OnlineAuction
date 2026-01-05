@@ -206,20 +206,12 @@ export default function Nav() {
               )}
             </div>
           ) : (
-            <>
-              <button
-                onClick={() => navigate("/signIn")}
-                className="text-black font-bold px-6 h-[50px] rounded-8px whitespace-nowrap cursor-pointer border border-(--primary) rounded-md bg-(--primary)"
-              >
-                Sign In
-              </button>
-              <button
-                onClick={() => navigate("/signUp")}
-                className="text-black font-bold px-6 h-[50px] rounded-8px whitespace-nowrap cursor-pointer border border-(--primary) rounded-md bg-(--primary) lg:mr-2"
-              >
-                Sign Up
-              </button>
-            </>
+            <button
+              onClick={() => navigate("/auth")}
+              className="text-black font-bold px-6 h-[50px] rounded-8px whitespace-nowrap cursor-pointer border border-(--primary) rounded-md bg-(--primary) lg:mr-2"
+            >
+              Sign In
+            </button>
           )}
         </div>
       </nav>

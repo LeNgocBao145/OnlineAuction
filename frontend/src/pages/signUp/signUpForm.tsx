@@ -7,7 +7,7 @@ import ReCAPTCHA from 'react-google-recaptcha';
 import { toast } from 'sonner';
 
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline"
-import GoogleIcon from '../../assets/Google_Favicon_2025.svg';
+
 import useAuthStore from '@/stores/authStore';
 
 const signUpSchema = z.object({
@@ -21,22 +21,22 @@ const signUpSchema = z.object({
         message: "You must accept the terms and conditions",
     }),
 }).refine((data) => {
-  const birthDate = new Date(data.birthdate);
-  if (isNaN(birthDate.getTime())) return false;
+    const birthDate = new Date(data.birthdate);
+    if (isNaN(birthDate.getTime())) return false;
 
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  const dayDiff = today.getDate() - birthDate.getDate();
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    const dayDiff = today.getDate() - birthDate.getDate();
 
-  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
-    age--;
-  }
+    if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+        age--;
+    }
 
-  return age >= 18 && age <= 150;
+    return age >= 18 && age <= 150;
 }, {
-  message: "You must be at least 18 years old",
-  path: ["birthdate"],
+    message: "You must be at least 18 years old",
+    path: ["birthdate"],
 }).refine((data) =>
     data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -45,7 +45,11 @@ const signUpSchema = z.object({
 
 type SignUpType = z.infer<typeof signUpSchema>;
 
-export default function SignUpForm() {
+interface SignUpFormProps {
+    onSwitchToSignIn?: () => void;
+}
+
+export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
     const [showPassword, setShowPassword] = useState(false);
     const recaptchaRef = useRef<ReCAPTCHA>(null);
     const navigate = useNavigate();
@@ -74,89 +78,102 @@ export default function SignUpForm() {
     };
 
     return (
-        <div className='w-1/2 h-auto bg-(--third) rounded-lg p-4 py-12'>
-            <h1 className='text-(--primary) text-center text-5xl font-bold font-inter mt-8'>Sign Up</h1>
-            <p className='text-white/60 text-center mt-4'>Create your Online Auction account!</p>
+        <div className='w-full max-w-xl bg-(--third) rounded-xl p-6 shadow-2xl border border-white/10'>
+            {/* Header */}
+            <h1 className='text-(--primary) text-center text-3xl font-bold font-inter'>Sign Up</h1>
+            <p className='text-white/60 text-center mt-1 text-sm'>Create your Online Auction account!</p>
 
-            <form onSubmit={handleSubmit(signUpSubmit)} className='flex flex-col items-center justify-center gap-4 mt-8'>
-                <div className='flex flex-col w-7/10 h-[120px]'>
-                    <label htmlFor='email' className='text-white mb-2'>Email</label>
+            {/* Divider */}
+            <div className='h-px bg-white/10 my-4'></div>
+
+            <form onSubmit={handleSubmit(signUpSubmit)} className='flex flex-col gap-4'>
+                {/* Email - Full width */}
+                <div className='flex flex-col'>
+                    <label htmlFor='email' className='text-white text-sm mb-1'>Email</label>
                     <input type="email" placeholder="Enter your email"
-                        className='text-white border-2 border-white/10 bg-(--secondary) w-full h-5/10 text-[20px] pl-4 rounded-lg'
+                        className='text-white border border-white/10 bg-(--secondary) w-full h-11 text-base pl-3 rounded-lg focus:border-(--primary) focus:outline-none transition-colors'
                         {...register('email')} />
-                    {errors.email && <p className='text-red-400'>{errors.email.message}</p>}
+                    {errors.email && <p className='text-red-400 text-xs mt-1'>{errors.email.message}</p>}
                 </div>
 
-                <div className='flex flex-col w-7/10 h-[120px] relative'>
-                    <label htmlFor='username' className='text-white mb-2'>Username</label>
-                    <input type="text" placeholder="Enter your username"
-                        className='text-white border-2 border-white/10 bg-(--secondary) w-full h-5/10 text-[20px] pl-4 rounded-lg'
-                        {...register('username')} />
-                    {errors.username && <p className='text-red-400'>{errors.username.message}</p>}
+                {/* Username and Birthdate - Two columns */}
+                <div className='grid grid-cols-2 gap-4'>
+                    <div className='flex flex-col'>
+                        <label htmlFor='username' className='text-white text-sm mb-1'>Username</label>
+                        <input type="text" placeholder="Username"
+                            className='text-white border border-white/10 bg-(--secondary) w-full h-11 text-base pl-3 rounded-lg focus:border-(--primary) focus:outline-none transition-colors'
+                            {...register('username')} />
+                        {errors.username && <p className='text-red-400 text-xs mt-1'>{errors.username.message}</p>}
+                    </div>
+                    <div className='flex flex-col'>
+                        <label htmlFor='birthdate' className='text-white text-sm mb-1'>Birthdate</label>
+                        <input type="date"
+                            className='text-white border border-white/10 bg-(--secondary) w-full h-11 text-base pl-3 rounded-lg focus:border-(--primary) focus:outline-none transition-colors'
+                            {...register('birthdate')} />
+                        {errors.birthdate && <p className='text-red-400 text-xs mt-1'>{errors.birthdate.message}</p>}
+                    </div>
                 </div>
 
-                <div className='flex flex-col w-7/10 h-[120px] relative'>
-                    <label htmlFor='password' className='text-white mb-2'>Password</label>
-                    <input type={showPassword ? "text" : "password"} placeholder="Enter your password"
-                        className='text-white border-2 border-white/10 bg-(--secondary) w-full h-5/10 text-[20px] pl-4 rounded-lg'
-                        {...register('password')} />
-                    <button type='button' onClick={() => setShowPassword(!showPassword)}>
-                        {showPassword ? <EyeIcon className='w-6 h-6 text-white/60 absolute right-4 top-13 cursor-pointer' /> : <EyeSlashIcon className='w-6 h-6 text-white/60 absolute right-4 top-13 cursor-pointer' />}
-                    </button>
-                    {errors.password && <p className='text-red-400'>{errors.password.message}</p>}
+                {/* Password and Confirm Password - Two columns */}
+                <div className='grid grid-cols-2 gap-4'>
+                    <div className='flex flex-col relative'>
+                        <label htmlFor='password' className='text-white text-sm mb-1'>Password</label>
+                        <input type={showPassword ? "text" : "password"} placeholder="Password"
+                            className='text-white border border-white/10 bg-(--secondary) w-full h-11 text-base pl-3 pr-10 rounded-lg focus:border-(--primary) focus:outline-none transition-colors'
+                            {...register('password')} />
+                        <button type='button' onClick={() => setShowPassword(!showPassword)} className='absolute right-3 top-9'>
+                            {showPassword ? <EyeIcon className='w-5 h-5 text-white/60 cursor-pointer hover:text-white' /> : <EyeSlashIcon className='w-5 h-5 text-white/60 cursor-pointer hover:text-white' />}
+                        </button>
+                        {errors.password && <p className='text-red-400 text-xs mt-1'>{errors.password.message}</p>}
+                    </div>
+                    <div className='flex flex-col relative'>
+                        <label htmlFor='confirm-password' className='text-white text-sm mb-1'>Confirm</label>
+                        <input type={showPassword ? "text" : "password"} placeholder="Confirm password"
+                            className='text-white border border-white/10 bg-(--secondary) w-full h-11 text-base pl-3 pr-10 rounded-lg focus:border-(--primary) focus:outline-none transition-colors'
+                            {...register('confirmPassword')} />
+                        <button type='button' onClick={() => setShowPassword(!showPassword)} className='absolute right-3 top-9'>
+                            {showPassword ? <EyeIcon className='w-5 h-5 text-white/60 cursor-pointer hover:text-white' /> : <EyeSlashIcon className='w-5 h-5 text-white/60 cursor-pointer hover:text-white' />}
+                        </button>
+                        {errors.confirmPassword && <p className='text-red-400 text-xs mt-1'>{errors.confirmPassword.message}</p>}
+                    </div>
                 </div>
 
-                <div className='flex flex-col w-7/10 h-[120px] relative'>
-                    <label htmlFor='confirm-password' className='text-white mb-2'>Confirm Password</label>
-                    <input type={showPassword ? "text" : "password"} placeholder="Confirm your password"
-                        className='text-white border-2 border-white/10 bg-(--secondary) w-full h-5/10 text-[20px] pl-4 rounded-lg'
-                        {...register('confirmPassword')} />
-                    <button type='button' onClick={() => setShowPassword(!showPassword)}>
-                        {showPassword ? <EyeIcon className='w-6 h-6 text-white/60 absolute right-4 top-13 cursor-pointer' /> : <EyeSlashIcon className='w-6 h-6 text-white/60 absolute right-4 top-13 cursor-pointer' />}
-                    </button>
-                    {errors.confirmPassword && <p className='text-red-400'>{errors.confirmPassword.message}</p>}
-                </div>
-
-                <div className='flex flex-col w-7/10 h-[120px]'>
-                    <label htmlFor='birthdate' className='text-white mb-2'>Birthdate</label>
-                    <input type="date"
-                        className='text-white border-2 border-white/10 bg-(--secondary) w-full h-5/10 text-[20px] pl-4 rounded-lg'
-                        {...register('birthdate')} />
-                    {errors.birthdate && <p className='text-red-400'>{errors.birthdate.message}</p>}
-                </div>
-
-                <div className='flex flex-col w-7/10 h-[120px]'>
-                    <label htmlFor='address' className='text-white mb-2'>Address</label>
+                {/* Address - Full width */}
+                <div className='flex flex-col'>
+                    <label htmlFor='address' className='text-white text-sm mb-1'>Address</label>
                     <input type="text" placeholder="Enter your address"
-                        className='text-white border-2 border-white/10 bg-(--secondary) w-full h-5/10 text-[20px] pl-4 rounded-lg'
+                        className='text-white border border-white/10 bg-(--secondary) w-full h-11 text-base pl-3 rounded-lg focus:border-(--primary) focus:outline-none transition-colors'
                         {...register('address')} />
-                    {errors.address && <p className='text-red-400'>{errors.address.message}</p>}
+                    {errors.address && <p className='text-red-400 text-xs mt-1'>{errors.address.message}</p>}
                 </div>
 
-                <div className='flex items-center gap-2 w-7/10'>
-                    <input type="checkbox" {...register('terms')} className='w-5 h-5' />
-                    <label className='text-white/60'>I agree to the terms and conditions</label>
+                {/* Terms and ReCAPTCHA */}
+                <div className='flex items-center gap-2'>
+                    <input type="checkbox" {...register('terms')} className='w-4 h-4 accent-(--primary)' />
+                    <label className='text-white/60 text-sm'>I agree to the terms and conditions</label>
                 </div>
-                {errors.terms && <p className='text-red-400 w-7/10'>{errors.terms.message}</p>}
+                {errors.terms && <p className='text-red-400 text-xs -mt-2'>{errors.terms.message}</p>}
 
-                <ReCAPTCHA
-                    ref={recaptchaRef}
-                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                />
+                <div className='flex justify-center'>
+                    <ReCAPTCHA
+                        ref={recaptchaRef}
+                        sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                        theme="dark"
+                    />
+                </div>
 
-                <button type='submit' className='w-7/10 h-[60px] bg-(--primary) text-white rounded-lg font-bold text-xl hover:bg-(--primary)/80'>
+                {/* Divider */}
+                <div className='h-px bg-white/10 my-2'></div>
+
+                <button type='submit' className='w-full h-11 bg-(--primary) text-black rounded-lg font-bold text-base hover:bg-(--primary)/90 transition-colors'>
                     Register
                 </button>
 
-                <p className='text-white/60 text-center mt-4'>Or continue with</p>
-                <div className='w-7/10 flex justify-center items-center gap-4'>
-                    <button type='button' className='w-5/10 h-[50px] bg-white rounded-lg'>
-                        <img src={GoogleIcon} className='w-6 h-6 inline-block mr-2 align-middle' />
-                        Continue with Google
-                    </button>
-                </div>
-
-                <p className='text-white/60'>Already have an account? <Link to='/signIn' className='text-(--primary) hover:underline'>Sign In</Link></p>
+                <p className='text-white/60 text-center text-sm'>Already have an account? {onSwitchToSignIn ? (
+                    <button type="button" onClick={onSwitchToSignIn} className='text-(--primary) hover:underline font-medium'>Sign In</button>
+                ) : (
+                    <Link to='/signIn' className='text-(--primary) hover:underline font-medium'>Sign In</Link>
+                )}</p>
             </form>
         </div>
     );
