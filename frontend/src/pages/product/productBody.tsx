@@ -4,6 +4,7 @@ import ProductBrief from "./brief";
 import ProductDescription from "./description";
 import ProductImages from "./images";
 import ProductQuestions from "./questions";
+import RelatedProducts from "./relatedProducts";
 
 export default function ProductBody() {
     return (
@@ -24,6 +25,7 @@ export default function ProductBody() {
                 </div>
             </div>
             <AuctionInfo />
+            <RelatedProducts />
         </div>
 
     );

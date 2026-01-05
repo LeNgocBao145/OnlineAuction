@@ -419,7 +419,7 @@ export const getProductDetailsById = `
         -- Categories
         COALESCE(
             (
-                SELECT json_agg(c.name)
+                SELECT json_agg(json_build_object('id', c.id, 'name', c.name))
                 FROM product_categories pc
                 JOIN categories c ON c.id = pc.category
                 WHERE pc.product = b.id
@@ -1028,7 +1028,7 @@ export const bidderConfirmation = `UPDATE trade_verifications
                                    AND state = 'pending_bidder_confirm'
                                    RETURNING *`;
 
-                                   export const tradeCancel = `WITH cancelled_trade AS (
+export const tradeCancel = `WITH cancelled_trade AS (
                                     UPDATE trade_verifications
                                     SET state = 'failed'
                                     WHERE product = $1
@@ -1051,7 +1051,7 @@ export const bidderConfirmation = `UPDATE trade_verifications
                                 ON CONFLICT (product, ratee, rater)
                                 DO UPDATE SET
                                     liked = false,
-                                    content = 'Trade cancelled by seller'`;    
+                                    content = 'Trade cancelled by seller'`;
 
 export const getWinner = `SELECT u.*
                           FROM trade_verifications t

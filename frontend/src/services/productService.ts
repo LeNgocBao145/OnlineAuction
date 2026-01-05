@@ -1,5 +1,5 @@
 import api from "@/lib/axios";
-import type { ProductDetail, FilterParams, FilteredProductsResponse } from "@/types/Product";
+import type { Product, ProductDetail, FilterParams, FilteredProductsResponse } from "@/types/Product";
 
 const productService = {
   async getProductById(id: string | number): Promise<ProductDetail> {
@@ -160,6 +160,25 @@ const productService = {
       { withCredentials: true }
     );
     return res.data;
+  },
+
+  async getRelatedProducts(
+    productId: string | number,
+    categoryId: number,
+    limit: number = 5
+  ): Promise<Product[]> {
+    const queryParams = new URLSearchParams();
+    queryParams.append("category", categoryId.toString());
+    queryParams.append("limit", limit.toString());
+    queryParams.append("states", "incoming,bidding");
+
+    const res = await api.get(`/products?${queryParams.toString()}`, {
+      withCredentials: true
+    });
+
+    const products = res.data?.data?.products || [];
+    // Filter out the current product
+    return products.filter((p: Product) => p.id !== productId && p.id !== Number(productId));
   }
 };
 
