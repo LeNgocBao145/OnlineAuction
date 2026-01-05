@@ -1,16 +1,30 @@
 import useProductStore from "@/stores/productStore";
+import useAuthStore from "@/stores/authStore";
 import { formatCurrency } from "@/utils/numberUtils";
 import { maskName } from "@/utils/maskUtils";
 
 
 export default function BidHistory() {
   const { product } = useProductStore();
+  const { user } = useAuthStore();
   const bids = product?.bids || [];
+
+  const getBidderDisplay = (bid: { bidder_id: number; bidder_name: string }) => {
+    // If this bid belongs to the current user, show "You"
+    if (user?.id && bid.bidder_id === user.id) {
+      return <span className="text-(--primary) font-bold">You</span>;
+    }
+    // If current user is the seller, show full name
+    if (product?.user_relation === "seller") {
+      return bid.bidder_name;
+    }
+    // Otherwise, mask the name
+    return maskName(bid.bidder_name);
+  };
 
   return (
     <div className="w-full p-6 bg-(--third) border border-white/10 rounded-xl shadow-xl">
       <h2 className="text-(--primary) text-2xl font-bold mb-6 flex items-center gap-2">
-        <span className="w-2 h-8 bg-(--primary) rounded-full"></span>
         Bids History
       </h2>
 
@@ -44,7 +58,7 @@ export default function BidHistory() {
 
                 <div className="truncate pr-2">
                   <p className="text-white/90 text-sm font-semibold truncate group-hover:text-(--primary) transition-colors">
-                    {product?.user_relation === "seller" ? bid.bidder_name : maskName(bid.bidder_name)}
+                    {getBidderDisplay(bid)}
                   </p>
                 </div>
 

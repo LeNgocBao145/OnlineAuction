@@ -21,6 +21,7 @@ export interface ProductDescription {
 }
 
 export interface ProductBid {
+  bidder_id: number;
   bidder_name: string;
   amount: number;
   bid_time: string;

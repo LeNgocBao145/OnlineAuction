@@ -457,6 +457,7 @@ export const getProductDetailsById = `
             (
                 SELECT json_agg(
                     json_build_object(
+                        'bidder_id', bid.buyer,
                         'bidder_name', u_b.name,  
                         'amount', bid.price,
                         'bid_time', bid.bid_date
