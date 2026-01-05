@@ -95,6 +95,7 @@ export default function App() {
               <Route path="/profile/reviews" element={<ProfileMyReviews />} />
               <Route path="/profile/favorites" element={<ProfileFavorites />} />
               <Route path="/profile/sellings" element={<ProductSellerPage />} />
+              <Route path="/profile/sellings/edit/:id" element={<EditAuction />} />
 
               {/* Seller Page */}
               <Route path="/productSeller" element={<ProductSellerPage />} />

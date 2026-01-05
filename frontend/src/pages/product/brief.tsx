@@ -239,6 +239,15 @@ export default function ProductBrief() {
               {product.user_relation === "seller" ? (
                 <div className="flex flex-col gap-3">
                   <button
+                    className="w-full h-14 bg-(--primary) hover:bg-(--primary)/90 text-black rounded-xl font-bold border border-(--primary) transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(255,215,0,0.2)]"
+                    onClick={() => navigate(`/profile/sellings/edit/${product.id}`)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                    Update Auction
+                  </button>
+                  <button
                     className="w-full h-14 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold border border-white/20 transition-all flex items-center justify-center gap-2"
                     onClick={() => setViewingRequests(true)}
                   >
