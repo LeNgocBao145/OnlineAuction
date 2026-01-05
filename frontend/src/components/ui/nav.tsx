@@ -131,9 +131,21 @@ export default function Nav() {
                         {user.name}
                       </p>
                       <p className="text-white/60 text-sm truncate">{user.email}</p>
-                      <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded bg-(--primary) text-black font-medium">
-                        {user.role}
-                      </span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="inline-block px-2 py-0.5 text-xs rounded bg-(--primary) text-black font-medium">
+                          {user.role}
+                        </span>
+                        {user.rating !== undefined && (
+                          <span
+                            className={`inline-block px-2 py-0.5 text-xs rounded font-bold ${user.rating >= 0.8
+                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                              }`}
+                          >
+                            {(user.rating * 100).toFixed(0)}%
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <Link
