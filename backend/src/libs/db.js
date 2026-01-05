@@ -31,6 +31,11 @@ const db = new pg.Pool({
     statement_timeout: 30000,
 });
 
+// Set session timezone to UTC for all connections in the pool
+db.on('connect', (client) => {
+    client.query("SET timezone = 'UTC'");
+});
+
 // Test connection
 db.query('SELECT NOW()')
     .then(() => {

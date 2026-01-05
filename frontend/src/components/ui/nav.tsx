@@ -104,106 +104,108 @@ export default function Nav() {
           </div>
 
           {user ? (
-            <div
-              className="relative"
-              onMouseEnter={() => setOpenUserMenu(true)}
-              onMouseLeave={() => setOpenUserMenu(false)}
-            >
-              <button
-                className="flex items-center gap-2 text-white/80 hover:text-(--primary) px-3 h-[50px]"
+            <div className="flex items-center">
+              <div
+                className="relative"
+                onMouseEnter={() => setOpenUserMenu(true)}
+                onMouseLeave={() => setOpenUserMenu(false)}
               >
-                <span className="hidden lg:inline max-w-[100px] truncate">
-                  {user.name}
-                </span>
-                <img
-                  src={getAvatarUrl(user.avatar, user.name)}
-                  alt={user.name}
-                  className="w-9 h-9 rounded-full border-2 border-(--primary) object-cover"
-                />
-                <ChevronDownIcon className={`w-4 h-4 transition-transform duration-200 ${openUserMenu ? 'rotate-180' : ''}`} />
-              </button>
+                <button
+                  className="flex items-center gap-2 text-white/80 hover:text-(--primary) px-3 h-[50px]"
+                >
+                  <span className="hidden lg:inline max-w-[100px] truncate">
+                    {user.name}
+                  </span>
+                  <img
+                    src={getAvatarUrl(user.avatar, user.name)}
+                    alt={user.name}
+                    className="w-9 h-9 rounded-full border-2 border-(--primary) object-cover"
+                  />
+                  <ChevronDownIcon className={`w-4 h-4 transition-transform duration-200 ${openUserMenu ? 'rotate-180' : ''}`} />
+                </button>
 
-              {openUserMenu && (
-                <div className="absolute right-0 top-[50px] bg-(--secondary) border border-white/10 rounded-lg shadow-lg z-50 min-w-[200px]">
-                  <div className="px-4 py-3 border-b border-white/10">
-                    <p className="text-white font-semibold truncate">
-                      {user.name}
-                    </p>
-                    <p className="text-white/60 text-sm truncate">{user.email}</p>
-                    <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded bg-(--primary) text-black font-medium">
-                      {user.role}
-                    </span>
+                {openUserMenu && (
+                  <div className="absolute right-0 top-[50px] bg-(--secondary) border border-white/10 rounded-lg shadow-lg z-50 min-w-[200px]">
+                    <div className="px-4 py-3 border-b border-white/10">
+                      <p className="text-white font-semibold truncate">
+                        {user.name}
+                      </p>
+                      <p className="text-white/60 text-sm truncate">{user.email}</p>
+                      <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded bg-(--primary) text-black font-medium">
+                        {user.role}
+                      </span>
+                    </div>
+
+                    <Link
+                      to="/profile/settings"
+                      className="block px-4 py-2 text-white/80 hover:bg-white/10"
+                      onClick={() => setOpenUserMenu(false)}
+                    >
+                      My Profile
+                    </Link>
+                    <Link
+                      to="/profile/favorites"
+                      className="block px-4 py-2 text-white/80 hover:bg-white/10"
+                      onClick={() => setOpenUserMenu(false)}
+                    >
+                      Watchlist
+                    </Link>
+                    <Link
+                      to="/profile/bids"
+                      className="block px-4 py-2 text-white/80 hover:bg-white/10"
+                      onClick={() => setOpenUserMenu(false)}
+                    >
+                      My Bids
+                    </Link>
+
+                    {(user.role === "seller" || user.role === "admin") && (
+                      <>
+                        <div className="border-t border-white/10 my-1"></div>
+                        <Link
+                          to="/profile/sellings"
+                          className="block px-4 py-2 text-white/80 hover:bg-white/10"
+                          onClick={() => setOpenUserMenu(false)}
+                        >
+                          My Sellings
+                        </Link>
+                      </>
+                    )}
+
+                    {user.role === "admin" && (
+                      <>
+                        <div className="border-t border-white/10 my-1"></div>
+                        <Link
+                          to="/admin/dashboard"
+                          className="block px-4 py-2 text-(--primary) hover:bg-white/10 font-medium"
+                          onClick={() => setOpenUserMenu(false)}
+                        >
+                          Dashboard
+                        </Link>
+                      </>
+                    )}
+
+                    {user.role === "bidder" && (
+                      <>
+                        <div className="border-t border-white/10 my-1"></div>
+                        <button
+                          onClick={handleUpgradeToSeller}
+                          className="w-full text-left px-4 py-2 text-(--primary) hover:bg-white/10"
+                        >
+                          Upgrade to Seller
+                        </button>
+                      </>
+                    )}
+
+                    <div className="border-t border-white/10 my-1"></div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-red-400 hover:bg-red-500/20"
+                    >
+                      Sign Out
+                    </button>
                   </div>
-
-                  <Link
-                    to="/profile/settings"
-                    className="block px-4 py-2 text-white/80 hover:bg-white/10"
-                    onClick={() => setOpenUserMenu(false)}
-                  >
-                    My Profile
-                  </Link>
-                  <Link
-                    to="/profile/favorites"
-                    className="block px-4 py-2 text-white/80 hover:bg-white/10"
-                    onClick={() => setOpenUserMenu(false)}
-                  >
-                    Watchlist
-                  </Link>
-                  <Link
-                    to="/profile/bids"
-                    className="block px-4 py-2 text-white/80 hover:bg-white/10"
-                    onClick={() => setOpenUserMenu(false)}
-                  >
-                    My Bids
-                  </Link>
-
-                  {(user.role === "seller" || user.role === "admin") && (
-                    <>
-                      <div className="border-t border-white/10 my-1"></div>
-                      <Link
-                        to="/profile/sellings"
-                        className="block px-4 py-2 text-white/80 hover:bg-white/10"
-                        onClick={() => setOpenUserMenu(false)}
-                      >
-                        My Sellings
-                      </Link>
-                    </>
-                  )}
-
-                  {user.role === "admin" && (
-                    <>
-                      <div className="border-t border-white/10 my-1"></div>
-                      <Link
-                        to="/admin/dashboard"
-                        className="block px-4 py-2 text-(--primary) hover:bg-white/10 font-medium"
-                        onClick={() => setOpenUserMenu(false)}
-                      >
-                        Dashboard
-                      </Link>
-                    </>
-                  )}
-
-                  {user.role === "bidder" && (
-                    <>
-                      <div className="border-t border-white/10 my-1"></div>
-                      <button
-                        onClick={handleUpgradeToSeller}
-                        className="w-full text-left px-4 py-2 text-(--primary) hover:bg-white/10"
-                      >
-                        Upgrade to Seller
-                      </button>
-                    </>
-                  )}
-
-                  <div className="border-t border-white/10 my-1"></div>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-red-400 hover:bg-red-500/20"
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           ) : (
             <button

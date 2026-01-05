@@ -347,10 +347,12 @@ export const getFavoritesQuery = (sortLogic) => `
         sp.instant_price,
         bidder.name AS highest_bidder,
         sp.created_at,
+        sp.expired_at,
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
         COUNT(DISTINCT b.id) AS bid_count,
-        (sp.created_at >= NOW() - INTERVAL '90 minutes') AS is_new,
+        (EXTRACT(EPOCH FROM (NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
+        (EXTRACT(EPOCH FROM (sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon,
         ts_rank(p.search_vector, plainto_tsquery('simple', unaccent($2))) AS rank,
         COUNT(*) OVER() AS total_count
 
@@ -384,7 +386,7 @@ export const getFavoritesQuery = (sortLogic) => `
         f.created_at,
         sp.expired_at, sp.created_at, sp.instant_price,
         bidder.name, 
-        query, p.search_vector
+        query, p.search_vector, is_ending_soon, is_new
 
     ORDER BY ${sortLogic}, rank DESC, is_new DESC
 
@@ -520,10 +522,12 @@ export const getFilteredProductsQuery = (sortLogic) => `
          JOIN categories c ON pc.category = c.id  
          WHERE pc.product = p.id LIMIT 1) AS category_name,
         sp.created_at,
+        sp.expired_at,
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
         COUNT(DISTINCT b.id) AS bid_count,
-        (sp.created_at >= NOW() - INTERVAL '90 minutes') AS is_new,
+        (EXTRACT(EPOCH FROM (NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
+        (EXTRACT(EPOCH FROM (sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon,
         ts_rank(p.search_vector, plainto_tsquery('simple', unaccent($1))) AS rank,
         COUNT(*) OVER() AS total_count
 
@@ -883,9 +887,12 @@ export const getTop5EndingSoon = `
         sp.instant_price,
         bidder.name AS highest_bidder,
         sp.created_at,
+        sp.expired_at,
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
-        COUNT(DISTINCT b.id) AS bid_count
+        COUNT(DISTINCT b.id) AS bid_count,
+        (EXTRACT(EPOCH FROM (NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
+        (EXTRACT(EPOCH FROM (sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon
 
     FROM
         products p
@@ -903,7 +910,7 @@ export const getTop5EndingSoon = `
 
     WHERE p.state = 'bidding' AND sp.expired_at > NOW()
 
-    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name
+    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name, is_new, is_ending_soon
 
     ORDER BY sp.expired_at ASC
 
@@ -917,9 +924,12 @@ export const getTop5MostBids = `
         sp.instant_price,
         bidder.name AS highest_bidder,
         sp.created_at,
+        sp.expired_at,
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
-        COUNT(DISTINCT b.id) AS bid_count
+        COUNT(DISTINCT b.id) AS bid_count,
+        (EXTRACT(EPOCH FROM (NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
+        (EXTRACT(EPOCH FROM (sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon
 
     FROM
         products p
@@ -937,7 +947,7 @@ export const getTop5MostBids = `
 
     WHERE p.state = 'bidding'
 
-    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name
+    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name, is_new, is_ending_soon
 
     ORDER BY bid_count DESC
 
@@ -951,9 +961,12 @@ export const getTop5HighestPrice = `
         sp.instant_price,
         bidder.name AS highest_bidder,
         sp.created_at,
+        sp.expired_at,
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
-        COUNT(DISTINCT b.id) AS bid_count
+        COUNT(DISTINCT b.id) AS bid_count,
+        (EXTRACT(EPOCH FROM (NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
+        (EXTRACT(EPOCH FROM (sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon
 
     FROM
         products p
@@ -971,7 +984,7 @@ export const getTop5HighestPrice = `
 
     WHERE p.state = 'bidding'
 
-    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name
+    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name, is_new, is_ending_soon
 
     ORDER BY p.current_price DESC
 
