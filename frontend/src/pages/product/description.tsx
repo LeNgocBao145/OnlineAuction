@@ -2,6 +2,7 @@ import useProductStore from "@/stores/productStore";
 import { useState } from "react";
 import { formatDate } from "@/utils/dateUtils";
 import styles from "./description.module.css";
+import productService from "@/services/productService";
 
 export default function ProductDescription() {
   const MAX_DESCRIPTION_LENGTH = 500;
@@ -9,13 +10,26 @@ export default function ProductDescription() {
   const [editing, setEditing] = useState(false);
   const [descriptionText, setDescriptionText] = useState("");
 
-  const isSellerView = false; // INTEGRATE THIS
+  const isSellerView = product?.user_relation === "seller" ? true : false;
 
   if (!product) return null;
 
-  const handleSaveDescription = () => {
-    // Logic to save the updated description
-    // This could involve calling an API or updating the store
+  const handleSaveDescription = async () => {
+    product.descriptions = [{ description: descriptionText , created_at: new Date().toISOString() }];
+    const result = await productService.updateProduct(
+      product.id, 
+      {
+        ...product,
+        descriptions: descriptionText ? [{ description: descriptionText, created_at: new Date().toISOString() }] : []
+      }
+    );
+
+    if (!result.error) {
+      alert("Description updated successfully.");
+    } else {
+      alert("Failed to update description: " + result.error);
+    }
+
     setEditing(false);
   };
 
@@ -27,7 +41,7 @@ export default function ProductDescription() {
             Product Description
           </h1>
           {isSellerView && (
-            <button className="text-(--primary) underline">
+            <button className="text-(--primary) underline" onClick={() => setEditing(!editing)}>
               Edit Description
             </button>
           )}
