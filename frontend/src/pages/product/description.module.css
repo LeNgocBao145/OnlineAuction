@@ -1,0 +1,139 @@
+.htmlContent {
+  color: rgb(209, 213, 219);
+  line-height: 1.6;
+}
+
+.htmlContent p {
+  display: block;
+  margin: 0.75rem 0;
+}
+
+.htmlContent h1 {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+  color: rgb(255, 255, 255);
+}
+
+.htmlContent h2 {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-top: 1rem;
+  margin-bottom: 0.625rem;
+  color: rgb(255, 255, 255);
+}
+
+.htmlContent h3 {
+  font-size: 1.125rem;
+  font-weight: bold;
+  margin-top: 0.875rem;
+  margin-bottom: 0.5rem;
+  color: rgb(255, 255, 255);
+}
+
+.htmlContent h4,
+.htmlContent h5,
+.htmlContent h6 {
+  font-weight: bold;
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+  color: rgb(255, 255, 255);
+}
+
+.htmlContent ul,
+.htmlContent ol {
+  margin: 0.75rem 0;
+  padding-left: 2rem;
+}
+
+.htmlContent li {
+  margin: 0.25rem 0;
+}
+
+.htmlContent ul li {
+  list-style-type: disc;
+}
+
+.htmlContent ol li {
+  list-style-type: decimal;
+}
+
+.htmlContent strong,
+.htmlContent b {
+  font-weight: 700;
+  color: rgb(255, 255, 255);
+}
+
+.htmlContent em,
+.htmlContent i {
+  font-style: italic;
+}
+
+.htmlContent hr {
+  margin: 1.5rem 0;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.htmlContent table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.htmlContent table th,
+.htmlContent table td {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.htmlContent table th {
+  background-color: rgba(255, 255, 255, 0.05);
+  font-weight: 600;
+}
+
+.htmlContent a {
+  color: rgb(59, 130, 246);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.htmlContent a:hover {
+  opacity: 0.8;
+}
+
+.htmlContent blockquote {
+  margin: 1rem 0;
+  padding-left: 1rem;
+  border-left: 3px solid rgb(59, 130, 246);
+  color: rgb(209, 213, 219);
+  font-style: italic;
+}
+
+.htmlContent code {
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #f0f0f0;
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+}
+
+.htmlContent pre {
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #f0f0f0;
+  padding: 1rem;
+  border-radius: 5px;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+.htmlContent img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 5px;
+  margin: 1rem 0;
+}

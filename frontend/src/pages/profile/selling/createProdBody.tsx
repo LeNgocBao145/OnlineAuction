@@ -1,11 +1,12 @@
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import productService from "@/services/productService";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import useAuthStore from "@/stores/authStore";
+import { Editor } from "@tinymce/tinymce-react";
 
 
 
@@ -14,6 +15,8 @@ export default function CreateAuctionBody({ productId }: { productId?: string | 
 
     const [imageFiles, setImageFiles] = useState<{ file: File, url: string, name: string }[]>([]);
     const [description, setDescription] = useState<string>("");
+    const [wordCount, setWordCount] = useState<number>(0);
+    const editorRef = useRef<any>(null);
 
     const formSchema = z.object({
         productName: z.string().min(1, "Product name is required"),
@@ -22,7 +25,7 @@ export default function CreateAuctionBody({ productId }: { productId?: string | 
         images: z.array(z.instanceof(File)).min(3, "At least 3 images are required").max(10, "No more than 10 images are allowed"),
         bidStep: z.number().min(1, "Bid step must be at least $1"),
         instantBuy: z.number().nullable().optional(),
-        productDescription: z.string().min(1, "Product description is required").max(500, "Description cannot exceed 500 characters"),
+        productDescription: z.string().min(1, "Product description is required").max(5000, "Description cannot exceed 5000 characters"),
         startTime: z.string().min(1, "Start time is required"),
         endTime: z.string().min(1, "End time is required"),
         autoExtend: z.boolean().optional()
@@ -260,11 +263,128 @@ export default function CreateAuctionBody({ productId }: { productId?: string | 
                 <h2 className="text-2xl text-white text-bold">Product Description</h2>
                 <div className="mt-4">
                     <label htmlFor="productDescription" className="text-white/80">Description<span className="text-red-500">*</span></label>
-                    <textarea id="productDescription" rows={6} className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white resize-none"
-                        placeholder="Enter product description" maxLength={500} {...register("productDescription")} onChange={(e) => setDescription(e.target.value)}
-                    ></textarea>
+                    <div className="mt-2 rounded-md overflow-hidden border border-white/10">
+                        <Editor
+                            ref={editorRef}
+                            apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+                            initialValue={description}
+                            init={{
+                                height: 300,
+                                menubar: true,
+                                plugins: [
+                                    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
+                                    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                                    'insertdatetime', 'media', 'table', 'preview', 'help', 'wordcount'
+                                ],
+                                toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
+                                // content_style: Styles for the EDITOR's content area (what user sees while editing)
+                                // This helps user preview how content will look, matching the display styling in description.tsx
+                                // Without this, content would look wrong in editor (e.g., paragraphs stuck together, no spacing)
+                                content_style: `
+                                    body { 
+                                        font-family: Helvetica, Arial, sans-serif; 
+                                        font-size: 14px; 
+                                        background: rgb(17, 24, 39); 
+                                        color: rgb(209, 213, 219);
+                                        line-height: 1.6;
+                                        margin: 0;
+                                        padding: 10px;
+                                    }
+                                    .mce-content-body { 
+                                        color: rgb(209, 213, 219); 
+                                        background: rgb(17, 24, 39);
+                                    }
+                                    p {
+                                        margin: 0.5em 0;
+                                        display: block;
+                                    }
+                                    h1, h2, h3, h4, h5, h6 {
+                                        margin: 1em 0 0.5em 0;
+                                    }
+                                    ul, ol {
+                                        margin: 0.5em 0;
+                                        padding-left: 2em;
+                                    }
+                                    li {
+                                        margin: 0.25em 0;
+                                    }
+                                    strong, b {
+                                        font-weight: bold;
+                                    }
+                                    em, i {
+                                        font-style: italic;
+                                    }
+                                    hr {
+                                        margin: 1em 0;
+                                        border: none;
+                                        border-top: 1px solid rgb(75, 85, 99);
+                                    }
+                                    br {
+                                        display: block;
+                                        content: '';
+                                        margin: 0.5em 0;
+                                    }
+                                `,
+                                skin: 'oxide-dark',
+                                content_css: 'dark',
+                                statusbar: true,
+                                branding: false
+                            }}
+                            onEditorChange={(content) => {
+                                // Keep the full HTML content
+                                setDescription(content);
+                                
+                                // Extract plain text for word counting only
+                                let plainText = content
+                                    .replace(/<br\s*\/?>/gi, '\n')
+                                    .replace(/<\/p>/gi, '\n')
+                                    .replace(/<p[^>]*>/gi, '')
+                                    .replace(/<[^>]*>/g, ''); // Remove remaining HTML tags
+                                
+                                plainText = plainText
+                                    .replace(/&nbsp;/g, ' ')
+                                    .replace(/&amp;/g, '&')
+                                    .replace(/&lt;/g, '<')
+                                    .replace(/&gt;/g, '>')
+                                    .replace(/&quot;/g, '"')
+                                    .replace(/&#039;/g, "'")
+                                    .replace(/\n\s+/g, '\n')
+                                    .replace(/\s+\n/g, '\n')
+                                    .replace(/[ \t]+/g, ' ')
+                                    .trim();
+                                
+                                // Count words from plain text only
+                                const words = plainText.split(/\s+/).filter(word => word.length > 0);
+                                const currentWordCount = words.length;
+                                
+                                // Hard limit: max 500 words
+                                if (currentWordCount > 500) {
+                                    const truncated = words.slice(0, 500).join(' ');
+                                    setDescription(truncated);
+                                    setWordCount(500);
+                                    setValue("productDescription", truncated, { shouldValidate: true });
+                                    if (editorRef.current) {
+                                        editorRef.current.setContent(truncated);
+                                    }
+                                    // Only show toast if user tried to add more after reaching limit
+                                    if (wordCount >= 500) {
+                                        toast.error("Maximum 500 words allowed");
+                                    }
+                                } else {
+                                    setWordCount(currentWordCount);
+                                    setValue("productDescription", content, { shouldValidate: true });
+                                }
+                            }}
+                        />
+                    </div>
                     <div className="flex justify-between items-center">
-                        <p className="text-white/60 text-left text-sm mt-4">{description.length} / 500</p>
+                        <p className={`text-left text-sm mt-4 ${
+                            wordCount === 0 ? 'text-white/60' : 
+                            wordCount > 500 ? 'text-red-500' : 
+                            'text-white/60'
+                        }`}>
+                            {wordCount} words / 500 words
+                        </p>
                         {errors.productDescription && <p className="text-red-400 text-sm mt-1">{errors.productDescription.message}</p>}
                     </div>
                 </div>

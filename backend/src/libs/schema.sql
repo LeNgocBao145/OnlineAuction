@@ -141,7 +141,7 @@ CREATE TABLE product_images (
 CREATE TABLE product_descriptions (
     id SERIAL PRIMARY KEY,
     product INTEGER NOT NULL,
-    description VARCHAR(200) NOT NULL,
+    description TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL
 );
 

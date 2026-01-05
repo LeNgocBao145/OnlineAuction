@@ -1,7 +1,7 @@
 import useProductStore from "@/stores/productStore";
 import { useState } from "react";
 import { formatDate } from "@/utils/dateUtils";
-
+import styles from "./description.module.css";
 
 export default function ProductDescription() {
   const MAX_DESCRIPTION_LENGTH = 500;
@@ -54,11 +54,15 @@ export default function ProductDescription() {
         </div>
       ) :
         product.descriptions?.length ? (
-          product.descriptions.map((d, idx) => (
-            <p key={idx} className="text-white mt-2">
-              {d.description}
-            </p>
-          ))
+          <div className="w-full">
+            {product.descriptions.map((d, idx) => (
+              <div
+                key={idx}
+                dangerouslySetInnerHTML={{ __html: d.description }}
+                className={styles.htmlContent}
+              />
+            ))}
+          </div>
         ) : (
           <p className="text-white/70">No description.</p>
         )}
