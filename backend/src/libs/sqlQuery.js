@@ -347,10 +347,12 @@ export const getFavoritesQuery = (sortLogic) => `
         sp.instant_price,
         bidder.name AS highest_bidder,
         sp.created_at,
+        sp.expired_at,
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
         COUNT(DISTINCT b.id) AS bid_count,
-        (sp.created_at >= NOW() - INTERVAL '90 minutes') AS is_new,
+        (EXTRACT(EPOCH FROM (NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
+        (EXTRACT(EPOCH FROM (sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon,
         ts_rank(p.search_vector, plainto_tsquery('simple', unaccent($2))) AS rank,
         COUNT(*) OVER() AS total_count
 
@@ -384,7 +386,7 @@ export const getFavoritesQuery = (sortLogic) => `
         f.created_at,
         sp.expired_at, sp.created_at, sp.instant_price,
         bidder.name, 
-        query, p.search_vector
+        query, p.search_vector, is_ending_soon, is_new
 
     ORDER BY ${sortLogic}, rank DESC, is_new DESC
 
@@ -419,7 +421,7 @@ export const getProductDetailsById = `
         -- Categories
         COALESCE(
             (
-                SELECT json_agg(c.name)
+                SELECT json_agg(json_build_object('id', c.id, 'name', c.name))
                 FROM product_categories pc
                 JOIN categories c ON c.id = pc.category
                 WHERE pc.product = b.id
@@ -457,6 +459,7 @@ export const getProductDetailsById = `
             (
                 SELECT json_agg(
                     json_build_object(
+                        'bidder_id', bid.buyer,
                         'bidder_name', u_b.name,  
                         'amount', bid.price,
                         'bid_time', bid.bid_date
@@ -519,10 +522,12 @@ export const getFilteredProductsQuery = (sortLogic) => `
          JOIN categories c ON pc.category = c.id  
          WHERE pc.product = p.id LIMIT 1) AS category_name,
         sp.created_at,
+        sp.expired_at,
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
         COUNT(DISTINCT b.id) AS bid_count,
-        (sp.created_at >= NOW() - INTERVAL '90 minutes') AS is_new,
+        (EXTRACT(EPOCH FROM (NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
+        (EXTRACT(EPOCH FROM (sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon,
         ts_rank(p.search_vector, plainto_tsquery('simple', unaccent($1))) AS rank,
         COUNT(*) OVER() AS total_count
 
@@ -882,9 +887,12 @@ export const getTop5EndingSoon = `
         sp.instant_price,
         bidder.name AS highest_bidder,
         sp.created_at,
+        sp.expired_at,
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
-        COUNT(DISTINCT b.id) AS bid_count
+        COUNT(DISTINCT b.id) AS bid_count,
+        (EXTRACT(EPOCH FROM (NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
+        (EXTRACT(EPOCH FROM (sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon
 
     FROM
         products p
@@ -902,7 +910,7 @@ export const getTop5EndingSoon = `
 
     WHERE p.state = 'bidding' AND sp.expired_at > NOW()
 
-    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name
+    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name, is_new, is_ending_soon
 
     ORDER BY sp.expired_at ASC
 
@@ -916,9 +924,12 @@ export const getTop5MostBids = `
         sp.instant_price,
         bidder.name AS highest_bidder,
         sp.created_at,
+        sp.expired_at,
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
-        COUNT(DISTINCT b.id) AS bid_count
+        COUNT(DISTINCT b.id) AS bid_count,
+        (EXTRACT(EPOCH FROM (NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
+        (EXTRACT(EPOCH FROM (sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon
 
     FROM
         products p
@@ -936,7 +947,7 @@ export const getTop5MostBids = `
 
     WHERE p.state = 'bidding'
 
-    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name
+    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name, is_new, is_ending_soon
 
     ORDER BY bid_count DESC
 
@@ -950,9 +961,12 @@ export const getTop5HighestPrice = `
         sp.instant_price,
         bidder.name AS highest_bidder,
         sp.created_at,
+        sp.expired_at,
         EXTRACT(EPOCH FROM (sp.expired_at - NOW())) AS time_left,
         ARRAY_AGG(DISTINCT c.name) AS categories,
-        COUNT(DISTINCT b.id) AS bid_count
+        COUNT(DISTINCT b.id) AS bid_count,
+        (EXTRACT(EPOCH FROM (NOW() - sp.created_at)) BETWEEN 0 AND 300) AS is_new,
+        (EXTRACT(EPOCH FROM (sp.expired_at - NOW())) BETWEEN 0 AND 300) AS is_ending_soon
 
     FROM
         products p
@@ -970,7 +984,7 @@ export const getTop5HighestPrice = `
 
     WHERE p.state = 'bidding'
 
-    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name
+    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name, is_new, is_ending_soon
 
     ORDER BY p.current_price DESC
 
@@ -1028,7 +1042,7 @@ export const bidderConfirmation = `UPDATE trade_verifications
                                    AND state = 'pending_bidder_confirm'
                                    RETURNING *`;
 
-                                   export const tradeCancel = `WITH cancelled_trade AS (
+export const tradeCancel = `WITH cancelled_trade AS (
                                     UPDATE trade_verifications
                                     SET state = 'failed'
                                     WHERE product = $1
@@ -1051,7 +1065,7 @@ export const bidderConfirmation = `UPDATE trade_verifications
                                 ON CONFLICT (product, ratee, rater)
                                 DO UPDATE SET
                                     liked = false,
-                                    content = 'Trade cancelled by seller'`;    
+                                    content = 'Trade cancelled by seller'`;
 
 export const getWinner = `SELECT u.*
                           FROM trade_verifications t

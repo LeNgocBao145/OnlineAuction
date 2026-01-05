@@ -24,7 +24,7 @@ export default function AuctionInfo() {
     <div className="flex flex-col gap-4 w-full mt-4">
       <div className="p-6 bg-(--third) border border-white/10 rounded-xl w-full shadow-xl">
         <h2 className="text-white text-2xl font-bold mb-6 flex items-center gap-2">
-          <span className="w-2 h-8 bg-white/20 rounded-full"></span>
+          <span className="w-2 h-8 bg-(--primary) rounded-full"></span>
           Auction Details
         </h2>
 

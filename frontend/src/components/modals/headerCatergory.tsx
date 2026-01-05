@@ -45,7 +45,7 @@ export default function HeaderCategory() {
     };
 
     return (
-        <div className='absolute top-[100px] mt-1 lg:left-[10%] left-[3%] lg:w-[80%] w-[94%] h-[500px] bg-(--secondary) z-9999 flex rounded-xl border border-white/10 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200'>
+        <div className='lg:mx-[10%] mx-[3%] h-[500px] bg-(--secondary) z-9999 flex rounded-xl border border-white/10 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200'>
             {/* Left Column: Parent Categories */}
             <div className="lg:w-1/4 w-2/5 p-4 border-r border-white/10 overflow-y-auto custom-scrollbar bg-black/5">
                 <h3 className="text-(--primary) text-xs font-bold uppercase tracking-wider mb-4 px-2 opacity-50">Categories</h3>
@@ -76,16 +76,10 @@ export default function HeaderCategory() {
             <div className="flex-grow p-6 overflow-y-auto custom-scrollbar">
                 {selectedParent ? (
                     <>
-                        <div className="flex justify-between items-center mb-6 pb-2 border-b border-white/5">
+                        <div className="mb-6 pb-2 border-b border-white/5">
                             <h3 className="text-xl font-bold text-white">
                                 {parentCategories.find(c => c.id === selectedParent)?.name}
                             </h3>
-                            <button
-                                className="text-(--primary) hover:underline text-sm font-medium"
-                                onClick={() => handleCategoryClick(parentCategories.find(c => c.id === selectedParent)!)}
-                            >
-                                View all items
-                            </button>
                         </div>
 
                         {childCategories.length > 0 ? (

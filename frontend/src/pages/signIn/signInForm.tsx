@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import GoogleIcon from "../../assets/Google_Favicon_2025.svg";
+
 import useAuthStore from "@/stores/authStore";
 
 const signInSchema = z.object({
@@ -16,7 +16,11 @@ const signInSchema = z.object({
 
 type SignInType = z.infer<typeof signInSchema>;
 
-export default function SignInForm() {
+interface SignInFormProps {
+  onSwitchToSignUp?: () => void;
+}
+
+export default function SignInForm({ onSwitchToSignUp }: SignInFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuthStore();
   const navigate = useNavigate();
@@ -40,97 +44,97 @@ export default function SignInForm() {
   };
 
   return (
-    <div className="w-1/2 h-[800px] bg-(--third) rounded-lg p-4">
-      <h1 className="text-(--primary) text-center text-5xl font-bold font-inter mt-8">
+    <div className="w-full max-w-xl bg-(--third) rounded-xl p-6 shadow-2xl border border-white/10">
+      {/* Header */}
+      <h1 className="text-(--primary) text-center text-3xl font-bold font-inter">
         Sign In
       </h1>
-      <p className="text-white/60 text-center mt-4">
+      <p className="text-white/60 text-center mt-1 text-sm">
         Welcome back to Online Auction!
       </p>
 
+      {/* Divider */}
+      <div className="h-px bg-white/10 my-4"></div>
+
       <form
         onSubmit={handleSubmit(signInSubmit)}
-        className="flex flex-col items-center justify-center gap-4 mt-8"
+        className="flex flex-col gap-4"
       >
-        <div className="flex flex-col w-7/10 h-[120px]">
-          <label htmlFor="email" className="text-white mb-2">
+        <div className="flex flex-col">
+          <label htmlFor="email" className="text-white text-sm mb-1">
             Email
           </label>
           <input
             type="email"
             placeholder="Enter your email"
-            className="text-white border-2 border-white/10 bg-(--secondary) w-full h-5/10 text-[20px] pl-4 rounded-lg"
+            className="text-white border border-white/10 bg-(--secondary) w-full h-11 text-base pl-3 rounded-lg focus:border-(--primary) focus:outline-none transition-colors"
             {...register("email")}
           />
-
           {errors.email && (
-            <p className="text-red-400">{errors.email.message}</p>
+            <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>
           )}
         </div>
-        <div className="flex flex-col w-7/10 h-[120px] relative">
-          <label htmlFor="password" className="text-white mb-2">
+
+        <div className="flex flex-col relative">
+          <label htmlFor="password" className="text-white text-sm mb-1">
             Password
           </label>
           <input
             type={showPassword ? "text" : "password"}
             placeholder="Enter your password"
-            className="text-white border-2 border-white/10 bg-(--secondary) w-full h-5/10 text-[20px] pl-4 rounded-lg"
+            className="text-white border border-white/10 bg-(--secondary) w-full h-11 text-base pl-3 pr-10 rounded-lg focus:border-(--primary) focus:outline-none transition-colors"
             {...register("password")}
           />
-
-          <button type="button" onClick={() => setShowPassword(!showPassword)}>
+          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-9">
             {showPassword ? (
-              <EyeIcon className="w-6 h-6 text-white/60 absolute right-4 top-13 cursor-pointer" />
+              <EyeIcon className="w-5 h-5 text-white/60 cursor-pointer hover:text-white" />
             ) : (
-              <EyeSlashIcon className="w-6 h-6 text-white/60 absolute right-4 top-13 cursor-pointer" />
+              <EyeSlashIcon className="w-5 h-5 text-white/60 cursor-pointer hover:text-white" />
             )}
           </button>
-
           {errors.password && (
-            <p className="text-red-400">{errors.password.message}</p>
+            <p className="text-red-400 text-xs mt-1">{errors.password.message}</p>
           )}
         </div>
-        <div className="w-7/10 flex justify-between items-center">
-          <div>
-            <input type="checkbox" {...register("rememberMe")} />
-            <label htmlFor="rememberMe" className="text-white/60 ml-1">
+
+        <div className="w-full flex justify-between items-center">
+          <div className="flex items-center gap-1">
+            <input type="checkbox" {...register("rememberMe")} className="w-4 h-4 accent-(--primary)" />
+            <label htmlFor="rememberMe" className="text-white/60 text-sm">
               Remember Me
             </label>
           </div>
-
           <Link
             to="/forgot-password"
-            className="text-(--primary) hover:underline"
+            className="text-(--primary) hover:underline text-sm"
           >
             Forgot Password?
           </Link>
         </div>
-        <div className="w-7/10 flex justify-between items-center">
-          <button
-            type="submit"
-            className="w-full h-[50px] bg-(--primary) rounded-lg"
-          >
-            Sign In
-          </button>
-        </div>
-      </form>
 
-      <p className="text-white/60 text-center mt-8">Or continue with</p>
-      <div className="w-7/10 flex justify-center items-center gap-4 mx-auto">
-        <button className="w-5/10 h-[50px] bg-white rounded-lg my-8">
-          <img
-            src={GoogleIcon}
-            className="w-6 h-6 inline-block mr-2 align-middle"
-          />
-          Continue with Google
+        {/* Divider */}
+        <div className="h-px bg-white/10 my-2"></div>
+
+        <button
+          type="submit"
+          className="w-full h-11 bg-(--primary) text-black rounded-lg font-bold text-base hover:bg-(--primary)/90 transition-colors"
+        >
+          Sign In
         </button>
-      </div>
-      <p className="text-white/60 text-center">
-        Don't have an account?{" "}
-        <Link to="/signUp" className="text-(--primary) hover:underline">
-          Sign Up
-        </Link>
-      </p>
+
+        <p className="text-white/60 text-center text-sm">
+          Don't have an account?{" "}
+          {onSwitchToSignUp ? (
+            <button type="button" onClick={onSwitchToSignUp} className="text-(--primary) hover:underline font-medium">
+              Sign Up
+            </button>
+          ) : (
+            <Link to="/signUp" className="text-(--primary) hover:underline font-medium">
+              Sign Up
+            </Link>
+          )}
+        </p>
+      </form>
     </div>
   );
 }

@@ -6,8 +6,7 @@ import { useEffect, useState } from "react";
 import useAuthStore from "./stores/authStore";
 
 import Landing from "./pages/landing/landing";
-import SignIn from "./pages/signIn/signIn";
-import SignUp from "./pages/signUp/signUp";
+import Auth from "./pages/auth/auth";
 import VerifyOTP from "./pages/signUp/verifyOTP";
 import ForgotPassword from "./pages/forgotPassword/forgotPassword";
 import SearchPage from "./pages/search/search";
@@ -63,8 +62,9 @@ export default function App() {
           <Routes>
             {/* Common */}
             <Route path="/" element={<Landing />} />
-            <Route path="/signIn" element={<SignIn />} />
-            <Route path="/signUp" element={<SignUp />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/signIn" element={<Navigate to="/auth" replace />} />
+            <Route path="/signUp" element={<Navigate to="/auth" replace />} />
             <Route path="/verify-otp" element={<VerifyOTP />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
 

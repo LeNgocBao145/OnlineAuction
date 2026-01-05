@@ -112,12 +112,14 @@ export default function ProductBrief() {
             </h1>
             <button
               onClick={handleToggleFavorite}
-              className="p-2 hover:bg-white/5 rounded-full transition-colors group"
+              className={`p-2 rounded-full transition-colors group ${user ? 'hover:bg-white/5' : 'cursor-not-allowed opacity-50'}`}
+              disabled={!user}
+              title={user ? (favorited ? 'Remove from favorites' : 'Add to favorites') : 'Login to add to favorites'}
             >
               {favorited ? (
                 <FaStar className="w-7 h-7 text-(--primary) drop-shadow-[0_0_8px_rgba(255,215,0,0.4)]" />
               ) : (
-                <FaRegStar className="w-7 h-7 text-white/40 group-hover:text-white transition-colors" />
+                <FaRegStar className={`w-7 h-7 ${user ? 'text-white/40 group-hover:text-white' : 'text-white/20'} transition-colors`} />
               )}
             </button>
           </div>
@@ -166,13 +168,25 @@ export default function ProductBrief() {
           <div className="grid grid-cols-2 gap-8">
             <div className="flex flex-col">
               <span className="text-white/50 text-xs uppercase tracking-widest mb-1">Seller</span>
-              <p className="text-lg font-medium text-white/90">{product.seller_name}</p>
+              <p className="text-lg font-medium text-white/90">
+                {product.user_relation === "seller" ? (
+                  <span className="text-(--primary) font-bold">You</span>
+                ) : (
+                  product.seller_name
+                )}
+              </p>
             </div>
             <div className="flex flex-col text-right">
               <span className="text-white/50 text-xs uppercase tracking-widest mb-1">
                 {product.state === "sold" ? "Winner" : "Highest bidder"}
               </span>
-              <p className="text-lg font-medium text-white/90">{highestBid.name ? maskName(highestBid.name) : "None"}</p>
+              <p className="text-lg font-medium text-white/90">
+                {highestBid.name === "—" ? "None" :
+                  (user?.id && highestBid.id === user.id) ?
+                    <span className="text-(--primary) font-bold">You</span> :
+                    (product.user_relation === "seller" ? highestBid.name : maskName(highestBid.name))
+                }
+              </p>
             </div>
           </div>
 
@@ -197,7 +211,7 @@ export default function ProductBrief() {
           {!user ? (
             <button
               className="w-full h-14 bg-white/10 hover:bg-white/15 text-white rounded-xl font-bold transition-all border border-white/10"
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/auth")}
             >
               Login to place bid
             </button>

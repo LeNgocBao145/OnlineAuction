@@ -16,9 +16,13 @@ export default function ProductPage() {
     useEffect(() => {
         if (!id) return;
         (async () => {
-            await fetchProduct(id);
-            if (user?.id) {
-                await fetchFavorites(user.id);
+            try {
+                await fetchProduct(id);
+                if (user?.id) {
+                    await fetchFavorites(user.id);
+                }
+            } catch (err) {
+                console.error("Failed to load product page:", err);
             }
         })();
     }, [id, user?.id, pathname, refreshKey]);
@@ -30,8 +34,23 @@ export default function ProductPage() {
 
     return (
         <div className="px-[10%] mt-6 text-white pb-20">
-            {loading && !product && <p>Loading product...</p>}
-            {error && <p className="text-red-400">{error}</p>}
+            {loading && !product && (
+                <div className="flex justify-center items-center py-20">
+                    <p className="text-xl text-white/60">Loading product...</p>
+                </div>
+            )}
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
+                    <p className="text-red-400 font-bold mb-2">Error</p>
+                    <p className="text-white/80">{error}</p>
+                    <button
+                        onClick={() => setRefreshKey(prev => prev + 1)}
+                        className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+                    >
+                        Try Again
+                    </button>
+                </div>
+            )}
             {product && <ProductBody />}
         </div>
     );

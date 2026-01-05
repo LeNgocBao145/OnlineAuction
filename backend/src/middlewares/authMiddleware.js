@@ -26,3 +26,28 @@ export const authenticateToken = (req, res, next) => {
     }
 };
 
+// Optional authentication - allows guest access but recognizes logged-in users
+export const optionalAuthenticateToken = (req, res, next) => {
+    try {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+
+        if (!token || token === 'null' || token === 'undefined') {
+            req.user = null;
+            return next();
+        }
+
+        jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+            if (err) {
+                req.user = null;
+                return next();
+            }
+
+            req.user = { id: decoded.userId };
+            next();
+        });
+    } catch (error) {
+        req.user = null;
+        next();
+    }
+};

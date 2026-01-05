@@ -13,6 +13,9 @@ export interface Product {
   instant_price?: number;
   seller_name?: string;
   winner_name?: string | null;
+  is_new?: boolean;
+  is_ending_soon?: boolean;
+  expired_at?: string;
 }
 
 export interface ProductDescription {
@@ -21,6 +24,7 @@ export interface ProductDescription {
 }
 
 export interface ProductBid {
+  bidder_id: number;
   bidder_name: string;
   amount: number;
   bid_time: string;

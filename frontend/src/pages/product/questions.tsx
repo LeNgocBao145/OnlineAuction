@@ -11,7 +11,6 @@ import { toast } from "sonner";
 
 export default function ProductQuestions() {
   const [askingQuestion, setAskingQuestion] = useState(false);
-  const [answeringQuestion, setAnsweringQuestion] = useState(false);
   const [replyingQuestionId, setReplyingQuestionId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,25 +49,24 @@ export default function ProductQuestions() {
         />
       )}
 
-      {answeringQuestion && (
-        <AnswerQuestionModal
-          setAnsweringQuestion={setAnsweringQuestion}
-          productId={product?.id || ""}
-          askerName={"Questioner"}
-          question={"Sample question"}
-          profileName={user?.name || "You"}
-          profilePicture={userAvatar}
-        />
-      )}
-
       <div className="w-full flex flex-row justify-between items-center">
         <h1 className="font-bold font-inter text-(--primary) text-3xl">
           Questions & Answers
         </h1>
-        {user?.id !== product?.seller_id && (
+        {user ? (
+          user?.id !== product?.seller_id && (
+            <button
+              onClick={() => setAskingQuestion(true)}
+              className="text-(--primary) underline"
+            >
+              Ask a question?
+            </button>
+          )
+        ) : (
           <button
-            onClick={() => setAskingQuestion(true)}
-            className="text-(--primary) underline"
+            className="text-white/40 cursor-not-allowed"
+            disabled
+            title="Login to ask a question"
           >
             Ask a question?
           </button>
@@ -87,7 +85,7 @@ export default function ProductQuestions() {
               <div className="flex flex-row justify-between items-start">
                 <div className="flex-1">
                   <p className="text-(--primary) font-bold text-lg">
-                    {maskName(q.questioner_name)}
+                    {user?.id === product?.seller_id ? q.questioner_name : maskName(q.questioner_name)}
                     <span className="text-white/30 text-sm ml-2">
                       {formatDate(q.asked_at)}
                     </span>
@@ -110,7 +108,7 @@ export default function ProductQuestions() {
                 <ArrowRightIcon className="w-6 h-6 text-white/50 transform -translate-y-1/2 mt-4 z-0" />
                 <div className="flex-1">
                   <p className="text-(--primary) font-bold text-lg">
-                    {q.answerer_name ? q.answerer_name : "Seller"}
+                    {user?.id === product?.seller_id ? "You" : (q.answerer_name ? q.answerer_name : "Seller")}
                     <span className="text-white/30 text-sm ml-2">
                       {q.answered_at ? formatDate(q.answered_at) : "-"}
                     </span>
