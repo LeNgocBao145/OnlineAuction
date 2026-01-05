@@ -6,13 +6,19 @@ import useAuthStore from '@/stores/authStore';
 
 export default function VerifyOTP() {
     const [otp, setOtp] = useState('');
-    const [otpRemainTime, setOtpRemainTime] = useState(60);
+    const [otpRemainTime, setOtpRemainTime] = useState(600);
     const [pressedResend, setPressedResend] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
     const { verifyOTP: verifyOTPAccount, sendOTP } = useAuthStore();
 
     const { email } = location.state || {};
+
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
 
     useEffect(() => {
         if (!email) {
@@ -43,7 +49,7 @@ export default function VerifyOTP() {
         if (otpRemainTime > 0) return;
         try {
             await sendOTP(email);
-            setOtpRemainTime(import.meta.env.VITE_OTP_EXPIRE_TIME || 60);
+            setOtpRemainTime(600);
             setPressedResend(true);
             setTimeout(() => setPressedResend(false), 500);
         } catch (error: any) {
@@ -63,7 +69,7 @@ export default function VerifyOTP() {
                     <div className='flex justify-between mb-2'>
                         <label className='text-white'>Enter OTP Code</label>
                         <p className='text-white/60'>
-                            {otpRemainTime > 0 ? `Expires in ${otpRemainTime}s` : 'Expired'}
+                            {otpRemainTime > 0 ? `Expires in ${formatTime(otpRemainTime)}` : 'Expired'}
                         </p>
                     </div>
                     <input
@@ -77,8 +83,8 @@ export default function VerifyOTP() {
                     />
                     <PaperAirplaneIcon
                         className={`w-6 h-6 absolute right-4 top-[52px] rotate-330 cursor-pointer ${pressedResend || otpRemainTime > 0
-                                ? 'text-white/30'
-                                : 'text-white/60 hover:text-(--primary)'
+                            ? 'text-white/30'
+                            : 'text-white/60 hover:text-(--primary)'
                             }`}
                         onClick={handleResendOTP}
                     />

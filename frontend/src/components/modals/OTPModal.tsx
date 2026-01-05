@@ -16,9 +16,15 @@ export default function OTPModal({
     onResend: () => Promise<void>;
 }) {
     const [otp, setOtp] = useState('');
-    const [otpRemainTime, setOtpRemainTime] = useState(60);
+    const [otpRemainTime, setOtpRemainTime] = useState(600);
     const [pressedResend, setPressedResend] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
+
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
 
     useEffect(() => {
         if (otpRemainTime > 0) {
@@ -53,7 +59,7 @@ export default function OTPModal({
         if (otpRemainTime > 0) return;
         try {
             await onResend();
-            setOtpRemainTime(60);
+            setOtpRemainTime(600);
             setPressedResend(true);
             setTimeout(() => setPressedResend(false), 500);
         } catch (error: any) {
@@ -73,7 +79,7 @@ export default function OTPModal({
                         <div className='flex justify-between mb-2'>
                             <label className='text-white'>Enter OTP Code</label>
                             <p className='text-white/60 text-sm'>
-                                {otpRemainTime > 0 ? `Expires in ${otpRemainTime}s` : 'Expired'}
+                                {otpRemainTime > 0 ? `Expires in ${formatTime(otpRemainTime)}` : 'Expired'}
                             </p>
                         </div>
                         <div className="relative">
@@ -92,12 +98,12 @@ export default function OTPModal({
                                 onClick={handleResendOTP}
                                 disabled={otpRemainTime > 0 || pressedResend}
                                 className="absolute right-3 top-1/2 -translate-y-1/2"
-                                title={otpRemainTime > 0 ? `Wait ${otpRemainTime}s to resend` : 'Resend OTP'}
+                                title={otpRemainTime > 0 ? `Wait ${formatTime(otpRemainTime)} to resend` : 'Resend OTP'}
                             >
                                 <PaperAirplaneIcon
                                     className={`w-5 h-5 -rotate-45 transition-colors ${pressedResend || otpRemainTime > 0
-                                            ? 'text-white/30 cursor-not-allowed'
-                                            : 'text-white/60 hover:text-(--primary) cursor-pointer'
+                                        ? 'text-white/30 cursor-not-allowed'
+                                        : 'text-white/60 hover:text-(--primary) cursor-pointer'
                                         }`}
                                 />
                             </button>

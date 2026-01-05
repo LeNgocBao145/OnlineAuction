@@ -31,8 +31,8 @@ async function verifyCaptcha(token) {
         },
       }
     );
-  
-    return res.data.success;    
+
+    return res.data.success;
   } catch (error) {
     console.error("Captcha Verification Error: ", error);
     return false;
@@ -54,8 +54,8 @@ class AuthController {
       const user = result.rows[0];
       if (!user) {
         return res.status(401).json({ message: "Invalid email or password" });
-      }     
-      
+      }
+
       // Verify password here (e.g., using bcrypt)
       const isPass = await bcrypt.compare(password, user.hashed_password);
 
@@ -186,7 +186,7 @@ class AuthController {
 
       // Generate OTP
       const otp = crypto.randomInt(100000, 999999).toString();
-      const expiredAt = Date.now() + 60 * 1000;
+      const expiredAt = Date.now() + 10 * 60 * 1000;
 
       // Store OTP and user data in memory
       otpStore.set(email, {
@@ -231,14 +231,14 @@ class AuthController {
       // Check if otpRecord exists
       const existingRecord = otpStore.get(email);
       if (!existingRecord) {
-        return res.status(400).json({ 
-          message: "No registration found for this email. Please register first." 
+        return res.status(400).json({
+          message: "No registration found for this email. Please register first."
         });
       }
 
       // Generate new OTP
       const otp = crypto.randomInt(100000, 999999).toString();
-      const expiredAt = Date.now() + 60 * 1000;
+      const expiredAt = Date.now() + 10 * 60 * 1000;
 
       // Update OTP in existing record (keep user data, only update OTP and expiredAt)
       otpStore.set(email, {
