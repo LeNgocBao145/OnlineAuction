@@ -90,7 +90,7 @@ const useChatStore = create<ChatState>()(
             content: content || null,
             image: image || null,
             type: image ? (content ? 'text_and_image' : 'image') : 'text',
-            created_at: new Date().toISOString(),
+            created_at: new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString(),
             isOwn: true,
           };
 
