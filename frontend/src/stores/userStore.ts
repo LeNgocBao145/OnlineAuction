@@ -202,20 +202,42 @@ const useUserStore = create<UserProfileState>()(
         productId: string | number
       ) => {
         try {
-          set({ loading: true, error: null });
+          // Optimistic update - add to favorites immediately without setting loading
+          set((state) => {
+            const currentFavorites = state.favorites;
+            if (!currentFavorites) return state;
+
+            // Check if already favorited
+            const alreadyExists = currentFavorites.products?.some(p => p.id == productId);
+            if (alreadyExists) return state;
+
+            // Add a placeholder product to favorites
+            return {
+              ...state,
+              favorites: {
+                ...currentFavorites,
+                products: [...(currentFavorites.products || []), { id: Number(productId) } as any]
+              }
+            };
+          });
+
+          // Make API call in background
           await userService.markFavorite(userId, productId);
-          // Refresh favorites after marking
+
+          // Silently refresh favorites to get complete data
           const data = await userService.getFavorites(userId);
           set({ favorites: data });
         } catch (err: any) {
+          // Revert optimistic update on error
+          const data = await userService.getFavorites(userId);
+          set({ favorites: data });
+
           const message =
             err?.response?.data?.message ||
             err?.message ||
             "Failed to mark favorite!";
           set({ error: message });
           throw err;
-        } finally {
-          set({ loading: false });
         }
       },
 
@@ -224,20 +246,37 @@ const useUserStore = create<UserProfileState>()(
         productId: string | number
       ) => {
         try {
-          set({ loading: true, error: null });
+          // Optimistic update - remove from favorites immediately without setting loading
+          set((state) => {
+            const currentFavorites = state.favorites;
+            if (!currentFavorites) return state;
+
+            return {
+              ...state,
+              favorites: {
+                ...currentFavorites,
+                products: (currentFavorites.products || []).filter(p => p.id != productId)
+              }
+            };
+          });
+
+          // Make API call in background
           await userService.unmarkFavorite(userId, productId);
-          // Refresh favorites after unmarking
+
+          // Silently refresh favorites to ensure sync
           const data = await userService.getFavorites(userId);
           set({ favorites: data });
         } catch (err: any) {
+          // Revert optimistic update on error
+          const data = await userService.getFavorites(userId);
+          set({ favorites: data });
+
           const message =
             err?.response?.data?.message ||
             err?.message ||
             "Failed to unmark favorite!";
           set({ error: message });
           throw err;
-        } finally {
-          set({ loading: false });
         }
       },
 
@@ -290,9 +329,9 @@ const useUserStore = create<UserProfileState>()(
           error: null,
         });
       },
-    }),{
-      name: "user-store",
-    }    
+    }), {
+    name: "user-store",
+  }
   )
 );
 

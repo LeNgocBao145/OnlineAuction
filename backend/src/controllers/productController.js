@@ -145,11 +145,10 @@ class ProductController {
 
       const productId = result.rows[0].id;
 
-      // Remove cover image from additional images to avoid duplication
-      const additionalImages = imageFilenames.filter((_, idx) => idx !== coverIdx);
-
+      // Store all images in product_images table (including cover)
+      // The CHECK constraint requires at least 3 images in the array
       await Promise.all([
-        query(createProductImages, [productId, additionalImages]),
+        query(createProductImages, [productId, imageFilenames]),
         query(createProductDescription, [productId, description]),
         ...categoryIds.map(catId => query(createProductCategory, [productId, catId])),
         query(createSellProduct, [productId, seller, init_price_num, step_price_num, instant_price ? parseFloat(instant_price) : null, start_at, expired_at, isExtentBool])
@@ -966,18 +965,24 @@ class ProductController {
         const coverIdx = parseInt(coverImageIndex, 10) || 0;
         coverImage = finalImageFilenames[coverIdx] || finalImageFilenames[0];
 
-        // Remove cover image from the array to avoid duplication
-        // (cover is stored in products.image, additional images in product_images.image_path)
-        const additionalImages = finalImageFilenames.filter((_, idx) => idx !== coverIdx);
-
-        await query(`UPDATE product_images SET image_path = $1 WHERE product = $2`, [additionalImages, productId]);
+        // Store all images in product_images (including cover) to satisfy CHECK constraint >= 3
+        // Cover is also stored separately in products.image for quick thumbnail access
+        await query(`UPDATE product_images SET image_path = $1 WHERE product = $2`, [finalImageFilenames, productId]);
       }
 
-      await Promise.all([
+      const updatePromises = [
         query(updateProductById, [name, init_price_num, coverImage, state, productId]),
-        query(updateSellProductById, [init_price_num, step_price_num, instant_price ? parseFloat(instant_price) : null, start_at, expired_at, isExtentBool, productId]),
-        query(`UPDATE product_descriptions SET description = $1 WHERE product = $2`, [description, productId])
-      ]);
+        query(updateSellProductById, [init_price_num, step_price_num, instant_price ? parseFloat(instant_price) : null, start_at, expired_at, isExtentBool, productId])
+      ];
+
+      // Only update description if a new description is provided
+      if (description && description.trim()) {
+        updatePromises.push(
+          query(`UPDATE product_descriptions SET description = $1 WHERE product = $2`, [description, productId])
+        );
+      }
+
+      await Promise.all(updatePromises);
 
       // Update categories separately to avoid race condition
       await query(`DELETE FROM product_categories WHERE product = $1`, [productId]);

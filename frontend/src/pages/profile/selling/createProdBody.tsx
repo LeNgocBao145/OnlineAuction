@@ -62,7 +62,7 @@ export default function CreateProdBody({ productId }: { productId?: string | num
 
     const { register, handleSubmit, formState: { errors }, reset, trigger, setValue, watch } = useForm({
         resolver: zodResolver(formSchema),
-        defaultValues: { images: [] }
+        defaultValues: { images: [], instantBuy: null }
     });
 
     const [categories, setCategories] = useState<any[]>([]);
@@ -95,7 +95,11 @@ export default function CreateProdBody({ productId }: { productId?: string | num
             try {
                 const product = await productService.getProductById(productId);
                 if (product) {
-                    const allImages = [product.image, ...(product.additional_images || [])].filter(Boolean);
+                    // additional_images now contains ALL images including cover
+                    // Only fall back to product.image if additional_images is empty
+                    const allImages = (product.additional_images && product.additional_images.length > 0)
+                        ? product.additional_images
+                        : [product.image].filter(Boolean);
                     const mappedImages = allImages.map((url: string, i: number) => ({
                         file: new File([], `image-${i}.jpg`, { type: 'image/jpeg' }),
                         url: getImageUrl(url) || "",
@@ -111,7 +115,7 @@ export default function CreateProdBody({ productId }: { productId?: string | num
                         categories: categoryIds,
                         startingBid: product.current_price,
                         bidStep: product.step_price || 0,
-                        instantBuy: product.instant_price,
+                        instantBuy: product.instant_price ?? null,
                         productDescription: product.descriptions?.[0]?.description || "",
                         startTime: toLocalISO(product.starting_at),
                         endTime: toLocalISO(product.expired_at),
@@ -154,7 +158,6 @@ export default function CreateProdBody({ productId }: { productId?: string | num
         };
     }, [imageFiles]);
 
-    // Watch forform changes
     useEffect(() => {
         if (!isEditing || !originalData) {
             setHasChanges(false);
@@ -162,7 +165,6 @@ export default function CreateProdBody({ productId }: { productId?: string | num
         }
 
         const subscription = watch((formData) => {
-            // Compare form data with original data
             const currentImages = imageFiles.map(img => img.originalName || img.name);
             const originalImages = originalData.images || [];
 
@@ -188,7 +190,6 @@ export default function CreateProdBody({ productId }: { productId?: string | num
         return () => subscription.unsubscribe();
     }, [isEditing, originalData, imageFiles, coverImageIndex, description, selectedCategories, watch]);
 
-    // Additional check for coverImageIndex changes (since it's not a form field)
     useEffect(() => {
         if (!isEditing || !originalData) return;
 
@@ -241,7 +242,7 @@ export default function CreateProdBody({ productId }: { productId?: string | num
                 const mergedDescription = (description || "") + appendText;
                 formData.append("description", mergedDescription);
             }
-            
+
             formData.append("isExtent", data.autoExtend ? "true" : "false");
             formData.append("coverImageIndex", coverImageIndex.toString());
 
@@ -272,46 +273,46 @@ export default function CreateProdBody({ productId }: { productId?: string | num
         }
     }
 
-        const handleAppendSave = async () => {
-            if (!productId) return;
-            if (!appendText || !appendText.replace(/<[^>]*>/g, '').trim()) {
-                toast.error('Nothing to append');
-                return;
-            }
+    const handleAppendSave = async () => {
+        if (!productId) return;
+        if (!appendText || !appendText.replace(/<[^>]*>/g, '').trim()) {
+            toast.error('Nothing to append');
+            return;
+        }
+
+        try {
+            setAppendSaving(true);
+
+            const result = await productService.addDescription(productId, appendText);
+            toast.success(result.message || 'Description appended');
 
             try {
-                setAppendSaving(true);
-
-                const result = await productService.addDescription(productId, appendText);
-                toast.success(result.message || 'Description appended');
-
-                try {
-                    const updatedProduct = await productService.getProductById(productId);
-                    const latestDesc = updatedProduct?.descriptions?.[0]?.description || "";
-                    setDescription(latestDesc);
-                    setOriginalData((prev: any) => prev ? { ...prev, productDescription: latestDesc } : prev);
-                } catch (e) {
-                    console.warn('Failed to refetch product after appending description', e);
-                }
-
-                setAppendText('');
-                setShowAppend(false);
-                setHasChanges(false);
-            } catch (error: any) {
-                toast.error(error?.response?.data?.message || 'Failed to append description');
-            } finally {
-                setAppendSaving(false);
+                const updatedProduct = await productService.getProductById(productId);
+                const latestDesc = updatedProduct?.descriptions?.[0]?.description || "";
+                setDescription(latestDesc);
+                setOriginalData((prev: any) => prev ? { ...prev, productDescription: latestDesc } : prev);
+            } catch (e) {
+                console.warn('Failed to refetch product after appending description', e);
             }
-        };
+
+            setAppendText('');
+            setShowAppend(false);
+            setHasChanges(false);
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || 'Failed to append description');
+        } finally {
+            setAppendSaving(false);
+        }
+    };
 
 
     return (
-        <form className="px-[10%] py-8" onSubmit={handleSubmit(onSubmit)}>
+        <form className="px-[10%] py-8" onSubmit={handleSubmit(onSubmit)} noValidate>
             <h1 className="text-3xl font-bold text-(--primary)">{isEditing ? `Edit Auction #${productId}` : "Create New Auction"}</h1>
 
             <div className="mt-6 border border-white/10 rounded-lg p-6 bg-(--third)">
                 <h2 className="text-2xl text-white text-bold">Basic Product Information</h2>
-                    <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div className="lg:col-span-2">
                         <label htmlFor="productName" className="text-white/80">Product Name<span className="text-red-500">*</span></label>
                         <div className="flex items-start gap-2">
@@ -441,7 +442,13 @@ export default function CreateProdBody({ productId }: { productId?: string | num
                     <div>
                         <label htmlFor="instantBuy" className="text-white/80">Instant Buy Price (Optional)</label>
                         <input type="number" id="instantBuy" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white"
-                            placeholder="Enter instant buy price" {...register("instantBuy", { valueAsNumber: true })} />
+                            placeholder="Enter instant buy price" {...register("instantBuy", {
+                                setValueAs: (v) => {
+                                    if (v === "" || v === null || v === undefined) return null;
+                                    const parsed = parseFloat(v);
+                                    return isNaN(parsed) ? null : parsed;
+                                }
+                            })} />
                     </div>
                 </div>
             </div>
@@ -520,12 +527,12 @@ export default function CreateProdBody({ productId }: { productId?: string | num
                                             try {
                                                 const rng = editor.selection && editor.selection.getRng && editor.selection.getRng();
                                                 const start = rng ? rng.startOffset : null;
-                                                console.log('TinyMCE event', e.type, { key: e.key, data: e.data, isComposing: e.isComposing, selStart: start, text: editor.getContent({ format: 'text' }).slice(0,200) });
+                                                console.log('TinyMCE event', e.type, { key: e.key, data: e.data, isComposing: e.isComposing, selStart: start, text: editor.getContent({ format: 'text' }).slice(0, 200) });
                                             } catch (err) {
                                                 console.log('TinyMCE logging error', err);
                                             }
                                         };
-                                        ['keydown','input','compositionstart','compositionupdate','compositionend'].forEach(evt => editor.on(evt, log));
+                                        ['keydown', 'input', 'compositionstart', 'compositionupdate', 'compositionend'].forEach(evt => editor.on(evt, log));
                                     },
                                     statusbar: true,
                                     branding: false
@@ -668,7 +675,7 @@ export default function CreateProdBody({ productId }: { productId?: string | num
                                             appendTextRef.current = content;
 
                                             if (appendDebounceRef.current) window.clearTimeout(appendDebounceRef.current);
-                                            appendDebounceRef.current = window.setTimeout(() => {}, 300) as unknown as number;
+                                            appendDebounceRef.current = window.setTimeout(() => { }, 300) as unknown as number;
                                         }}
                                         onBlur={() => {
                                             // commit append content on blur

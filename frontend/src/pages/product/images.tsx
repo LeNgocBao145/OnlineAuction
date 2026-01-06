@@ -9,9 +9,9 @@ export default function ProductImages() {
   const { product } = useProductStore();
   const images = useMemo(() => {
     if (!product) return [] as string[];
-    const allImages = [product.image, ...(product.additional_images || [])].filter(
-      Boolean
-    );
+    const allImages = (product.additional_images && product.additional_images.length > 0)
+      ? product.additional_images
+      : [product.image].filter(Boolean);
     return allImages.map(img => getImageUrl(img)).filter(Boolean) as string[];
   }, [product]);
 

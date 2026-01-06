@@ -1,14 +1,44 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import useSearchStore from "@/stores/searchStore";
+import useAuthStore from "@/stores/authStore";
+import useUserStore from "@/stores/userStore";
 import { formatTimeLeft } from "@/utils/timeUtils";
 import { formatCurrency } from "@/utils/numberUtils";
 import { getImageUrl } from "@/utils/productUtils";
+import { FaStar, FaRegStar } from "react-icons/fa";
 
 export default function SearchBody() {
     const navigate = useNavigate();
     const { data, loading, error, filterParams } = useSearchStore();
+    const { user } = useAuthStore();
+    const { favorites, markFavorite, unmarkFavorite } = useUserStore();
     const [sortBy, setSortBy] = useState<string>("time_left_desc,price_asc");
+    const [loadingFavorite, setLoadingFavorite] = useState<string | number | null>(null);
+
+    const isFavorited = (productId: string | number) => {
+        return favorites?.products?.some(fav => fav.id == productId) || false;
+    };
+
+    const handleToggleFavorite = async (e: React.MouseEvent, productId: string | number) => {
+        e.stopPropagation(); // Prevent card click
+        if (!user?.id) {
+            navigate("/auth");
+            return;
+        }
+        try {
+            setLoadingFavorite(productId);
+            if (isFavorited(productId)) {
+                await unmarkFavorite(user.id, productId);
+            } else {
+                await markFavorite(user.id, productId);
+            }
+        } catch (error) {
+            console.error("Error toggling favorite:", error);
+        } finally {
+            setLoadingFavorite(null);
+        }
+    };
 
     const sortOptions: { label: string; value: string }[] = [
         { label: "Relevance", value: "time_left_desc,price_asc" },
@@ -131,6 +161,23 @@ export default function SearchBody() {
                                         {isEndingSoon && (
                                             <div className="absolute inset-0 bg-red-500/10 pointer-events-none group-hover:bg-red-500/20 transition-colors"></div>
                                         )}
+                                        {/* Favorite Button */}
+                                        <button
+                                            onClick={(e) => handleToggleFavorite(e, item.id)}
+                                            disabled={loadingFavorite === item.id}
+                                            className={`absolute top-2 right-2 p-2 rounded-full transition-all z-10 
+                                                ${isFavorited(item.id)
+                                                    ? 'bg-black/60 text-(--primary)'
+                                                    : 'bg-black/40 text-white/60 hover:text-white hover:bg-black/60'}
+                                                ${loadingFavorite === item.id ? 'opacity-50' : ''}`}
+                                            title={user ? (isFavorited(item.id) ? 'Remove from favorites' : 'Add to favorites') : 'Login to add to favorites'}
+                                        >
+                                            {isFavorited(item.id) ? (
+                                                <FaStar className="w-4 h-4 drop-shadow-[0_0_4px_rgba(255,215,0,0.5)]" />
+                                            ) : (
+                                                <FaRegStar className="w-4 h-4" />
+                                            )}
+                                        </button>
                                     </div>
 
                                     <h2 className="text-xl font-bold text-white mb-2 truncate group-hover:text-(--primary) transition-colors">{item.name}</h2>

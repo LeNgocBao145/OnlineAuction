@@ -5,14 +5,37 @@ import useAuthStore from "@/stores/authStore";
 import { formatDate } from "@/utils/dateUtils";
 import { getImageUrl } from "@/utils/productUtils";
 import { formatCurrency } from "@/utils/numberUtils";
+import { FaStar, FaRegStar } from "react-icons/fa";
 
 export default function BidsBody() {
     const navigate = useNavigate();
     const { user } = useAuthStore();
-    const { biddings, loading, error, fetchBiddings } = useUserStore();
+    const { biddings, loading, error, fetchBiddings, favorites, markFavorite, unmarkFavorite } = useUserStore();
     const [statusFilter, setStatusFilter] = useState<number>(4);
     const [visibleCount, setVisibleCount] = useState<number>(5);
     const [page] = useState<number>(1);
+    const [loadingFavorite, setLoadingFavorite] = useState<string | number | null>(null);
+
+    const isFavorited = (productId: string | number) => {
+        return favorites?.products?.some(fav => fav.id == productId) || false;
+    };
+
+    const handleToggleFavorite = async (e: React.MouseEvent, productId: string | number) => {
+        e.stopPropagation();
+        if (!user?.id) return;
+        try {
+            setLoadingFavorite(productId);
+            if (isFavorited(productId)) {
+                await unmarkFavorite(user.id, productId);
+            } else {
+                await markFavorite(user.id, productId);
+            }
+        } catch (error) {
+            console.error("Error toggling favorite:", error);
+        } finally {
+            setLoadingFavorite(null);
+        }
+    };
 
     useEffect(() => {
         if (user?.id) {
@@ -75,8 +98,25 @@ export default function BidsBody() {
                 {visibleBiddings.length > 0 ? visibleBiddings.map((bid) => (
                     <li key={bid.id} className="border border-white/10 rounded-lg bg-(--secondary) p-4 cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => navigate(`/product/${bid.id}`)}>
                         <div className="grid grid-cols-[1fr_2fr] gap-4">
-                            <div>
+                            <div className="relative">
                                 <img src={getImageUrl(bid.image)} alt={bid.name} className="rounded-md border border-white/10 aspect-square h-full object-cover" />
+                                {/* Favorite Button */}
+                                <button
+                                    onClick={(e) => handleToggleFavorite(e, bid.id)}
+                                    disabled={loadingFavorite === bid.id}
+                                    className={`absolute top-2 right-2 p-2 rounded-full transition-all z-10 
+                                        ${isFavorited(bid.id)
+                                            ? 'bg-black/60 text-(--primary)'
+                                            : 'bg-black/40 text-white/60 hover:text-white hover:bg-black/60'}
+                                        ${loadingFavorite === bid.id ? 'opacity-50' : ''}`}
+                                    title={isFavorited(bid.id) ? 'Remove from favorites' : 'Add to favorites'}
+                                >
+                                    {isFavorited(bid.id) ? (
+                                        <FaStar className="w-4 h-4 drop-shadow-[0_0_4px_rgba(255,215,0,0.5)]" />
+                                    ) : (
+                                        <FaRegStar className="w-4 h-4" />
+                                    )}
+                                </button>
                             </div>
                             <div className="flex flex-col">
                                 <div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FaPlus } from "react-icons/fa";
+import { FaPlus, FaStar, FaRegStar } from "react-icons/fa";
 import { useNavigate } from "react-router";
 import useUserStore from "@/stores/userStore";
 import useAuthStore from "@/stores/authStore";
@@ -13,10 +13,32 @@ import { getRemainingTime } from "@/utils/timeUtils";
 export default function MyProducts() {
     const navigate = useNavigate();
     const { user } = useAuthStore();
-    const { sellings, loading, error, fetchSellings } = useUserStore();
+    const { sellings, loading, error, fetchSellings, favorites, markFavorite, unmarkFavorite } = useUserStore();
     const [statusFilter, setStatusFilter] = useState<number>(5);
     const [visibleProductsCount] = useState<number>(6);
     const [page, setPage] = useState<number>(1);
+    const [loadingFavorite, setLoadingFavorite] = useState<string | number | null>(null);
+
+    const isFavorited = (productId: string | number) => {
+        return favorites?.products?.some(fav => fav.id == productId) || false;
+    };
+
+    const handleToggleFavorite = async (e: React.MouseEvent, productId: string | number) => {
+        e.stopPropagation();
+        if (!user?.id) return;
+        try {
+            setLoadingFavorite(productId);
+            if (isFavorited(productId)) {
+                await unmarkFavorite(user.id, productId);
+            } else {
+                await markFavorite(user.id, productId);
+            }
+        } catch (error) {
+            console.error("Error toggling favorite:", error);
+        } finally {
+            setLoadingFavorite(null);
+        }
+    };
 
     useEffect(() => {
         if (user?.id) {
@@ -109,8 +131,25 @@ export default function MyProducts() {
                         <li key={product.id} className="border border-white/10 rounded-lg bg-(--secondary) p-4 grid grid-cols-1 lg:grid-cols-[2fr_4fr_2fr] justify-center gap-4 hover:scale-101 hover:cursor-pointer transition-transform"
                             onClick={() => navigate(`/product/${product.id}`)}
                         >
-                            <div>
+                            <div className="relative">
                                 <img src={getImageUrl(product.image) || "/placeholder.jpg"} alt={product.name} className="h-full aspect-square rounded-md mr-4 border border-white/10 object-cover" />
+                                {/* Favorite Button */}
+                                <button
+                                    onClick={(e) => handleToggleFavorite(e, product.id)}
+                                    disabled={loadingFavorite === product.id}
+                                    className={`absolute top-2 right-2 p-2 rounded-full transition-all z-10 
+                                        ${isFavorited(product.id)
+                                            ? 'bg-black/60 text-(--primary)'
+                                            : 'bg-black/40 text-white/60 hover:text-white hover:bg-black/60'}
+                                        ${loadingFavorite === product.id ? 'opacity-50' : ''}`}
+                                    title={isFavorited(product.id) ? 'Remove from favorites' : 'Add to favorites'}
+                                >
+                                    {isFavorited(product.id) ? (
+                                        <FaStar className="w-4 h-4 drop-shadow-[0_0_4px_rgba(255,215,0,0.5)]" />
+                                    ) : (
+                                        <FaRegStar className="w-4 h-4" />
+                                    )}
+                                </button>
                             </div>
                             <div className="flex flex-col justify-between">
                                 <div>
