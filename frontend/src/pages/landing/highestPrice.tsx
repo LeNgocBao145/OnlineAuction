@@ -32,7 +32,7 @@ export default function HighestPrice() {
 
                     return (
                         <li key={item.id} className={`relative bg-(--secondary) w-full rounded-xl p-3 \
-                                             border-2 grid grid-cols-[1fr_3.5fr_1.5fr] items-center \
+                                             border-2 grid grid-cols-[1fr_2fr] items-center lg:min-h-[220px] \
                                              transform hover:scale-102 transition-all cursor-pointer \
                                              ${isEndingSoonClient ? "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.25)] bg-red-500/5" :
                                 isNewClient ? "border-(--primary) shadow-[0_0_15px_rgba(255,215,0,0.15)]" :
@@ -49,7 +49,7 @@ export default function HighestPrice() {
                                     New
                                 </div>
                             ) : null}
-                            <div className="aspect-square h-16 rounded-lg overflow-hidden bg-black/30 border border-white/10 ml-1">
+                            <div className="aspect-square w-full rounded-lg overflow-hidden bg-black/30 border border-white/10 ml-1">
                                 {item.image_url ? (
                                     <img
                                         src={getImageUrl(item.image_url)}
@@ -62,15 +62,17 @@ export default function HighestPrice() {
                                     </div>
                                 )}
                             </div>
-                            <div className="flex flex-col justify-center ml-4 truncate">
-                                <h2 className="text-white font-sans font-bold lg:text-lg text-base truncate mb-1 group-hover:text-(--primary) transition-colors">{item.name}</h2>
-                                <p className={`text-xs font-medium tracking-wide ${isEndingSoonClient ? "text-red-300" : "text-white/60"} truncate`}>
-                                    {item.bid_count} Bids • {formatTimeLeft(item.expired_at)}
-                                </p>
-                            </div>
-                            <div className="text-right flex flex-col items-end justify-center pr-2">
-                                <p className="text-(--primary) text-lg lg:text-xl font-black leading-none mb-1 whitespace-nowrap">{formatCurrency(Number(item.current_price))}</p>
-                                <p className="text-white/40 text-[10px] uppercase tracking-widest font-bold">Current</p>
+                            <div className="flex flex-col justify-between items-center gap-8 ml-4">
+                                <div className="flex flex-col justify-center w-full text-left">
+                                    <h2 className="text-white font-sans font-bold lg:text-lg text-base mb-1 group-hover:text-(--primary) transition-colors">{item.name}</h2>
+                                    <p className={`text-xs font-medium tracking-wide ${isEndingSoonClient ? "text-red-300" : "text-white/60"}`}>
+                                        {item.bid_count} Bids • {formatTimeLeft(item.expired_at)}
+                                    </p>
+                                </div>
+                                <div className="text-right flex flex-col items-end justify-center pr-2 w-full text-right">
+                                    <p className="text-(--primary) text-lg lg:text-xl font-black leading-none mb-1 whitespace-nowrap">{formatCurrency(Number(item.current_price))}</p>
+                                    <p className="text-white/40 text-[10px] uppercase tracking-widest font-bold">Current</p>
+                                </div>
                             </div>
                         </li>
                     );

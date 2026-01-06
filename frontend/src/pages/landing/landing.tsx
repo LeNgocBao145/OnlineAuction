@@ -25,7 +25,7 @@ export default function Landing() {
     return (
         <div className="flex-grow flex flex-col">
             <Hero username={user?.name || "Guest"} />
-            <div className="w-95/100 grid lg:grid-cols-3 grid-cols-1 mx-auto gap-4 mb-20">
+            <div className="lg:w-9/10 md:w-95/100 grid lg:grid-cols-3 grid-cols-1 mx-auto gap-4 mb-20">
                 <EndingSoon />
                 <MostBids />
                 <HighestPrice />
