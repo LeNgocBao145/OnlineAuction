@@ -303,12 +303,312 @@ FOREIGN KEY (product) REFERENCES products(id) ON DELETE CASCADE,
 ADD CONSTRAINT fk_sell_product_seller
 FOREIGN KEY (seller) REFERENCES users(id) ON DELETE CASCADE;
 
+-- 1. Setup Extension & Column
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
+ALTER TABLE products 
+ADD COLUMN IF NOT EXISTS search_vector TSVECTOR;
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS search_vector TSVECTOR;
+
+-- 2. Core Function: Update Search Vector
+-- Logic: Name (A) || Category (B) || Description (C)
+CREATE OR REPLACE FUNCTION fn_update_product_search_vector(product_id_input INT)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE products
+    SET search_vector = 
+        -- Weight A: Product Name
+        setweight(to_tsvector('simple', unaccent(COALESCE(name, ''))), 'A') ||
+        
+        -- Weight B: Category Names
+        setweight(to_tsvector('simple', unaccent(COALESCE((
+            -- CTE Đệ quy để lấy danh mục hiện tại và toàn bộ danh mục cha
+            WITH RECURSIVE category_tree AS (
+                -- 1. Anchor: Lấy các danh mục trực tiếp của sản phẩm
+                SELECT c.id, c.name, c.parent
+                FROM categories c
+                JOIN product_categories pc ON c.id = pc.category
+                WHERE pc.product = product_id_input
+                
+                UNION ALL
+                
+                -- 2. Recursive: Lần ngược lên các danh mục cha (parent)
+                SELECT parent_cat.id, parent_cat.name, parent_cat.parent
+                FROM categories parent_cat
+                JOIN category_tree child_cat ON child_cat.parent = parent_cat.id
+            )
+            SELECT STRING_AGG(name, ' ') FROM category_tree
+        ), ''))), 'B') ||
+        
+        -- Weight C: Product Descriptions
+        setweight(to_tsvector('simple', unaccent(COALESCE((
+            SELECT STRING_AGG(d.description, ' ')
+            FROM product_descriptions d
+            WHERE d.product = product_id_input
+        ), ''))), 'C')
+    WHERE id = product_id_input;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ---------------------------------------------------------
+-- TRIGGER 1: Khi thay đổi bảng products
+-- ---------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_trg_products_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.name IS DISTINCT FROM OLD.name THEN
+        PERFORM fn_update_product_search_vector(NEW.id);
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_products_update ON products;
+CREATE TRIGGER trg_products_update
+AFTER INSERT OR UPDATE ON products
+FOR EACH ROW EXECUTE FUNCTION fn_trg_products_update();
+
+-- ---------------------------------------------------------
+-- TRIGGER 2: Khi thay đổi bảng product_decriptions
+-- ---------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_trg_description_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'DELETE') THEN
+        PERFORM fn_update_product_search_vector(OLD.product);
+    ELSE
+        PERFORM fn_update_product_search_vector(NEW.product);
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_description_update ON product_descriptions;
+CREATE TRIGGER trg_description_update
+AFTER INSERT OR UPDATE OR DELETE ON product_descriptions
+FOR EACH ROW EXECUTE FUNCTION fn_trg_description_update();
+
+-- ---------------------------------------------------------
+-- TRIGGER 3: Khi thay đổi bảng product_categories
+-- ---------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_trg_product_categories_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'DELETE' OR TG_OP = 'UPDATE') THEN
+        PERFORM fn_update_product_search_vector(OLD.product);
+    END IF;
+    
+    IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
+        PERFORM fn_update_product_search_vector(NEW.product);
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_product_categories_update ON product_categories;
+CREATE TRIGGER trg_product_categories_update
+AFTER INSERT OR UPDATE OR DELETE ON product_categories
+FOR EACH ROW EXECUTE FUNCTION fn_trg_product_categories_update();
+
+-- ---------------------------------------------------------
+-- TRIGGER 4: Khi thay đổi bảng categories
+-- ---------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_trg_categories_name_update()
+RETURNS TRIGGER AS $$
+DECLARE
+    rec RECORD;
+BEGIN
+    -- Chỉ chạy khi tên thay đổi HOẶC parent thay đổi
+    IF (NEW.name IS DISTINCT FROM OLD.name) OR (NEW.parent IS DISTINCT FROM OLD.parent) THEN
+        
+        -- Tìm tất cả sản phẩm thuộc danh mục này HOẶC thuộc các danh mục con
+        FOR rec IN 
+            WITH RECURSIVE subcategories AS (
+                -- Lấy danh mục đang bị thay đổi (Cha)
+                SELECT id FROM categories WHERE id = NEW.id
+                UNION ALL
+                -- Lấy tất cả danh mục con của nó
+                SELECT c.id FROM categories c
+                JOIN subcategories s ON c.parent = s.id
+            )
+            -- Tìm sản phẩm nối với bất kỳ danh mục nào trong cây này
+            SELECT DISTINCT pc.product AS product_id
+            FROM product_categories pc
+            JOIN subcategories s ON pc.category = s.id
+        LOOP
+            PERFORM fn_update_product_search_vector(rec.product_id);
+        END LOOP;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_categories_name_update ON categories;
+CREATE TRIGGER trg_categories_name_update
+AFTER UPDATE ON categories
+FOR EACH ROW EXECUTE FUNCTION fn_trg_categories_name_update();
+
+-- === TRIGGERS ===
+
+CREATE OR REPLACE FUNCTION fn_add_product_to_parent_categories()
+RETURNS TRIGGER AS $$
+DECLARE
+    parent_id INT;
+BEGIN
+    -- Nếu insert do trigger tạo ra thì bỏ qua
+    IF pg_trigger_depth() > 1 THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT parent INTO parent_id
+    FROM categories
+    WHERE id = NEW.category;
+
+    WHILE parent_id IS NOT NULL LOOP
+
+        -- Insert vào parent nếu chưa tồn tại
+        INSERT INTO product_categories (product, category)
+        VALUES (NEW.product, parent_id)
+        ON CONFLICT DO NOTHING;
+
+        -- Chống cycle (parent trỏ về chính nó)
+        IF parent_id = NEW.category THEN
+            RAISE EXCEPTION 'Category cycle detected at id %', parent_id;
+        END IF;
+
+        -- Lấy tiếp parent
+        SELECT parent INTO parent_id
+        FROM categories
+        WHERE id = parent_id;
+    END LOOP;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trg_product_category_add_parent
+AFTER INSERT ON product_categories
+FOR EACH ROW
+EXECUTE FUNCTION fn_add_product_to_parent_categories();
+
+CREATE OR REPLACE FUNCTION delete_seller_products()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Xóa tất cả products mà user này là seller
+    DELETE FROM products
+    WHERE id IN (
+        SELECT product 
+        FROM sell_product 
+        WHERE seller = OLD.id
+    );
+    
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_delete_seller_products
+BEFORE DELETE ON users
+FOR EACH ROW
+EXECUTE FUNCTION delete_seller_products();
+
+CREATE TRIGGER tsvectorupdate
+BEFORE INSERT OR UPDATE ON users
+FOR EACH ROW EXECUTE FUNCTION users_tsvector_trigger();
+
+-- Cập nhật data
+DO $$
+DECLARE 
+    r RECORD;
+BEGIN
+    FOR r IN SELECT id FROM products LOOP
+        PERFORM fn_update_product_search_vector(r.id);
+    END LOOP;
+END;
+$$;
+
+-- Tạo Index
+CREATE INDEX IF NOT EXISTS idx_products_search_vector
+ON products
+USING GIN (search_vector);
+
+CREATE INDEX IF NOT EXISTS idx_users_search_vector
+ON users
+USING GIN (search_vector);
+
+-- Update users search_vector
+UPDATE users
+SET search_vector = 
+    setweight(to_tsvector('simple', unaccent(COALESCE(name, ''))), 'A') ||
+    setweight(to_tsvector('simple', unaccent(COALESCE(email, ''))), 'B');
+
+-- Procedure
+CREATE OR REPLACE PROCEDURE sync_auction_states()
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  p RECORD;   -- product + seller
+  w RECORD;   -- winner
+BEGIN
+  -- 1) incoming -> bidding
+  UPDATE products pr
+  SET state = 'bidding'
+  FROM sell_product sp
+  WHERE sp.product = pr.id
+    AND pr.state = 'incoming'
+    AND sp.starting_at <= NOW()
+    AND sp.expired_at  > NOW();
+
+  -- 2) bidding -> sold (+ winner + trade)
+  FOR p IN
+    SELECT pr.id AS product_id, sp.seller AS seller_id
+    FROM products pr
+    JOIN sell_product sp ON sp.product = pr.id
+    WHERE pr.state = 'bidding'
+      AND sp.expired_at <= NOW()
+    FOR UPDATE OF pr SKIP LOCKED
+  LOOP
+    -- Chuyển state trước (idempotent)
+    UPDATE products
+    SET state = 'sold'
+    WHERE id = p.product_id;
+
+    -- Lấy bid cao nhất
+    SELECT b.buyer AS bidder_id, b.price
+    INTO w
+    FROM bids b
+    WHERE b.product = p.product_id
+    ORDER BY b.price DESC, b.bid_date ASC, b.id ASC
+    LIMIT 1;
+
+    -- Không có bid => không tạo winner/transaction (vì NOT NULL)
+    IF w.bidder_id IS NULL THEN
+      CONTINUE;
+    END IF;
+
+    -- Upsert bidder_winner
+    INSERT INTO bidder_winner(product, bidder)
+    VALUES (p.product_id, w.bidder_id)
+    ON CONFLICT (product)
+    DO UPDATE SET bidder = EXCLUDED.bidder;
+
+    -- Upsert trade_verifications (transaction)
+    INSERT INTO trade_verifications(product, bidder, seller)
+    VALUES (p.product_id, w.bidder_id, p.seller_id)
+    ON CONFLICT (product)
+    DO UPDATE SET
+      bidder = EXCLUDED.bidder,
+      seller = EXCLUDED.seller;
+  END LOOP;
+END;
+$$;
+
 -- 1. Insert Users
 INSERT INTO users (name, address, email, hashed_password, birthdate, role, rating)
 VALUES
 ('Alice Nguyen', '123 Le Loi, HCM', 'alice@example.com', '$2b$12$9uVa/in7DXarqH8BaTMgFOstXOy2dyOWA3R8AXa3VYQFbyIIsM1pS', '1999-05-12', 'seller', 0),
 ('Bob Tran', '45 Nguyen Hue, HCM', 'bob@example.com', '$2b$12$GYaai7/JxSo2VaZpkm/8AeMTmWPOck8c4p2dnK/ycbDmUU5bTOS1q', '1995-11-02', 'bidder', 0),
-('Charlie Pham', '12 Tran Hung Dao, HCM', 'charlie@example.com', '$2b$12$sYld5KWZlbJMiq0HTygK4OVosTSCG93T415Agtd.K1AFEVNHwN3hy', '1990-07-25', 'bidder', 0),
+('Charlie Pham', '12 Tran Hung Dao, HCM', 'charlie@example.com', '$2b$12$sYld5KWZlbJMiq0HTygK4OVosTSCG93T415Agtd.K1AFEVNHwN3hy', '1990-07-25', 'seller', 0),
 ('David Ho', '89 Vo Van Tan, HCM', 'david@example.com', '$2b$12$n6y.QYKn9TkfbqSnBDsYaOcaOKC68BnlPvt5rdxSgJK0pjtvYdrNu', '1998-04-19', 'bidder', 0),
 ('Emma Le', '77 Dien Bien Phu, HCM', 'emma@example.com', '$2b$12$z8deg5NS5P43/O7O0yWeKehfB82ymWUVNlF3UQgrzH9HW9sNCJqiG', '1997-09-09', 'seller', 0);
 
@@ -776,12 +1076,6 @@ VALUES
 (6,2,5,'45 Nguyen Hue, HCM',true,true,'completed'),
 (9,3,1,'77 Dien Bien Phu, HCM',false,false,'pending_payment');
 
--- 16. Insert Sessions
-INSERT INTO sessions (user_id, expired_at, refresh_token) VALUES
-(1, CURRENT_DATE + INTERVAL '30 days', 'refresh_token_alice_123456'),
-(2, CURRENT_DATE + INTERVAL '30 days', 'refresh_token_bob_789012'),
-(3, CURRENT_DATE + INTERVAL '30 days', 'refresh_token_charlie_345678');
-
 -- 17. Insert Product Questions
 INSERT INTO product_questions (questioner, answerer, product, question, answer) VALUES
 (2, 1, 1, 'Is the phone unlocked?', 'Yes, fully unlocked for all carriers'),
@@ -800,8 +1094,10 @@ INSERT INTO bid_requests (bidder, product, request_date, state) VALUES
 INSERT INTO allowed_bidder (product, bidder, allowed_at) VALUES
 (1, 2, NOW() - INTERVAL '2 days'),
 (1, 3, NOW() - INTERVAL '2 days'),
+(1, 4, NOW() - INTERVAL '2 days'),
 (2, 2, NOW() - INTERVAL '1 day'),
 (2, 3, NOW() - INTERVAL '1 day'),
+(2, 4, NOW() - INTERVAL '1 day'),
 (3, 2, NOW() - INTERVAL '1 day'),
 (3, 3, NOW() - INTERVAL '1 day'),
 (3, 4, NOW() - INTERVAL '1 day');
@@ -817,303 +1113,3 @@ INSERT INTO auto_bids (product, bidder, max_price) VALUES
 (8,4,45000000),
 (9,2,9000000),
 (10,3,3800000);
-
--- 1. Setup Extension & Column
-CREATE EXTENSION IF NOT EXISTS unaccent;
-
-ALTER TABLE products 
-ADD COLUMN IF NOT EXISTS search_vector TSVECTOR;
-
-ALTER TABLE users
-ADD COLUMN IF NOT EXISTS search_vector TSVECTOR;
-
--- 2. Core Function: Update Search Vector
--- Logic: Name (A) || Category (B) || Description (C)
-CREATE OR REPLACE FUNCTION fn_update_product_search_vector(product_id_input INT)
-RETURNS VOID AS $$
-BEGIN
-    UPDATE products
-    SET search_vector = 
-        -- Weight A: Product Name
-        setweight(to_tsvector('simple', unaccent(COALESCE(name, ''))), 'A') ||
-        
-        -- Weight B: Category Names
-        setweight(to_tsvector('simple', unaccent(COALESCE((
-            -- CTE Đệ quy để lấy danh mục hiện tại và toàn bộ danh mục cha
-            WITH RECURSIVE category_tree AS (
-                -- 1. Anchor: Lấy các danh mục trực tiếp của sản phẩm
-                SELECT c.id, c.name, c.parent
-                FROM categories c
-                JOIN product_categories pc ON c.id = pc.category
-                WHERE pc.product = product_id_input
-                
-                UNION ALL
-                
-                -- 2. Recursive: Lần ngược lên các danh mục cha (parent)
-                SELECT parent_cat.id, parent_cat.name, parent_cat.parent
-                FROM categories parent_cat
-                JOIN category_tree child_cat ON child_cat.parent = parent_cat.id
-            )
-            SELECT STRING_AGG(name, ' ') FROM category_tree
-        ), ''))), 'B') ||
-        
-        -- Weight C: Product Descriptions
-        setweight(to_tsvector('simple', unaccent(COALESCE((
-            SELECT STRING_AGG(d.description, ' ')
-            FROM product_descriptions d
-            WHERE d.product = product_id_input
-        ), ''))), 'C')
-    WHERE id = product_id_input;
-END;
-$$ LANGUAGE plpgsql;
-
--- ---------------------------------------------------------
--- TRIGGER 1: Khi thay đổi bảng products
--- ---------------------------------------------------------
-CREATE OR REPLACE FUNCTION fn_trg_products_update()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.name IS DISTINCT FROM OLD.name THEN
-        PERFORM fn_update_product_search_vector(NEW.id);
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_products_update ON products;
-CREATE TRIGGER trg_products_update
-AFTER INSERT OR UPDATE ON products
-FOR EACH ROW EXECUTE FUNCTION fn_trg_products_update();
-
--- ---------------------------------------------------------
--- TRIGGER 2: Khi thay đổi bảng product_decriptions
--- ---------------------------------------------------------
-CREATE OR REPLACE FUNCTION fn_trg_description_update()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF (TG_OP = 'DELETE') THEN
-        PERFORM fn_update_product_search_vector(OLD.product);
-    ELSE
-        PERFORM fn_update_product_search_vector(NEW.product);
-    END IF;
-    RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_description_update ON product_descriptions;
-CREATE TRIGGER trg_description_update
-AFTER INSERT OR UPDATE OR DELETE ON product_descriptions
-FOR EACH ROW EXECUTE FUNCTION fn_trg_description_update();
-
--- ---------------------------------------------------------
--- TRIGGER 3: Khi thay đổi bảng product_categories
--- ---------------------------------------------------------
-CREATE OR REPLACE FUNCTION fn_trg_product_categories_update()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF (TG_OP = 'DELETE' OR TG_OP = 'UPDATE') THEN
-        PERFORM fn_update_product_search_vector(OLD.product);
-    END IF;
-    
-    IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
-        PERFORM fn_update_product_search_vector(NEW.product);
-    END IF;
-    RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_product_categories_update ON product_categories;
-CREATE TRIGGER trg_product_categories_update
-AFTER INSERT OR UPDATE OR DELETE ON product_categories
-FOR EACH ROW EXECUTE FUNCTION fn_trg_product_categories_update();
-
--- ---------------------------------------------------------
--- TRIGGER 4: Khi thay đổi bảng categories
--- ---------------------------------------------------------
-CREATE OR REPLACE FUNCTION fn_trg_categories_name_update()
-RETURNS TRIGGER AS $$
-DECLARE
-    rec RECORD;
-BEGIN
-    -- Chỉ chạy khi tên thay đổi HOẶC parent thay đổi
-    IF (NEW.name IS DISTINCT FROM OLD.name) OR (NEW.parent IS DISTINCT FROM OLD.parent) THEN
-        
-        -- Tìm tất cả sản phẩm thuộc danh mục này HOẶC thuộc các danh mục con
-        FOR rec IN 
-            WITH RECURSIVE subcategories AS (
-                -- Lấy danh mục đang bị thay đổi (Cha)
-                SELECT id FROM categories WHERE id = NEW.id
-                UNION ALL
-                -- Lấy tất cả danh mục con của nó
-                SELECT c.id FROM categories c
-                JOIN subcategories s ON c.parent = s.id
-            )
-            -- Tìm sản phẩm nối với bất kỳ danh mục nào trong cây này
-            SELECT DISTINCT pc.product AS product_id
-            FROM product_categories pc
-            JOIN subcategories s ON pc.category = s.id
-        LOOP
-            PERFORM fn_update_product_search_vector(rec.product_id);
-        END LOOP;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_categories_name_update ON categories;
-CREATE TRIGGER trg_categories_name_update
-AFTER UPDATE ON categories
-FOR EACH ROW EXECUTE FUNCTION fn_trg_categories_name_update();
-
--- === TRIGGERS ===
-
-CREATE OR REPLACE FUNCTION fn_add_product_to_parent_categories()
-RETURNS TRIGGER AS $$
-DECLARE
-    parent_id INT;
-BEGIN
-    -- Nếu insert do trigger tạo ra thì bỏ qua
-    IF pg_trigger_depth() > 1 THEN
-        RETURN NEW;
-    END IF;
-
-    SELECT parent INTO parent_id
-    FROM categories
-    WHERE id = NEW.category;
-
-    WHILE parent_id IS NOT NULL LOOP
-
-        -- Insert vào parent nếu chưa tồn tại
-        INSERT INTO product_categories (product, category)
-        VALUES (NEW.product, parent_id)
-        ON CONFLICT DO NOTHING;
-
-        -- Chống cycle (parent trỏ về chính nó)
-        IF parent_id = NEW.category THEN
-            RAISE EXCEPTION 'Category cycle detected at id %', parent_id;
-        END IF;
-
-        -- Lấy tiếp parent
-        SELECT parent INTO parent_id
-        FROM categories
-        WHERE id = parent_id;
-    END LOOP;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-CREATE TRIGGER trg_product_category_add_parent
-AFTER INSERT ON product_categories
-FOR EACH ROW
-EXECUTE FUNCTION fn_add_product_to_parent_categories();
-
-CREATE OR REPLACE FUNCTION delete_seller_products()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Xóa tất cả products mà user này là seller
-    DELETE FROM products
-    WHERE id IN (
-        SELECT product 
-        FROM sell_product 
-        WHERE seller = OLD.id
-    );
-    
-    RETURN OLD;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_delete_seller_products
-BEFORE DELETE ON users
-FOR EACH ROW
-EXECUTE FUNCTION delete_seller_products();
-
-CREATE TRIGGER tsvectorupdate
-BEFORE INSERT OR UPDATE ON users
-FOR EACH ROW EXECUTE FUNCTION users_tsvector_trigger();
-
--- Cập nhật data
-DO $$
-DECLARE 
-    r RECORD;
-BEGIN
-    FOR r IN SELECT id FROM products LOOP
-        PERFORM fn_update_product_search_vector(r.id);
-    END LOOP;
-END;
-$$;
-
--- Tạo Index
-CREATE INDEX IF NOT EXISTS idx_products_search_vector
-ON products
-USING GIN (search_vector);
-
-CREATE INDEX IF NOT EXISTS idx_users_search_vector
-ON users
-USING GIN (search_vector);
-
--- Update users search_vector
-UPDATE users
-SET search_vector = 
-    setweight(to_tsvector('simple', unaccent(COALESCE(name, ''))), 'A') ||
-    setweight(to_tsvector('simple', unaccent(COALESCE(email, ''))), 'B');
-
--- Procedure
-CREATE OR REPLACE PROCEDURE sync_auction_states()
-LANGUAGE plpgsql
-AS $$
-DECLARE
-  p RECORD;   -- product + seller
-  w RECORD;   -- winner
-BEGIN
-  -- 1) incoming -> bidding
-  UPDATE products pr
-  SET state = 'bidding'
-  FROM sell_product sp
-  WHERE sp.product = pr.id
-    AND pr.state = 'incoming'
-    AND sp.starting_at <= NOW()
-    AND sp.expired_at  > NOW();
-
-  -- 2) bidding -> sold (+ winner + trade)
-  FOR p IN
-    SELECT pr.id AS product_id, sp.seller AS seller_id
-    FROM products pr
-    JOIN sell_product sp ON sp.product = pr.id
-    WHERE pr.state = 'bidding'
-      AND sp.expired_at <= NOW()
-    FOR UPDATE OF pr SKIP LOCKED
-  LOOP
-    -- Chuyển state trước (idempotent)
-    UPDATE products
-    SET state = 'sold'
-    WHERE id = p.product_id;
-
-    -- Lấy bid cao nhất
-    SELECT b.buyer AS bidder_id, b.price
-    INTO w
-    FROM bids b
-    WHERE b.product = p.product_id
-    ORDER BY b.price DESC, b.bid_date ASC, b.id ASC
-    LIMIT 1;
-
-    -- Không có bid => không tạo winner/transaction (vì NOT NULL)
-    IF w.bidder_id IS NULL THEN
-      CONTINUE;
-    END IF;
-
-    -- Upsert bidder_winner
-    INSERT INTO bidder_winner(product, bidder)
-    VALUES (p.product_id, w.bidder_id)
-    ON CONFLICT (product)
-    DO UPDATE SET bidder = EXCLUDED.bidder;
-
-    -- Upsert trade_verifications (transaction)
-    INSERT INTO trade_verifications(product, bidder, seller)
-    VALUES (p.product_id, w.bidder_id, p.seller_id)
-    ON CONFLICT (product)
-    DO UPDATE SET
-      bidder = EXCLUDED.bidder,
-      seller = EXCLUDED.seller;
-  END LOOP;
-END;
-$$;
