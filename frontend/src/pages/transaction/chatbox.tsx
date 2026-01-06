@@ -54,7 +54,7 @@ export default function Chatbox(
                             {showDate && (
                                 <li className="flex justify-center mt-12">
                                     <span className="bg-white/10 text-white/60 px-3 py-1 rounded-full text-sm">
-                                        {new Date(msg.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                                        {new Date(msg.created_at).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })}
                                     </span>
                                 </li>
                             )}
