@@ -176,7 +176,8 @@ class ProductController {
         });
       }
 
-      const product = await query(getProductById, [productId]);
+      const userId = req.user?.id ? parseInt(req.user?.id, 10) : null;
+      const product = await query(getProductById, [productId, userId]);
 
       if (!product.rows.length) {
         return res.status(404).json({ message: "No product found" });
