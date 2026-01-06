@@ -166,7 +166,7 @@ export default function MyProducts() {
                                     </div>
                                     <div className="flex flex-col text-right">
                                         <p className="text-white font-medium truncate max-w-[120px]">
-                                            {product.highest_bidder ? maskName(product.highest_bidder) : "No bids"}
+                                            {product.highest_bidder ? maskName(product.highest_bidder || "") : "No bids"}
                                         </p>
                                         <p className="text-white/40 text-[10px] uppercase tracking-widest font-semibold">
                                             {product.state === "sold" ? "Winner" : "Highest Bidder"}

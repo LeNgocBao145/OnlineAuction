@@ -128,6 +128,7 @@ export const getBiddingsByUserId = (sortLogic) => `
 `;
 
 export const getSellingsByUserId = (sortLogic) => `
+    SELECT
         ${getProductColumns()},
         sp.instant_price,
         bidder.name AS highest_bidder,
@@ -168,7 +169,7 @@ export const getSellingsByUserId = (sortLogic) => `
     GROUP BY 
         p.id,
         sp.expired_at, sp.starting_at, sp.created_at, sp.instant_price,
-        bidder.name, 
+        bidder.name, bidder.id, 
         query, p.search_vector
 
     ORDER BY ${sortLogic}, rank DESC

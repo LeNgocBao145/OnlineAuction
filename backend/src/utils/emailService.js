@@ -76,6 +76,18 @@ export async function sendBidRejectedEmail(to, productName, productUrl) {
   await sendEmail(to, subject, html);
 }
 
+// Bidder Refused/Kicked Email
+export async function sendBidderRefusedEmail(to, productName, productUrl) {
+  const subject = `You Have Been Removed from Auction - ${productName}`;
+  const html = `
+    <h2>Removed from Auction</h2>
+    <p>You have been removed from the auction for <strong>${productName}</strong> by the seller.</p>
+    <p>All your bids on this product have been deleted and you can no longer participate in this auction.</p>
+    <p>If you believe this was a mistake, please contact the seller.</p>
+  `;
+  await sendEmail(to, subject, html);
+}
+
 // Auction Ended - No Winner
 export async function sendAuctionEndedNoWinnerEmail(to, productName, productUrl) {
   const subject = `Auction Ended - ${productName}`;
@@ -107,6 +119,34 @@ export async function sendAuctionEndedToSellerEmail(to, productName, winnerName,
     <p>Winner: <strong>${winnerName}</strong></p>
     <p>Winning Bid: <strong>$${winningBid}</strong></p>
     <p><a href="${productUrl}">Complete Order</a></p>
+  `;
+  await sendEmail(to, subject, html);
+}
+
+// Auction Ended - Notification to All Participants (non-winners)
+export async function sendAuctionEndedToParticipantEmail(to, productName, winnerName, winningBid, yourHighestBid, productUrl) {
+  const subject = `Auction Ended - ${productName}`;
+  const html = `
+    <h2>Auction Has Ended</h2>
+    <p>The auction for <strong>${productName}</strong> has ended.</p>
+    <p>Winner: <strong>${winnerName}</strong></p>
+    <p>Winning Bid: <strong>$${winningBid}</strong></p>
+    <p>Your Highest Bid: <strong>$${yourHighestBid}</strong></p>
+    <p>Thank you for participating! Better luck next time.</p>
+    <p><a href="${productUrl}">View Product</a></p>
+  `;
+  await sendEmail(to, subject, html);
+}
+
+// Auction Ended - Notification to All Participants (no winner)
+export async function sendAuctionEndedNoWinnerToParticipantEmail(to, productName, yourHighestBid, productUrl) {
+  const subject = `Auction Ended - ${productName}`;
+  const html = `
+    <h2>Auction Has Ended</h2>
+    <p>The auction for <strong>${productName}</strong> has ended without a winner.</p>
+    <p>Your Highest Bid: <strong>$${yourHighestBid}</strong></p>
+    <p>Thank you for participating!</p>
+    <p><a href="${productUrl}">View Product</a></p>
   `;
   await sendEmail(to, subject, html);
 }
