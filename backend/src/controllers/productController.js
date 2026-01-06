@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import query from "../libs/db.js";
+import { getUTCNow, isExpiredUTC, subtractFromNow } from "../utils/timeUtils.js";
 import {
   getProductDetailsById,
   getFilteredProductsQuery,
@@ -132,8 +133,8 @@ class ProductController {
       const coverIdx = parseInt(coverImageIndex, 10) || 0;
       const coverImage = imageFilenames[coverIdx] || imageFilenames[0];
 
-      // Determine initial state
-      const now = new Date();
+      // Determine initial state (using UTC time)
+      const now = getUTCNow();
       const startDate = new Date(start_at);
       const state = startDate <= now ? 'bidding' : 'incoming';
 
@@ -511,7 +512,7 @@ class ProductController {
         return res.status(201).json({ message: "Bid request created successfully" });
       } else {
         const lastRequestTime = new Date(existingRequest.rows[0].request_date + 'Z');
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        const fiveMinutesAgo = subtractFromNow(5 * 60 * 1000);
 
         if (lastRequestTime > fiveMinutesAgo) {
           return res.status(429).json({ message: "You can only request to bid every 5 minutes" });
@@ -698,7 +699,7 @@ class ProductController {
 
   _checkBidPermissions = (data, userId) => {
 
-    if (data.product_state !== "bidding" || new Date() > new Date(data.expired_at)) return "Bidding is closed for this product";
+    if (data.product_state !== "bidding" || isExpiredUTC(data.expired_at)) return "Bidding is closed for this product";
     if (data.user_id === data.seller) return "Sellers cannot bid on their own products";
 
     // Check if bidder is refused
@@ -917,8 +918,8 @@ class ProductController {
       const step_price_num = parseFloat(step_price);
       const isExtentBool = isExtent === 'true' || isExtent === true;
 
-      // Determine state
-      const now = new Date();
+      // Determine state (using UTC time)
+      const now = getUTCNow();
       const startDate = new Date(start_at);
       const endDate = new Date(expired_at);
 

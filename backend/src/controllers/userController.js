@@ -33,6 +33,7 @@ import query from "../libs/db.js";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { sendOTPEmail } from "../utils/emailService.js";
+import { getUTCTimestamp, addMinutesToNow, subtractFromNow } from "../utils/timeUtils.js";
 import { get } from "http";
 import { create } from "domain";
 
@@ -93,10 +94,10 @@ class UserController {
       // Use provided email or fall back to current email
       const email = req.body.email || user.rows[0].email;
 
-      // Validate birthdate (must be 18+)
+      // Validate birthdate (must be 18+) using UTC
       const birthDate = new Date(birthdate);
       const age = Math.floor(
-        (Date.now() - birthDate) / (365.25 * 24 * 60 * 60 * 1000)
+        (getUTCTimestamp() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
       );
       if (age < 18) {
         return res
@@ -120,7 +121,7 @@ class UserController {
       if (user.rows[0].email !== email) {
         // Generate OTP
         const otp = crypto.randomInt(100000, 999999).toString();
-        const expiredAt = Date.now() + 10 * 60 * 1000;
+        const expiredAt = addMinutesToNow(10);
 
         // Store OTP with user data in memory
         otpStore.set(email, { otp, expiredAt, name, birthdate, address });
@@ -173,7 +174,7 @@ class UserController {
 
       // Generate OTP
       const otp = crypto.randomInt(100000, 999999).toString();
-      const expiredAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+      const expiredAt = addMinutesToNow(10); // 10 minutes
 
       // Store OTP with userId for verification
       otpStore.set(email, { otp, expiredAt, userId });
@@ -208,7 +209,7 @@ class UserController {
       }
 
       // Check if OTP is expired
-      if (Date.now() > otpRecord.expiredAt) {
+      if (getUTCTimestamp() > otpRecord.expiredAt) {
         otpStore.delete(email);
         return res.status(400).json({ message: "OTP has expired" });
       }
@@ -918,10 +919,9 @@ class UserController {
       }
 
       const lastRequestDate = existingRequest.rows[0].created_at;
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const sevenDaysAgo = subtractFromNow(7 * 24 * 60 * 60 * 1000);
 
-      if (lastRequestDate > sevenDaysAgo) {
+      if (new Date(lastRequestDate) > sevenDaysAgo) {
         return res
           .status(429)
           .json({

@@ -3,6 +3,31 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Configure pg to return timestamps as ISO strings with UTC indicator
+// Type OIDs: 1114 = TIMESTAMP, 1184 = TIMESTAMPTZ
+const { types } = pg;
+
+// Parse TIMESTAMP (without timezone) - treat as UTC and return ISO string
+types.setTypeParser(1114, (val) => {
+    if (!val) return null;
+    // Append 'Z' to indicate UTC since our database is set to UTC timezone
+    return val.replace(' ', 'T') + 'Z';
+});
+
+// Parse TIMESTAMPTZ (with timezone) - return as ISO string
+types.setTypeParser(1184, (val) => {
+    if (!val) return null;
+    // PostgreSQL returns this in the session timezone (UTC), convert to ISO
+    const date = new Date(val);
+    return date.toISOString();
+});
+
+// Parse DATE type - return as ISO date string
+types.setTypeParser(1082, (val) => {
+    if (!val) return null;
+    return val; // Keep as YYYY-MM-DD string
+});
+
 const requiredEnvVars = [
     'PG_HOST',
     'PG_DATABASE',

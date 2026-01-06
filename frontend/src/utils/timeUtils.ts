@@ -1,14 +1,25 @@
+/**
+ * Parse date string and ensure it's treated as UTC
+ * Backend stores in UTC, so we need to append 'Z' if no timezone info
+ */
+function parseAsUTC(val: string): string {
+  let dateStr = val.trim();
+  // Convert space to T for valid ISO format
+  if (dateStr.includes(' ') && !dateStr.includes('T')) {
+    dateStr = dateStr.replace(' ', 'T');
+  }
+  // Append Z if no timezone info (treat as UTC)
+  if (!dateStr.includes('Z') && !dateStr.includes('+') && !dateStr.match(/-\d{2}:?\d{2}$/)) {
+    dateStr += 'Z';
+  }
+  return dateStr;
+}
+
 export function getRemainingTime(endTime: string): string {
   if (!endTime) return "N/A";
 
-  const now = new Date().getTime();
-  const parseSecureDate = (val: string) => {
-    if (!val.includes('Z') && !val.includes('+') && !val.match(/-\d{2}:?\d{2}$/)) {
-      return val.replace(' ', 'T');
-    }
-    return val;
-  };
-  const end = new Date(parseSecureDate(endTime)).getTime();
+  const now = Date.now();
+  const end = new Date(parseAsUTC(endTime)).getTime();
 
   if (isNaN(end)) return "Invalid date";
 
@@ -32,14 +43,8 @@ export function formatTimeLeft(val: number | string | undefined | null): string 
   if (typeof val === 'string') {
     // Check if it's a date string (has - or T)
     if (val.includes('-') || val.includes('T')) {
-      const parseSecureDate = (v: string) => {
-        if (!v.includes('Z') && !v.includes('+') && !v.match(/-\d{2}:?\d{2}$/)) {
-          return v.replace(' ', 'T');
-        }
-        return v;
-      };
-      const end = new Date(parseSecureDate(val)).getTime();
-      const now = new Date().getTime();
+      const end = new Date(parseAsUTC(val)).getTime();
+      const now = Date.now();
       sec = Math.floor((end - now) / 1000);
     } else {
       sec = parseFloat(val);

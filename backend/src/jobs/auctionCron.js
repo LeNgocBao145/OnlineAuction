@@ -69,17 +69,21 @@ async function sendAuctionEndedEmails(productId, productName, winnerId, winnerNa
 }
 
 export default function auctionCron() {
-  console.log("[CRON] Sync auction states (every 5s)");
+  console.log("[CRON] Initializing auction state sync (every 5s)");
 
   let running = false;
 
-  setInterval(async () => {
-    if (running) return;
-    running = true;
+  // Delay first run by 3 seconds to ensure database is ready
+  setTimeout(() => {
+    console.log("[CRON] Starting auction cron job...");
+    
+    setInterval(async () => {
+      if (running) return;
+      running = true;
 
-    try {
-      // First, find auctions that are about to end (currently bidding and expired)
-      const endingAuctions = await query(`
+      try {
+        // First, find auctions that are about to end (currently bidding and expired)
+        const endingAuctions = await query(`
         SELECT 
           p.id as product_id,
           p.name as product_name,
@@ -125,8 +129,12 @@ export default function auctionCron() {
 
       const auctionsToNotify = endingAuctions.rows;
 
+      console.log(`[CRON] Found ${auctionsToNotify.length} auctions to update state and notify participants.`);
+
       // Run the stored procedure to update states
       await query("CALL sync_auction_states();");
+
+      console.log("[CRON] Auction states synchronized.");
 
       // Send emails for auctions that just ended
       for (const auction of auctionsToNotify) {
@@ -146,4 +154,5 @@ export default function auctionCron() {
       running = false;
     }
   }, 5_000);
+  }, 3000); // Delay first run by 3 seconds
 }

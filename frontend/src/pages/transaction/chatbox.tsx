@@ -2,6 +2,7 @@ import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import { useRef, useState, useEffect } from "react";
 import useChatStore from "@/stores/chatStore";
 import useAuthStore from "@/stores/authStore";
+import { formatDateOnly, formatTimeOnly } from "@/utils/dateUtils";
 
 export default function Chatbox(
 {
@@ -54,15 +55,15 @@ export default function Chatbox(
                             {showDate && (
                                 <li className="flex justify-center mt-12">
                                     <span className="bg-white/10 text-white/60 px-3 py-1 rounded-full text-sm">
-                                        {new Date(msg.created_at).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                        {formatDateOnly(msg.created_at)}
                                     </span>
                                 </li>
                             )}
                             <li className={`flex max-w-full [overflow-wrap:anywhere] whitespace-pre-wrap items-center rounded-lg ${isOwn ? "justify-end self-end text-right" : "justify-start self-start text-left"} ${previousSender !== msg.sender ? "mt-6" : "mt-1"}`}>
                                 {!isOwn && <div className={`flex shrink-0 h-10 w-10 border text-(--third) border-white rounded-full mr-2 bg-gray-600 items-center justify-center ${previousSender !== msg.sender ? "" : "invisible"}`}>{msg.sender_name?.[0]}</div>}
-                                {isOwn && <span className="whitespace-nowrap mr-2 text-white/50 text-sm">{new Date(msg.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>}
+                                {isOwn && <span className="whitespace-nowrap mr-2 text-white/50 text-sm">{formatTimeOnly(msg.created_at)}</span>}
                                 <p className={`${isOwn ? "bg-(--primary) text-black px-3 py-2 rounded-lg " : "bg-(--secondary) text-white px-3 py-2 rounded-lg"}`}>{msg.content}</p>
-                                {!isOwn && <span className="whitespace-nowrap ml-2 text-white/50 text-sm">{new Date(msg.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>}
+                                {!isOwn && <span className="whitespace-nowrap ml-2 text-white/50 text-sm">{formatTimeOnly(msg.created_at)}</span>}
                                 {isOwn && <div className={`flex shrink-0 h-10 w-10 border border-(--primary) text-(--third) rounded-full ml-2 bg-gray-600 items-center justify-center ${previousSender !== msg.sender ? "" : "invisible"}`}>{user?.name?.[0]}</div>}
                             </li>
                         </div>
