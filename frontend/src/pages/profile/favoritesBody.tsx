@@ -110,11 +110,11 @@ export default function FavoritesBody() {
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-[1fr_2fr] gap-4">
+                            <div className="grid md:grid-cols-[1fr_2fr] grid-cols-1 gap-4 md:grid-rows-1 grid-rows-2">
                                 <div className="relative h-full">
-                                    <img src={getImageUrl(product.image) || "/placeholder.jpg"} alt={product.name} className="rounded-md border border-white/10 aspect-square h-full object-cover" />
+                                    <img src={getImageUrl(product.image) || "/placeholder.jpg"} alt={product.name} className="rounded-md border border-white/10 aspect-square md:h-full w-full object-cover" />
                                 </div>
-                                <div className="flex flex-col">
+                                <div className="flex flex-col max-h-[250px]">
                                     <div>
                                         <div className="flex justify-between items-center">
                                             <h2 className="text-white font-bold text-xl truncate pr-2">{product.name.length > 20 ? product.name.substring(0, 20) + "..." : product.name}</h2>
