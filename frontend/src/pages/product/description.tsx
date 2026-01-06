@@ -38,10 +38,10 @@ export default function ProductDescription() {
     <div className="flex flex-col justify-around items-start w-full border border-white/10 rounded-xl bg-(--third) p-4">
       <div className="mb-4 flex items-center justify-between w-full">
         <h1 className="text-(--primary) text-3xl font-bold">Product Description</h1>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 p-2">
           {isSellerView && (
             <button
-              className="ml-4 bg-(--primary) hover:bg-(--primary)/90 text-black rounded-xl font-bold border border-(--primary) transition-all flex items-center justify-center gap-2 px-4 py-2 shadow-[0_0_8px_rgba(255,215,0,0.15)] shrink-0"
+              className="ml-4 bg-(--primary) hover:bg-(--primary)/90 text-black rounded-xl font-bold border border-(--primary) transition-all flex items-center justify-center gap-2 px-4 py-2 shadow-[0_0_8px_rgba(255,215,0,0.15)] w-full shrink-0"
               onClick={() => {
                 setDescriptionText("");
                 setEditing(true);
