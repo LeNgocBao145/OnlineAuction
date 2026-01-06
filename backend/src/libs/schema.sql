@@ -614,6 +614,7 @@ VALUES
 ('Frank Nguyen', '1 Vo Thi Sau, HCM', 'frank@example.com',
  '$2b$12$K9Q9pFqH2XH0G9kQx5qQ2u6CzJp4h8Fv1Yv7E6Z6YQ1pN7m0yq4aC',
  '2001-02-02', 'bidder', 0);
+ 
 -- 2. Insert Categories (2 levels: Parent => Child)
 -- Level 1: Parent categories
 INSERT INTO categories (name, parent) VALUES
