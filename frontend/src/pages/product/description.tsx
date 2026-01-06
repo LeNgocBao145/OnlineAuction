@@ -24,7 +24,6 @@ export default function ProductDescription() {
 
     try {
       await productService.addDescription(product.id, descriptionText);
-      // refresh product to show newly created description record
       await fetchProduct(product.id);
       toast.success('Description appended successfully.');
     } catch (err: any) {
@@ -42,7 +41,7 @@ export default function ProductDescription() {
         <div className="flex items-center gap-4">
           {isSellerView && (
             <button
-              className="ml-4 bg-(--primary) hover:bg-(--primary)/90 text-black rounded-xl font-bold border border-(--primary) transition-all flex items-center justify-center gap-2 px-4 py-2 shadow-[0_0_8px_rgba(255,215,0,0.15)] flex-shrink-0"
+              className="ml-4 bg-(--primary) hover:bg-(--primary)/90 text-black rounded-xl font-bold border border-(--primary) transition-all flex items-center justify-center gap-2 px-4 py-2 shadow-[0_0_8px_rgba(255,215,0,0.15)] shrink-0"
               onClick={() => {
                 setDescriptionText("");
                 setEditing(true);

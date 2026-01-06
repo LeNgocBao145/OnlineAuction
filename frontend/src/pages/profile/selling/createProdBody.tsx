@@ -36,6 +36,12 @@ export default function CreateProdBody({ productId }: { productId?: string | num
     const [appendText, setAppendText] = useState<string>("");
     const editorRef = useRef<any>(null);
     const appendEditorRef = useRef<any>(null);
+    const descriptionDebounceRef = useRef<number | null>(null);
+    const appendDebounceRef = useRef<number | null>(null);
+    const descriptionRef = useRef<string>("");
+    const lastRangeRef = useRef<any>(null);
+    const appendTextRef = useRef<string>("");
+    const appendLastRangeRef = useRef<any>(null);
     const [appendSaving, setAppendSaving] = useState<boolean>(false);
 
     const formSchema = z.object({
@@ -446,6 +452,7 @@ export default function CreateProdBody({ productId }: { productId?: string | num
                         <label htmlFor="productDescription" className="text-white/80">Description<span className="text-red-500">*</span></label>
                         <div className="mt-2 rounded-md overflow-hidden border border-white/10">
                             <Editor
+                                key="create-editor"
                                 ref={editorRef}
                                 apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
                                 initialValue={description}
@@ -467,10 +474,12 @@ export default function CreateProdBody({ productId }: { productId?: string | num
                                             line-height: 1.6;
                                             margin: 0;
                                             padding: 10px;
+                                            direction: ltr;
                                         }
                                         .mce-content-body { 
                                             color: rgb(209, 213, 219); 
                                             background: rgb(17, 24, 39);
+                                            direction: ltr;
                                         }
                                         p {
                                             margin: 0.5em 0;
@@ -505,11 +514,46 @@ export default function CreateProdBody({ productId }: { productId?: string | num
                                     `,
                                     skin: 'oxide-dark',
                                     content_css: 'dark',
+                                    forced_root_block_attrs: { dir: 'ltr' },
+                                    setup: (editor: any) => {
+                                        const log = (e: any) => {
+                                            try {
+                                                const rng = editor.selection && editor.selection.getRng && editor.selection.getRng();
+                                                const start = rng ? rng.startOffset : null;
+                                                console.log('TinyMCE event', e.type, { key: e.key, data: e.data, isComposing: e.isComposing, selStart: start, text: editor.getContent({ format: 'text' }).slice(0,200) });
+                                            } catch (err) {
+                                                console.log('TinyMCE logging error', err);
+                                            }
+                                        };
+                                        ['keydown','input','compositionstart','compositionupdate','compositionend'].forEach(evt => editor.on(evt, log));
+                                    },
                                     statusbar: true,
                                     branding: false
                                 }}
                                 onEditorChange={(content) => {
-                                    setDescription(content);
+                                    // preserve selection range to restore after any React updates
+                                    try {
+                                        const rng = editorRef.current?.selection?.getRng?.();
+                                        lastRangeRef.current = rng ? (rng.cloneRange ? rng.cloneRange() : rng) : null;
+                                    } catch (e) {
+                                        lastRangeRef.current = null;
+                                    }
+
+                                    // keep content in a ref to avoid causing React re-renders on every keystroke
+                                    descriptionRef.current = content;
+
+                                    // debounce updating react-hook-form value (keeps form in sync without frequent re-renders)
+                                    if (descriptionDebounceRef.current) window.clearTimeout(descriptionDebounceRef.current);
+                                    descriptionDebounceRef.current = window.setTimeout(() => {
+                                        setValue("productDescription", descriptionRef.current, { shouldValidate: true });
+                                        // restore selection shortly after form update
+                                        setTimeout(() => {
+                                            try {
+                                                const rng = lastRangeRef.current;
+                                                if (rng && editorRef.current?.selection?.setRng) editorRef.current.selection.setRng(rng);
+                                            } catch (e) { /* ignore */ }
+                                        }, 0);
+                                    }, 300) as unknown as number;
 
                                     let plainText = content
                                         .replace(/<br\s*\/?>(?:\s*)/gi, '\n')
@@ -534,19 +578,32 @@ export default function CreateProdBody({ productId }: { productId?: string | num
 
                                     if (currentWordCount > 500) {
                                         const truncated = words.slice(0, 500).join(' ');
+                                        // update both ref and state for truncation case
+                                        descriptionRef.current = truncated;
                                         setDescription(truncated);
                                         setWordCount(500);
+                                        // immediate set for truncation
                                         setValue("productDescription", truncated, { shouldValidate: true });
                                         if (editorRef.current) {
                                             editorRef.current.setContent(truncated);
+                                            // restore selection after truncation
+                                            try {
+                                                const rng = lastRangeRef.current;
+                                                if (rng && editorRef.current.selection && editorRef.current.selection.setRng) {
+                                                    setTimeout(() => editorRef.current.selection.setRng(rng), 0);
+                                                }
+                                            } catch (e) { /* ignore */ }
                                         }
                                         if (wordCount >= 500) {
                                             toast.error("Maximum 500 words allowed");
                                         }
                                     } else {
                                         setWordCount(currentWordCount);
-                                        setValue("productDescription", content, { shouldValidate: true });
                                     }
+                                }}
+                                onBlur={() => {
+                                    setDescription(descriptionRef.current);
+                                    setValue("productDescription", descriptionRef.current, { shouldValidate: true });
                                 }}
                             />
                         </div>
@@ -579,6 +636,7 @@ export default function CreateProdBody({ productId }: { productId?: string | num
                                 <label className="text-white/80">Content to append</label>
                                 <div className="mt-2 rounded-md overflow-hidden border border-white/10">
                                     <Editor
+                                        key="append-editor"
                                         ref={appendEditorRef}
                                         apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
                                         initialValue={appendText}
@@ -591,13 +649,35 @@ export default function CreateProdBody({ productId }: { productId?: string | num
                                                 'insertdatetime', 'media', 'table', 'preview', 'help', 'wordcount'
                                             ],
                                             toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
-                                            content_style: `body { font-family: Helvetica, Arial, sans-serif; font-size: 14px; background: rgb(17, 24, 39); color: rgb(209, 213, 219); padding:10px; }`,
+                                            content_style: `body { font-family: Helvetica, Arial, sans-serif; font-size: 14px; background: rgb(17, 24, 39); color: rgb(209, 213, 219); padding:10px; direction: ltr; }`,
                                             skin: 'oxide-dark',
                                             content_css: 'dark',
                                             statusbar: true,
                                             branding: false
                                         }}
-                                        onEditorChange={(content) => setAppendText(content)}
+                                        onEditorChange={(content) => {
+                                            // preserve selection for append editor
+                                            try {
+                                                const rng = appendEditorRef.current?.selection?.getRng?.();
+                                                appendLastRangeRef.current = rng ? (rng.cloneRange ? rng.cloneRange() : rng) : null;
+                                            } catch (e) {
+                                                appendLastRangeRef.current = null;
+                                            }
+
+                                            // keep content in ref to avoid re-renders
+                                            appendTextRef.current = content;
+
+                                            if (appendDebounceRef.current) window.clearTimeout(appendDebounceRef.current);
+                                            appendDebounceRef.current = window.setTimeout(() => {}, 300) as unknown as number;
+                                        }}
+                                        onBlur={() => {
+                                            // commit append content on blur
+                                            setAppendText(appendTextRef.current);
+                                            try {
+                                                const rng = appendLastRangeRef.current;
+                                                if (rng && appendEditorRef.current?.selection?.setRng) appendEditorRef.current.selection.setRng(rng);
+                                            } catch (e) { /* ignore */ }
+                                        }}
                                     />
                                 </div>
                                 <div className="flex justify-between items-center">
