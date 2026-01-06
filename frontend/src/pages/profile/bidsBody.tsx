@@ -40,8 +40,8 @@ export default function BidsBody() {
     const filteredBiddings = statusFilter === 6 ? (biddings || []) : (biddings || []).filter(bid => {
         if (statusFilter === 1) return bid.state === "bidding";
         if (statusFilter === 2) return bid.state === "sold";
-        if (statusFilter === 3) return bid.state === "sold" && bid.highest_bidder_id === user?.id.toString(); // Won - sold and in won list
-        if (statusFilter === 4) return bid.state === "sold" && bid.highest_bidder_id !== user?.id.toString(); // Losing - sold but not in won list
+        if (statusFilter === 3) return bid.state === "bidding" && bid.highest_bidder_id !== user?.id.toString(); // Losing - bidding and not highest bidder
+        if (statusFilter === 4) return bid.state === "sold" && bid.highest_bidder_id === user?.id.toString(); // Won - sold and is highest bidder
         return true;
     });
 
