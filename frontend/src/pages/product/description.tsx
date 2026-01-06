@@ -7,7 +7,7 @@ import { Editor } from "@tinymce/tinymce-react";
 import { toast } from "sonner";
 
 export default function ProductDescription() {
-  const MAX_DESCRIPTION_LENGTH = 500;
+  const MAX_DESCRIPTION_LENGTH_WORD = 500;
   const { product, fetchProduct } = useProductStore();
   const [editing, setEditing] = useState(false);
   const [descriptionText, setDescriptionText] = useState("");
@@ -85,7 +85,11 @@ export default function ProductDescription() {
           </button>
 
           <p className="absolute bottom-2 right-2 text-white/70">
-            {descriptionText.replace(/<[^>]*>/g, "").length} / {MAX_DESCRIPTION_LENGTH}
+            {
+              descriptionText.replace(/<[^>]*>/g, "").trim()
+                ? descriptionText.replace(/<[^>]*>/g, "").trim().split(/\s+/).length
+                : 0
+            } / {MAX_DESCRIPTION_LENGTH_WORD}
           </p>
         </div>
       ) : product.descriptions?.length ? (
