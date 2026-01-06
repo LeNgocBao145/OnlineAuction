@@ -106,6 +106,11 @@ const productService = {
     return res.data;
   },
 
+  async addDescription(productId: string | number, des: string): Promise<any> {
+    const res = await api.post(`/products/${productId}/add/description`, { des }, { withCredentials: true });
+    return res.data;
+  },
+
   async getCategories(): Promise<any[]> {
 
     const res = await api.get('/categories');

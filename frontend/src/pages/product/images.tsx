@@ -64,8 +64,8 @@ export default function ProductImages() {
   if (!product || images.length === 0) return null;
 
   return (
-    <div className="w-full h-[600px] flex flex-col items-center justify-center gap-4">
-      <div className="w-full h-3/4 bg-(--third) border border-white/10 rounded-xl flex items-center justify-center relative group">
+    <div className="w-full min-h-[600px] flex flex-col items-center justify-center gap-4">
+      <div className="w-full flex-1 bg-(--third) border border-white/10 rounded-xl flex items-center justify-center relative group">
         {/* Left Arrow */}
         {images.length > 1 && (
           <button
@@ -106,7 +106,7 @@ export default function ProductImages() {
           </div>
         )}
       </div>
-      <div className="w-full h-1/4 bg-(--third) border border-white/10 rounded-xl flex items-center justify-center">
+      <div className="w-full h-24 lg:h-1/4 bg-(--third) border border-white/10 rounded-xl flex items-center justify-center">
         <ul className="overflow-x-visible overflow-y-hidden w-full h-full flex items-center p-4">
           {images.map((imgSrc, index) => (
             <li

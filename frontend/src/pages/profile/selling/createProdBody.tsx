@@ -32,7 +32,17 @@ export default function CreateProdBody({ productId }: { productId?: string | num
     const [coverImageIndex, setCoverImageIndex] = useState<number>(0);
     const [description, setDescription] = useState<string>("");
     const [wordCount, setWordCount] = useState<number>(0);
+    const [showAppend, setShowAppend] = useState<boolean>(false);
+    const [appendText, setAppendText] = useState<string>("");
     const editorRef = useRef<any>(null);
+    const appendEditorRef = useRef<any>(null);
+    const descriptionDebounceRef = useRef<number | null>(null);
+    const appendDebounceRef = useRef<number | null>(null);
+    const descriptionRef = useRef<string>("");
+    const lastRangeRef = useRef<any>(null);
+    const appendTextRef = useRef<string>("");
+    const appendLastRangeRef = useRef<any>(null);
+    const [appendSaving, setAppendSaving] = useState<boolean>(false);
 
     const formSchema = z.object({
         productName: z.string().min(1, "Product name is required"),
@@ -41,7 +51,9 @@ export default function CreateProdBody({ productId }: { productId?: string | num
         images: z.array(z.instanceof(File)).min(3, "At least 3 images are required").max(10, "No more than 10 images are allowed"),
         bidStep: z.number().min(1, "Bid step must be at least $1"),
         instantBuy: z.number().nullable().optional(),
-        productDescription: z.string().min(1, "Product description is required").max(5000, "Description cannot exceed 5000 characters"),
+        productDescription: isEditing
+            ? z.string().optional()
+            : z.string().min(1, "Product description is required").max(5000, "Description cannot exceed 5000 characters"),
         startTime: z.string().min(1, "Start time is required"),
         endTime: z.string().min(1, "End time is required"),
         autoExtend: z.boolean().optional()
@@ -61,7 +73,6 @@ export default function CreateProdBody({ productId }: { productId?: string | num
     const { user } = useAuthStore();
     const navigate = useNavigate();
 
-    // Explicitly register images field because it's not bound to an input
     useEffect(() => {
         register("images");
     }, [register]);
@@ -84,13 +95,12 @@ export default function CreateProdBody({ productId }: { productId?: string | num
             try {
                 const product = await productService.getProductById(productId);
                 if (product) {
-                    // For images, we show them as placeholders for now
                     const allImages = [product.image, ...(product.additional_images || [])].filter(Boolean);
                     const mappedImages = allImages.map((url: string, i: number) => ({
-                        file: new File([], `image-${i}.jpg`, { type: 'image/jpeg' }), // Dummy file
+                        file: new File([], `image-${i}.jpg`, { type: 'image/jpeg' }),
                         url: getImageUrl(url) || "",
                         name: `Existing Image ${i + 1}`,
-                        originalName: url // Keep the original filename
+                        originalName: url
                     }));
 
                     const categoryIds = (product.categories || []).map((cat: any) => cat.id?.toString());
@@ -110,10 +120,8 @@ export default function CreateProdBody({ productId }: { productId?: string | num
                     });
                     setDescription(product.descriptions?.[0]?.description || "");
                     setImageFiles(mappedImages);
-                    // Explicitly set value for the registered field
                     setValue("images", mappedImages.map(img => img.file));
 
-                    // Store original data for change detection
                     setOriginalData({
                         productName: product.name,
                         categories: categoryIds,
@@ -136,7 +144,6 @@ export default function CreateProdBody({ productId }: { productId?: string | num
         fetchProductData();
     }, [productId]);
 
-    // Cleanup image URLs when component unmounts
     useEffect(() => {
         return () => {
             imageFiles.forEach(img => {
@@ -147,7 +154,7 @@ export default function CreateProdBody({ productId }: { productId?: string | num
         };
     }, [imageFiles]);
 
-    // Watch for form changes
+    // Watch forform changes
     useEffect(() => {
         if (!isEditing || !originalData) {
             setHasChanges(false);
@@ -227,11 +234,17 @@ export default function CreateProdBody({ productId }: { productId?: string | num
             if (data.instantBuy) formData.append("instant_price", data.instantBuy.toString());
             formData.append("start_at", new Date(data.startTime).toISOString());
             formData.append("expired_at", new Date(data.endTime).toISOString());
-            formData.append("description", data.productDescription);
+
+            if (!isEditing) {
+                formData.append("description", data.productDescription);
+            } else if (appendText && appendText.replace(/<[^>]*>/g, '').trim()) {
+                const mergedDescription = (description || "") + appendText;
+                formData.append("description", mergedDescription);
+            }
+            
             formData.append("isExtent", data.autoExtend ? "true" : "false");
             formData.append("coverImageIndex", coverImageIndex.toString());
 
-            // Handle images carefully to support editing
             const imagesOrder: string[] = [];
             imageFiles.forEach(img => {
                 if (img.originalName) {
@@ -259,6 +272,38 @@ export default function CreateProdBody({ productId }: { productId?: string | num
         }
     }
 
+        const handleAppendSave = async () => {
+            if (!productId) return;
+            if (!appendText || !appendText.replace(/<[^>]*>/g, '').trim()) {
+                toast.error('Nothing to append');
+                return;
+            }
+
+            try {
+                setAppendSaving(true);
+
+                const result = await productService.addDescription(productId, appendText);
+                toast.success(result.message || 'Description appended');
+
+                try {
+                    const updatedProduct = await productService.getProductById(productId);
+                    const latestDesc = updatedProduct?.descriptions?.[0]?.description || "";
+                    setDescription(latestDesc);
+                    setOriginalData((prev: any) => prev ? { ...prev, productDescription: latestDesc } : prev);
+                } catch (e) {
+                    console.warn('Failed to refetch product after appending description', e);
+                }
+
+                setAppendText('');
+                setShowAppend(false);
+                setHasChanges(false);
+            } catch (error: any) {
+                toast.error(error?.response?.data?.message || 'Failed to append description');
+            } finally {
+                setAppendSaving(false);
+            }
+        };
+
 
     return (
         <form className="px-[10%] py-8" onSubmit={handleSubmit(onSubmit)}>
@@ -266,12 +311,15 @@ export default function CreateProdBody({ productId }: { productId?: string | num
 
             <div className="mt-6 border border-white/10 rounded-lg p-6 bg-(--third)">
                 <h2 className="text-2xl text-white text-bold">Basic Product Information</h2>
-                <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div>
+                    <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="lg:col-span-2">
                         <label htmlFor="productName" className="text-white/80">Product Name<span className="text-red-500">*</span></label>
-                        <input type="text" id="productName" className="w-full mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white"
-                            placeholder="Enter product name" {...register("productName")} />
+                        <div className="flex items-start gap-2">
+                            <input type="text" id="productName" className="flex-1 mt-2 p-2 rounded-md bg-(--secondary) border border-white/10 text-white"
+                                placeholder="Enter product name" {...register("productName")} />
+                        </div>
                         {errors.productName && <p className="text-red-400 text-sm mt-1">{errors.productName.message as any}</p>}
+
                     </div>
                     <div className="lg:col-span-2">
                         <label className="text-white/80">Categories<span className="text-red-500">*</span></label>
@@ -397,135 +445,263 @@ export default function CreateProdBody({ productId }: { productId?: string | num
                     </div>
                 </div>
             </div>
-            <div className="mt-6 border border-white/10 rounded-lg p-6 bg-(--third)">
-                <h2 className="text-2xl text-white text-bold">Product Description</h2>
-                <div className="mt-4">
-                    <label htmlFor="productDescription" className="text-white/80">Description<span className="text-red-500">*</span></label>
-                    <div className="mt-2 rounded-md overflow-hidden border border-white/10">
-                        <Editor
-                            ref={editorRef}
-                            apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
-                            initialValue={description}
-                            init={{
-                                height: 300,
-                                menubar: true,
-                                plugins: [
-                                    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
-                                    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                                    'insertdatetime', 'media', 'table', 'preview', 'help', 'wordcount'
-                                ],
-                                toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
-                                // content_style: Styles for the EDITOR's content area (what user sees while editing)
-                                // This helps user preview how content will look, matching the display styling in description.tsx
-                                // Without this, content would look wrong in editor (e.g., paragraphs stuck together, no spacing)
-                                content_style: `
-                                    body { 
-                                        font-family: Helvetica, Arial, sans-serif; 
-                                        font-size: 14px; 
-                                        background: rgb(17, 24, 39); 
-                                        color: rgb(209, 213, 219);
-                                        line-height: 1.6;
-                                        margin: 0;
-                                        padding: 10px;
+            {!isEditing ? (
+                <div className="mt-6 border border-white/10 rounded-lg p-6 bg-(--third)">
+                    <h2 className="text-2xl text-white text-bold">Product Description</h2>
+                    <div className="mt-4">
+                        <label htmlFor="productDescription" className="text-white/80">Description<span className="text-red-500">*</span></label>
+                        <div className="mt-2 rounded-md overflow-hidden border border-white/10">
+                            <Editor
+                                key="create-editor"
+                                ref={editorRef}
+                                apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+                                initialValue={description}
+                                init={{
+                                    height: 300,
+                                    menubar: true,
+                                    plugins: [
+                                        'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
+                                        'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                                        'insertdatetime', 'media', 'table', 'preview', 'help', 'wordcount'
+                                    ],
+                                    toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
+                                    content_style: `
+                                        body { 
+                                            font-family: Helvetica, Arial, sans-serif; 
+                                            font-size: 14px; 
+                                            background: rgb(17, 24, 39); 
+                                            color: rgb(209, 213, 219);
+                                            line-height: 1.6;
+                                            margin: 0;
+                                            padding: 10px;
+                                            direction: ltr;
+                                        }
+                                        .mce-content-body { 
+                                            color: rgb(209, 213, 219); 
+                                            background: rgb(17, 24, 39);
+                                            direction: ltr;
+                                        }
+                                        p {
+                                            margin: 0.5em 0;
+                                            display: block;
+                                        }
+                                        h1, h2, h3, h4, h5, h6 {
+                                            margin: 1em 0 0.5em 0;
+                                        }
+                                        ul, ol {
+                                            margin: 0.5em 0;
+                                            padding-left: 2em;
+                                        }
+                                        li {
+                                            margin: 0.25em 0;
+                                        }
+                                        strong, b {
+                                            font-weight: bold;
+                                        }
+                                        em, i {
+                                            font-style: italic;
+                                        }
+                                        hr {
+                                            margin: 1em 0;
+                                            border: none;
+                                            border-top: 1px solid rgb(75, 85, 99);
+                                        }
+                                        br {
+                                            display: block;
+                                            content: '';
+                                            margin: 0.5em 0;
+                                        }
+                                    `,
+                                    skin: 'oxide-dark',
+                                    content_css: 'dark',
+                                    forced_root_block_attrs: { dir: 'ltr' },
+                                    setup: (editor: any) => {
+                                        const log = (e: any) => {
+                                            try {
+                                                const rng = editor.selection && editor.selection.getRng && editor.selection.getRng();
+                                                const start = rng ? rng.startOffset : null;
+                                                console.log('TinyMCE event', e.type, { key: e.key, data: e.data, isComposing: e.isComposing, selStart: start, text: editor.getContent({ format: 'text' }).slice(0,200) });
+                                            } catch (err) {
+                                                console.log('TinyMCE logging error', err);
+                                            }
+                                        };
+                                        ['keydown','input','compositionstart','compositionupdate','compositionend'].forEach(evt => editor.on(evt, log));
+                                    },
+                                    statusbar: true,
+                                    branding: false
+                                }}
+                                onEditorChange={(content) => {
+                                    // preserve selection range to restore after any React updates
+                                    try {
+                                        const rng = editorRef.current?.selection?.getRng?.();
+                                        lastRangeRef.current = rng ? (rng.cloneRange ? rng.cloneRange() : rng) : null;
+                                    } catch (e) {
+                                        lastRangeRef.current = null;
                                     }
-                                    .mce-content-body { 
-                                        color: rgb(209, 213, 219); 
-                                        background: rgb(17, 24, 39);
-                                    }
-                                    p {
-                                        margin: 0.5em 0;
-                                        display: block;
-                                    }
-                                    h1, h2, h3, h4, h5, h6 {
-                                        margin: 1em 0 0.5em 0;
-                                    }
-                                    ul, ol {
-                                        margin: 0.5em 0;
-                                        padding-left: 2em;
-                                    }
-                                    li {
-                                        margin: 0.25em 0;
-                                    }
-                                    strong, b {
-                                        font-weight: bold;
-                                    }
-                                    em, i {
-                                        font-style: italic;
-                                    }
-                                    hr {
-                                        margin: 1em 0;
-                                        border: none;
-                                        border-top: 1px solid rgb(75, 85, 99);
-                                    }
-                                    br {
-                                        display: block;
-                                        content: '';
-                                        margin: 0.5em 0;
-                                    }
-                                `,
-                                skin: 'oxide-dark',
-                                content_css: 'dark',
-                                statusbar: true,
-                                branding: false
-                            }}
-                            onEditorChange={(content) => {
-                                // Keep the full HTML content
-                                setDescription(content);
 
-                                // Extract plain text for word counting only
-                                let plainText = content
-                                    .replace(/<br\s*\/?>/gi, '\n')
-                                    .replace(/<\/p>/gi, '\n')
-                                    .replace(/<p[^>]*>/gi, '')
-                                    .replace(/<[^>]*>/g, ''); // Remove remaining HTML tags
+                                    // keep content in a ref to avoid causing React re-renders on every keystroke
+                                    descriptionRef.current = content;
 
-                                plainText = plainText
-                                    .replace(/&nbsp;/g, ' ')
-                                    .replace(/&amp;/g, '&')
-                                    .replace(/&lt;/g, '<')
-                                    .replace(/&gt;/g, '>')
-                                    .replace(/&quot;/g, '"')
-                                    .replace(/&#039;/g, "'")
-                                    .replace(/\n\s+/g, '\n')
-                                    .replace(/\s+\n/g, '\n')
-                                    .replace(/[ \t]+/g, ' ')
-                                    .trim();
+                                    // debounce updating react-hook-form value (keeps form in sync without frequent re-renders)
+                                    if (descriptionDebounceRef.current) window.clearTimeout(descriptionDebounceRef.current);
+                                    descriptionDebounceRef.current = window.setTimeout(() => {
+                                        setValue("productDescription", descriptionRef.current, { shouldValidate: true });
+                                        // restore selection shortly after form update
+                                        setTimeout(() => {
+                                            try {
+                                                const rng = lastRangeRef.current;
+                                                if (rng && editorRef.current?.selection?.setRng) editorRef.current.selection.setRng(rng);
+                                            } catch (e) { /* ignore */ }
+                                        }, 0);
+                                    }, 300) as unknown as number;
 
-                                // Count words from plain text only
-                                const words = plainText.split(/\s+/).filter(word => word.length > 0);
-                                const currentWordCount = words.length;
+                                    let plainText = content
+                                        .replace(/<br\s*\/?>(?:\s*)/gi, '\n')
+                                        .replace(/<\/p>/gi, '\n')
+                                        .replace(/<p[^>]*>/gi, '')
+                                        .replace(/<[^>]*>/g, '');
 
-                                // Hard limit: max 500 words
-                                if (currentWordCount > 500) {
-                                    const truncated = words.slice(0, 500).join(' ');
-                                    setDescription(truncated);
-                                    setWordCount(500);
-                                    setValue("productDescription", truncated, { shouldValidate: true });
-                                    if (editorRef.current) {
-                                        editorRef.current.setContent(truncated);
+                                    plainText = plainText
+                                        .replace(/&nbsp;/g, ' ')
+                                        .replace(/&amp;/g, '&')
+                                        .replace(/&lt;/g, '<')
+                                        .replace(/&gt;/g, '>')
+                                        .replace(/&quot;/g, "\"")
+                                        .replace(/&#039;/g, "'")
+                                        .replace(/\n\s+/g, '\n')
+                                        .replace(/\s+\n/g, '\n')
+                                        .replace(/[ \t]+/g, ' ')
+                                        .trim();
+
+                                    const words = plainText.split(/\s+/).filter(word => word.length > 0);
+                                    const currentWordCount = words.length;
+
+                                    if (currentWordCount > 500) {
+                                        const truncated = words.slice(0, 500).join(' ');
+                                        // update both ref and state for truncation case
+                                        descriptionRef.current = truncated;
+                                        setDescription(truncated);
+                                        setWordCount(500);
+                                        // immediate set for truncation
+                                        setValue("productDescription", truncated, { shouldValidate: true });
+                                        if (editorRef.current) {
+                                            editorRef.current.setContent(truncated);
+                                            // restore selection after truncation
+                                            try {
+                                                const rng = lastRangeRef.current;
+                                                if (rng && editorRef.current.selection && editorRef.current.selection.setRng) {
+                                                    setTimeout(() => editorRef.current.selection.setRng(rng), 0);
+                                                }
+                                            } catch (e) { /* ignore */ }
+                                        }
+                                        if (wordCount >= 500) {
+                                            toast.error("Maximum 500 words allowed");
+                                        }
+                                    } else {
+                                        setWordCount(currentWordCount);
                                     }
-                                    // Only show toast if user tried to add more after reaching limit
-                                    if (wordCount >= 500) {
-                                        toast.error("Maximum 500 words allowed");
-                                    }
-                                } else {
-                                    setWordCount(currentWordCount);
-                                    setValue("productDescription", content, { shouldValidate: true });
-                                }
-                            }}
-                        />
-                    </div>
-                    <div className="flex justify-between items-center">
-                        <p className={`text-left text-sm mt-4 ${wordCount === 0 ? 'text-white/60' :
-                            wordCount > 500 ? 'text-red-500' :
-                                'text-white/60'
-                            }`}>
-                            {wordCount} words / 500 words
-                        </p>
-                        {errors.productDescription && <p className="text-red-400 text-sm mt-1">{errors.productDescription.message}</p>}
+                                }}
+                                onBlur={() => {
+                                    setDescription(descriptionRef.current);
+                                    setValue("productDescription", descriptionRef.current, { shouldValidate: true });
+                                }}
+                            />
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <p className={`text-left text-sm mt-4 ${wordCount === 0 ? 'text-white/60' :
+                                wordCount > 500 ? 'text-red-500' :
+                                    'text-white/60'
+                                }`}>
+                                {wordCount} words / 500 words
+                            </p>
+                            {errors.productDescription && <p className="text-red-400 text-sm mt-1">{errors.productDescription.message}</p>}
+                        </div>
                     </div>
                 </div>
-            </div>
+            ) : (
+                isEditing && (
+                    <div className="mt-6 border border-white/10 rounded-lg p-6 bg-(--third)">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl text-white text-bold">Product Description</h2>
+                            <button
+                                type="button"
+                                onClick={() => setShowAppend(prev => !prev)}
+                                className={`px-3 py-2 rounded-md text-sm font-medium ${showAppend ? 'bg-white/10 text-(--primary)' : 'bg-(--primary) text-black'}`}>
+                                {showAppend ? 'Close Append' : 'Append Description'}
+                            </button>
+                        </div>
+
+                        {showAppend ? (
+                            <div className="mt-4">
+                                <label className="text-white/80">Content to append</label>
+                                <div className="mt-2 rounded-md overflow-hidden border border-white/10">
+                                    <Editor
+                                        key="append-editor"
+                                        ref={appendEditorRef}
+                                        apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+                                        initialValue={appendText}
+                                        init={{
+                                            height: 300,
+                                            menubar: true,
+                                            plugins: [
+                                                'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
+                                                'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                                                'insertdatetime', 'media', 'table', 'preview', 'help', 'wordcount'
+                                            ],
+                                            toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
+                                            content_style: `body { font-family: Helvetica, Arial, sans-serif; font-size: 14px; background: rgb(17, 24, 39); color: rgb(209, 213, 219); padding:10px; direction: ltr; }`,
+                                            skin: 'oxide-dark',
+                                            content_css: 'dark',
+                                            statusbar: true,
+                                            branding: false
+                                        }}
+                                        onEditorChange={(content) => {
+                                            // preserve selection for append editor
+                                            try {
+                                                const rng = appendEditorRef.current?.selection?.getRng?.();
+                                                appendLastRangeRef.current = rng ? (rng.cloneRange ? rng.cloneRange() : rng) : null;
+                                            } catch (e) {
+                                                appendLastRangeRef.current = null;
+                                            }
+
+                                            // keep content in ref to avoid re-renders
+                                            appendTextRef.current = content;
+
+                                            if (appendDebounceRef.current) window.clearTimeout(appendDebounceRef.current);
+                                            appendDebounceRef.current = window.setTimeout(() => {}, 300) as unknown as number;
+                                        }}
+                                        onBlur={() => {
+                                            // commit append content on blur
+                                            setAppendText(appendTextRef.current);
+                                            try {
+                                                const rng = appendLastRangeRef.current;
+                                                if (rng && appendEditorRef.current?.selection?.setRng) appendEditorRef.current.selection.setRng(rng);
+                                            } catch (e) { /* ignore */ }
+                                        }}
+                                    />
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <p className="text-white/60 text-sm mt-4">Content you add here will be appended to the current description when you update the auction.</p>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleAppendSave}
+                                            disabled={appendSaving}
+                                            className="bg-(--primary) text-black px-4 py-2 rounded-md font-medium disabled:opacity-50"
+                                        >
+                                            {appendSaving ? 'Saving...' : 'Add'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="mt-4">
+                                <p className="text-white/70">Existing description will remain unchanged. Click "Append Description" to add more content.</p>
+                            </div>
+                        )}
+                    </div>
+                )
+            )}
             <div className="mt-6 border border-white/10 rounded-lg p-6 bg-(--third)">
                 <h2 className="text-2xl text-white text-bold">Auction Timing and Duration</h2>
                 <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -571,7 +747,6 @@ export default function CreateProdBody({ productId }: { productId?: string | num
                 <button className="bg-(--third) text-white border w-full border-white/10 px-6 py-2 rounded-md hover:scale-101 transition-transform"
                     type="button"
                     onClick={() => {
-                        // Navigate back to seller's product page
                         window.history.back();
                     }}
                 >

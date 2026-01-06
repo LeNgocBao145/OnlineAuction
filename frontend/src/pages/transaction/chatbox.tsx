@@ -58,7 +58,7 @@ export default function Chatbox(
                                     </span>
                                 </li>
                             )}
-                            <li className={`flex max-w-[400px] [overflow-wrap:anywhere] whitespace-pre-wrap items-center rounded-lg ${isOwn ? "justify-end self-end text-right" : "justify-start self-start text-left"} ${previousSender !== msg.sender ? "mt-6" : "mt-1"}`}>
+                            <li className={`flex max-w-full [overflow-wrap:anywhere] whitespace-pre-wrap items-center rounded-lg ${isOwn ? "justify-end self-end text-right" : "justify-start self-start text-left"} ${previousSender !== msg.sender ? "mt-6" : "mt-1"}`}>
                                 {!isOwn && <div className={`flex shrink-0 h-10 w-10 border text-(--third) border-white rounded-full mr-2 bg-gray-600 items-center justify-center ${previousSender !== msg.sender ? "" : "invisible"}`}>{msg.sender_name?.[0]}</div>}
                                 {isOwn && <span className="whitespace-nowrap mr-2 text-white/50 text-sm">{new Date(msg.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>}
                                 <p className={`${isOwn ? "bg-(--primary) text-black px-3 py-2 rounded-lg" : "bg-(--secondary) text-white px-3 py-2 rounded-lg"}`}>{msg.content}</p>

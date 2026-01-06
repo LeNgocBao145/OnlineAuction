@@ -9,12 +9,12 @@ import RelatedProducts from "./relatedProducts";
 export default function ProductBody() {
     return (
         <div className="flex flex-col justify-around items-center gap-4 mt-4 pb-8 w-full">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-[1500px] mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-[1500px] mx-auto items-stretch">
 
                 <ProductImages />
                 <ProductBrief />
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-4 items-start w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start w-full">
 
                 <div className="flex flex-col justify-start items-center w-full gap-4">
                     <ProductDescription />

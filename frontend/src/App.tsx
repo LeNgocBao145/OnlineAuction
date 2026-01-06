@@ -82,11 +82,10 @@ export default function App() {
             <Route path="/transactions/:id/seller" element={<SellerTransactionPage />} />
 
             <Route path="/product/:id" element={<ProductPage />} />
+            <Route path="/search" element={<SearchPage />} />
 
             {/* protected route */}
             <Route element={<ProtectedRoute />}>
-              <Route path="/search" element={<SearchPage />} />
-              <Route path="/product/:id" element={<ProductPage />} />
               <Route
                 path="/profile/settings"
                 element={<ProfileSettingsBasicInfo />}
