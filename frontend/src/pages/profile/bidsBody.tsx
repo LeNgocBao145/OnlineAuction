@@ -4,6 +4,7 @@ import useUserStore from "@/stores/userStore";
 import useAuthStore from "@/stores/authStore";
 import { formatDate } from "@/utils/dateUtils";
 import { getImageUrl } from "@/utils/productUtils";
+import { formatCurrency } from "@/utils/numberUtils";
 
 export default function BidsBody() {
     const navigate = useNavigate();
@@ -86,7 +87,7 @@ export default function BidsBody() {
                                 <div className="flex flex-col mt-4">
                                     <div className="flex justify-between mb-4">
                                         <div className="flex flex-col">
-                                            <p className="text-2xl text-(--primary)">${parseFloat(bid.bid_price)?.toFixed(2) || "0.00"}</p>
+                                            <p className="text-2xl text-(--primary)">{formatCurrency(parseFloat(bid.bid_price)) || "0.00"}</p>
                                             <p className="text-white/60">Your Bid</p>
                                         </div>
                                         <div className="flex flex-col">

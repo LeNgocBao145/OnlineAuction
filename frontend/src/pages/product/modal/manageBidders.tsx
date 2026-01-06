@@ -163,12 +163,12 @@ export default function ManageBiddersModal({
                                                 <div className="text-right">
                                                     {bidder.highest_bid && (
                                                         <p className="text-(--primary) font-bold">
-                                                            {formatCurrency(bidder.highest_bid)}
+                                                            {formatCurrency(Number(bidder.highest_bid))}
                                                         </p>
                                                     )}
                                                     {bidder.auto_bid_max && (
                                                         <p className="text-white/50 text-xs">
-                                                            Max: {formatCurrency(bidder.auto_bid_max)}
+                                                            Max: {formatCurrency(Number(bidder.auto_bid_max))}
                                                         </p>
                                                     )}
                                                 </div>
