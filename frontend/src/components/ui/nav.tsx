@@ -233,7 +233,7 @@ export default function Nav() {
       {/* Category Dropdown - Outside nav for proper positioning */}
       {openCategory && (
         <div
-          className="fixed top-[100px] left-0 right-0 z-40"
+          className="fixed lg:top-[100px] top-[75px] left-0 right-0 lg:z-40 z-500"
           onMouseEnter={() => setOpenCategory(true)}
           onMouseLeave={() => setOpenCategory(false)}
         >
