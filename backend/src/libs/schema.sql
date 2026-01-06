@@ -610,8 +610,10 @@ VALUES
 ('Bob Tran', '45 Nguyen Hue, HCM', 'bob@example.com', '$2b$12$GYaai7/JxSo2VaZpkm/8AeMTmWPOck8c4p2dnK/ycbDmUU5bTOS1q', '1995-11-02', 'bidder', 0),
 ('Charlie Pham', '12 Tran Hung Dao, HCM', 'charlie@example.com', '$2b$12$sYld5KWZlbJMiq0HTygK4OVosTSCG93T415Agtd.K1AFEVNHwN3hy', '1990-07-25', 'seller', 0),
 ('David Ho', '89 Vo Van Tan, HCM', 'david@example.com', '$2b$12$n6y.QYKn9TkfbqSnBDsYaOcaOKC68BnlPvt5rdxSgJK0pjtvYdrNu', '1998-04-19', 'bidder', 0),
-('Emma Le', '77 Dien Bien Phu, HCM', 'emma@example.com', '$2b$12$z8deg5NS5P43/O7O0yWeKehfB82ymWUVNlF3UQgrzH9HW9sNCJqiG', '1997-09-09', 'seller', 0);
-
+('Emma Le', '77 Dien Bien Phu, HCM', 'emma@example.com', '$2b$12$z8deg5NS5P43/O7O0yWeKehfB82ymWUVNlF3UQgrzH9HW9sNCJqiG', '1997-09-09', 'seller', 0),
+('Frank Nguyen', '1 Vo Thi Sau, HCM', 'frank@example.com',
+ '$2b$12$K9Q9pFqH2XH0G9kQx5qQ2u6CzJp4h8Fv1Yv7E6Z6YQ1pN7m0yq4aC',
+ '2001-02-02', 'bidder', 0);
 -- 2. Insert Categories (2 levels: Parent => Child)
 -- Level 1: Parent categories
 INSERT INTO categories (name, parent) VALUES
@@ -637,29 +639,29 @@ INSERT INTO categories (name, parent) VALUES
 
 INSERT INTO products (name, current_price, image, state)
 VALUES
-('iPhone 14 Pro Max', 25000000, 'https://picsum.photos/seed/p1/300', 'bidding'),
-('Samsung Galaxy S23', 18000000, 'https://picsum.photos/seed/p2/300', 'bidding'),
-('MacBook Air M2', 28000000, 'https://picsum.photos/seed/p3/300', 'bidding'),
-('Sony WH-1000XM5', 7500000, 'https://picsum.photos/seed/p4/300', 'bidding'),
-('Canon EOS M50', 15000000, 'https://picsum.photos/seed/p5/300', 'bidding'),
+('iPhone 14 Pro Max', 25000000, 'https://picsum.photos/seed/p1/300', 'sold'),
+('Samsung Galaxy S23', 18000000, 'https://picsum.photos/seed/p2/300', 'sold'),
+('MacBook Air M2', 28000000, 'https://picsum.photos/seed/p3/300', 'sold'),
+('Sony WH-1000XM5', 7500000, 'https://picsum.photos/seed/p4/300', 'sold'),
+('Canon EOS M50', 15000000, 'https://picsum.photos/seed/p5/300', 'sold'),
 
-('Nike Air Jordan 1', 5000000, 'https://picsum.photos/seed/p6/300', 'bidding'),
-('Adidas Ultraboost', 3800000, 'https://picsum.photos/seed/p7/300', 'bidding'),
-('LV Handbag White', 42000000, 'https://picsum.photos/seed/p8/300', 'bidding'),
+('Nike Air Jordan 1', 5000000, 'https://picsum.photos/seed/p6/300', 'sold'),
+('Adidas Ultraboost', 3800000, 'https://picsum.photos/seed/p7/300', 'sold'),
+('LV Handbag White', 42000000, 'https://picsum.photos/seed/p8/300', 'sold'),
 ('Gucci Sunglasses', 9000000, 'https://picsum.photos/seed/p9/300', 'sold'),
-('Unisex Leather Jacket', 3200000, 'https://picsum.photos/seed/p10/300', 'bidding'),
+('Unisex Leather Jacket', 3200000, 'https://picsum.photos/seed/p10/300', 'sold'),
 
-('Vacuum Cleaner Xiaomi', 2500000, 'https://picsum.photos/seed/p11/300', 'bidding'),
-('Air Fryer Philips XL', 3900000, 'https://picsum.photos/seed/p12/300', 'bidding'),
-('Ikea LED Lamp', 900000, 'https://picsum.photos/seed/p13/300', 'bidding'),
-('Panasonic Blender', 1200000, 'https://picsum.photos/seed/p14/300', 'bidding'),
-('Lock&Lock Cookware Set', 1700000, 'https://picsum.photos/seed/p15/300', 'bidding'),
+('Vacuum Cleaner Xiaomi', 2500000, 'https://picsum.photos/seed/p11/300', 'sold'),
+('Air Fryer Philips XL', 3900000, 'https://picsum.photos/seed/p12/300', 'sold'),
+('Ikea LED Lamp', 900000, 'https://picsum.photos/seed/p13/300', 'sold'),
+('Panasonic Blender', 1200000, 'https://picsum.photos/seed/p14/300', 'sold'),
+('Lock&Lock Cookware Set', 1700000, 'https://picsum.photos/seed/p15/300', 'sold'),
 
-('Wilson Tennis Racket', 2800000, 'https://picsum.photos/seed/p16/300', 'bidding'),
-('Decathlon Mountain Bike', 7500000, 'https://picsum.photos/seed/p17/300', 'bidding'),
-('Football Nike Flight', 2500000, 'https://picsum.photos/seed/p18/300', 'bidding'),
-('Vintage Pokemon Card', 9500000, 'https://picsum.photos/seed/p19/300', 'bidding'),
-('Gundam Model RX-78', 1500000, 'https://picsum.photos/seed/p20/300', 'bidding');
+('Wilson Tennis Racket', 2800000, 'https://picsum.photos/seed/p16/300', 'sold'),
+('Decathlon Mountain Bike', 7500000, 'https://picsum.photos/seed/p17/300', 'sold'),
+('Football Nike Flight', 2500000, 'https://picsum.photos/seed/p18/300', 'sold'),
+('Vintage Pokemon Card', 9500000, 'https://picsum.photos/seed/p19/300', 'sold'),
+('Gundam Model RX-78', 1500000, 'https://picsum.photos/seed/p20/300', 'sold');
 
 -- 4. Insert Product Categories Mapping
 
@@ -751,31 +753,31 @@ VALUES
 
 -- 7. Insert Sell Product (listing info)
 
-INSERT INTO sell_product (product, seller, init_price, step_price, created_at, expired_at)
+INSERT INTO sell_product (product, seller, init_price, step_price, instant_price, starting_at, created_at, expired_at, isExtent)
 VALUES
-(1,1,20000000,500000,NOW(), NOW() + INTERVAL '7 days'),
-(2,5,15000000,300000,NOW(), NOW() + INTERVAL '7 days'),
-(3,1,25000000,600000,NOW(), NOW() + INTERVAL '7 days'),
-(4,5,5000000,200000,NOW(), NOW() + INTERVAL '7 days'),
-(5,1,12000000,400000,NOW(), NOW() + INTERVAL '7 days'),
+(1,1,20000000,500000,28000000, NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', true),
+(2,5,15000000,300000,NULL,     NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', true),
+(3,1,25000000,600000,35000000, NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
+(4,5,5000000,200000,NULL,      NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
+(5,1,12000000,400000,18000000, NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
 
-(6,5,3000000,200000,NOW(), NOW() + INTERVAL '7 days'),
-(7,1,2500000,150000,NOW(), NOW() + INTERVAL '7 days'),
-(8,5,38000000,800000,NOW(), NOW() + INTERVAL '7 days'),
-(9,1,7000000,200000,NOW(), NOW() + INTERVAL '7 days'),
-(10,5,2500000,150000,NOW(), NOW() + INTERVAL '7 days'),
+(6,5,3000000,200000,NULL,      NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
+(7,1,2500000,150000,NULL,      NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
+(8,5,38000000,800000,52000000, NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
+(9,1,7000000,200000,NULL,      NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
+(10,5,2500000,150000,NULL,     NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
 
-(11,1,2000000,100000,NOW(), NOW() + INTERVAL '7 days'),
-(12,5,3000000,150000,NOW(), NOW() + INTERVAL '7 days'),
-(13,1,500000,50000,NOW(), NOW() + INTERVAL '7 days'),
-(14,5,900000,80000,NOW(), NOW() + INTERVAL '7 days'),
-(15,1,1000000,100000,NOW(), NOW() + INTERVAL '7 days'),
+(11,1,2000000,100000,NULL,     NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
+(12,5,3000000,150000,NULL,     NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
+(13,1,500000,50000,NULL,       NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
+(14,5,900000,80000,NULL,       NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
+(15,1,1000000,100000,NULL,     NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
 
-(16,5,2000000,150000,NOW(), NOW() + INTERVAL '7 days'),
-(17,1,5000000,300000,NOW(), NOW() + INTERVAL '7 days'),
-(18,5,1500000,100000,NOW(), NOW() + INTERVAL '7 days'),
-(19,1,5000000,400000,NOW(), NOW() + INTERVAL '7 days'),
-(20,5,900000,80000,NOW(), NOW() + INTERVAL '7 days');
+(16,5,2000000,150000,NULL,     NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
+(17,1,5000000,300000,7200000,  NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
+(18,5,1500000,100000,NULL,     NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
+(19,1,5000000,400000,NULL,     NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false),
+(20,5,900000,80000,NULL,       NOW() - INTERVAL '7 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour', false);
 
 -- 8. Insert 5 Bids per Product
 
@@ -1011,42 +1013,31 @@ BEGIN
 END
 $$ LANGUAGE plpgsql;
 
--- 11. Insert Reviews
--- Alice
+-- 11. Insert Reviews (Chỉ cho các completed transactions: 1,2,6,7,10,11,14,18)
+-- Buyer (User 3) rates Seller (User 1)
 INSERT INTO reviews (product, rater, ratee, liked, content) VALUES
-(2,2,1,true,'Fast response'),
-(3,3,1,true,'Good packaging'),
-(4,4,1,true,'Exactly as described'),
-(5,2,1,false,'Shipping a bit slow');
+(1,3,1,true,'Good item, fast shipping'),
+(7,3,1,true,'Product as described'),
+(11,3,1,true,'Reliable seller');
 
--- Bob 
+-- Seller (User 1) rates Buyer (User 3)
 INSERT INTO reviews (product, rater, ratee, liked, content) VALUES
-(1,1,2,true,'Paid quickly'),
-(3,1,2,true,'Smooth transaction'),
-(4,5,2,true,'Nice buyer'),
-(6,1,2,false,'Late confirmation'),
-(7,5,2,false,'Bid retracted once');
+(1,1,3,true,'Fast payment'),
+(7,1,3,true,'Good buyer, easy communication'),
+(11,1,3,true,'Smooth transaction');
 
--- Charlie
+-- Buyer (User 3) rates Seller (User 5)
 INSERT INTO reviews (product, rater, ratee, liked, content) VALUES
-(8,5,3,true,'Very polite'),
-(9,1,3,true,'Fast payment'),
-(10,1,3,true,'Clear communication'),
-(11,5,3,true,'Reliable bidder'),
-(12,1,3,false,'Asked too many questions');
+(2,3,5,true,'Excellent phone, loved it'),
+(10,3,5,true,'Nice jacket'),
+(14,3,5,true,'Works perfectly');
 
--- David
+-- Seller (User 5) rates Buyer (User 3)
 INSERT INTO reviews (product, rater, ratee, liked, content) VALUES
-(13,1,4,true,'Fair bidder'),
-(14,5,4,true,'On-time payment'),
-(15,1,4,false,'Low bids'),
-(16,5,4,false,'Unresponsive once');
-
--- Emma
-INSERT INTO reviews (product, rater, ratee, liked, content) VALUES
-(17,2,5,true,'Very professional'),
-(18,3,5,true,'Item well packed'),
-(19,4,5,true,'Smooth deal');
+(6,5,3,true,'Quick response'),
+(10,5,3,true,'Great bidder'),
+(14,5,3,true,'Recommended buyer'),
+(18,5,3,true,'Pleasure to do business with');
 
 -- 12. Insert Messages
 INSERT INTO messages (product, sender, content, type, created_at) VALUES
@@ -1059,22 +1050,64 @@ INSERT INTO messages (product, sender, content, type, created_at) VALUES
 
 -- 13. Insert Refuse
 INSERT INTO refuse (product, buyer) VALUES
-(5, 4), (8, 2);
+(5, 3), (8, 2);
 
--- 14. Insert Bidder Winner
+-- 14. Insert Bidder Winner (mỗi product chỉ có 1 winner duy nhất)
 INSERT INTO bidder_winner (product, bidder) VALUES
-(3,3),
-(6,2),
-(9,3);
+(1,3),  -- Winner: user 3 với bid cuối 22,500,000
+(2,3),  -- Winner: user 3 với bid cuối 16,500,000
+(3,3),  -- Winner: user 3 với bid cuối 28,000,000
+(4,3),  -- Winner: user 3 với bid cuối 6,000,000
+(5,3),  -- Winner: user 3 với bid cuối 14,000,000
+(6,3),  -- Winner: user 3 với bid cuối 4,000,000
+(7,3),  -- Winner: user 3 với bid cuối 3,250,000
+(8,3),  -- Winner: user 3 với bid cuối 42,000,000
+(9,3),  -- Winner: user 3 với bid cuối 8,000,000
+(10,3), -- Winner: user 3 với bid cuối 3,250,000
+(11,3), -- Winner: user 3 với bid cuối 2,500,000
+(12,3), -- Winner: user 3 với bid cuối 3,750,000
+(13,3), -- Winner: user 3 với bid cuối 750,000
+(14,3), -- Winner: user 3 với bid cuối 1,300,000
+(15,3), -- Winner: user 3 với bid cuối 1,500,000
+(16,3), -- Winner: user 3 với bid cuối 2,750,000
+(17,3), -- Winner: user 3 với bid cuối 6,500,000
+(18,3), -- Winner: user 3 với bid cuối 2,000,000
+(19,3), -- Winner: user 3 với bid cuối 7,000,000
+(20,3); -- Winner: user 3 với bid cuối 1,300,000
 
-
--- 15. Insert Trade Verifications
+-- 15. Insert Trade Verifications (mỗi product chỉ có 1 transaction duy nhất)
 INSERT INTO trade_verifications
 (product, bidder, seller, delivery_address, sell_accept, bidder_accept, state)
 VALUES
+-- Completed transactions (đã hoàn thành)
+(1,3,1,'12 Tran Hung Dao, HCM',true,true,'completed'),
+(2,3,5,'12 Tran Hung Dao, HCM',true,true,'completed'),
+(6,3,5,'12 Tran Hung Dao, HCM',true,true,'completed'),
+(7,3,1,'12 Tran Hung Dao, HCM',true,true,'completed'),
+(10,3,5,'12 Tran Hung Dao, HCM',true,true,'completed'),
+(11,3,1,'12 Tran Hung Dao, HCM',true,true,'completed'),
+(14,3,5,'12 Tran Hung Dao, HCM',true,true,'completed'),
+(18,3,5,'12 Tran Hung Dao, HCM',true,true,'completed'),
+
+-- Pending bidder confirm (seller đã confirm, chờ bidder)
 (3,3,1,'12 Tran Hung Dao, HCM',true,false,'pending_bidder_confirm'),
-(6,2,5,'45 Nguyen Hue, HCM',true,true,'completed'),
-(9,3,1,'77 Dien Bien Phu, HCM',false,false,'pending_payment');
+(8,3,5,'12 Tran Hung Dao, HCM',true,false,'pending_bidder_confirm'),
+(12,3,5,'12 Tran Hung Dao, HCM',true,false,'pending_bidder_confirm'),
+
+-- Pending seller confirm (bidder đã confirm, chờ seller)
+(4,3,5,'12 Tran Hung Dao, HCM',false,true,'pending_seller_confirm'),
+(13,3,1,'12 Tran Hung Dao, HCM',false,true,'pending_seller_confirm'),
+
+-- Pending payment (chưa thanh toán)
+(5,3,1,'12 Tran Hung Dao, HCM',false,false,'pending_payment'),
+(9,3,1,'12 Tran Hung Dao, HCM',false,false,'pending_payment'),
+(15,3,1,'12 Tran Hung Dao, HCM',false,false,'pending_payment'),
+(19,3,1,'12 Tran Hung Dao, HCM',false,false,'pending_payment'),
+
+-- Failed transactions (giao dịch thất bại)
+(16,3,5,'12 Tran Hung Dao, HCM',false,false,'failed'),
+(17,3,1,'12 Tran Hung Dao, HCM',false,false,'failed'),
+(20,3,5,'12 Tran Hung Dao, HCM',false,false,'failed');
 
 -- 17. Insert Product Questions
 INSERT INTO product_questions (questioner, answerer, product, question, answer) VALUES
@@ -1113,3 +1146,142 @@ INSERT INTO auto_bids (product, bidder, max_price) VALUES
 (8,4,45000000),
 (9,2,9000000),
 (10,3,3800000);
+
+-- 20. Insert More Active Products (IDs 21-40)
+INSERT INTO products (name, current_price, image, state) VALUES
+-- Laptops (Cat 6)
+('Alienware M16 R1', 45000000, 'https://picsum.photos/seed/p21/300', 'bidding'),
+('Asus ROG Zephyrus G14', 32000000, 'https://picsum.photos/seed/p22/300', 'bidding'),
+('Dell XPS 15 9530', 38000000, 'https://picsum.photos/seed/p23/300', 'bidding'),
+('HP Spectre x360', 29000000, 'https://picsum.photos/seed/p24/300', 'bidding'),
+('Lenovo Legion 5 Pro', 27000000, 'https://picsum.photos/seed/p25/300', 'bidding'),
+('Razer Blade 15', 55000000, 'https://picsum.photos/seed/p26/300', 'bidding'),
+('Acer Predator Helios 300', 24000000, 'https://picsum.photos/seed/p27/300', 'bidding'),
+-- Watches (Cat 8)
+('Rolex Submariner Date', 250000000, 'https://picsum.photos/seed/p28/300', 'bidding'),
+('Omega Speedmaster Moonwatch', 120000000, 'https://picsum.photos/seed/p29/300', 'bidding'),
+('Tag Heuer Carrera', 65000000, 'https://picsum.photos/seed/p30/300', 'bidding'),
+('Seiko Prospex Diver', 8500000, 'https://picsum.photos/seed/p31/300', 'bidding'),
+('Casio G-Shock Mudmaster', 7200000, 'https://picsum.photos/seed/p32/300', 'bidding'),
+('Tissot PRX Powermatic 80', 15000000, 'https://picsum.photos/seed/p33/300', 'bidding'),
+('Fossil Gen 6 Smartwatch', 4500000, 'https://picsum.photos/seed/p34/300', 'bidding'),
+-- Collectibles (Cat 12)
+('Funko Pop Marvel Rare', 1200000, 'https://picsum.photos/seed/p35/300', 'bidding'),
+('Lego Star Wars Millennium Falcon', 18000000, 'https://picsum.photos/seed/p36/300', 'bidding'),
+('Yu-Gi-Oh Blue Eyes White Dragon', 5000000, 'https://picsum.photos/seed/p37/300', 'bidding'),
+('Hot Toys Iron Man Mark 85', 9500000, 'https://picsum.photos/seed/p38/300', 'bidding'),
+('Vintage Silver Coin 1900s', 3500000, 'https://picsum.photos/seed/p39/300', 'bidding'),
+('Signed Messi Jersey', 45000000, 'https://picsum.photos/seed/p40/300', 'bidding');
+
+-- 21. Insert Active Product Categories
+INSERT INTO product_categories (product, category) VALUES
+(21,6),(22,6),(23,6),(24,6),(25,6),(26,6),(27,6), -- Laptops
+(28,8),(29,8),(30,8),(31,8),(32,8),(33,8),(34,8), -- Watches
+(35,12),(36,12),(37,12),(38,12),(39,12),(40,12); -- Collectibles
+
+-- 22. Insert Active Product Images
+INSERT INTO product_images (product, image_path) VALUES
+(21, ARRAY['https://picsum.photos/seed/p21a/300','https://picsum.photos/seed/p21b/300','https://picsum.photos/seed/p21c/300']),
+(22, ARRAY['https://picsum.photos/seed/p22a/300','https://picsum.photos/seed/p22b/300','https://picsum.photos/seed/p22c/300']),
+(23, ARRAY['https://picsum.photos/seed/p23a/300','https://picsum.photos/seed/p23b/300','https://picsum.photos/seed/p23c/300']),
+(24, ARRAY['https://picsum.photos/seed/p24a/300','https://picsum.photos/seed/p24b/300','https://picsum.photos/seed/p24c/300']),
+(25, ARRAY['https://picsum.photos/seed/p25a/300','https://picsum.photos/seed/p25b/300','https://picsum.photos/seed/p25c/300']),
+(26, ARRAY['https://picsum.photos/seed/p26a/300','https://picsum.photos/seed/p26b/300','https://picsum.photos/seed/p26c/300']),
+(27, ARRAY['https://picsum.photos/seed/p27a/300','https://picsum.photos/seed/p27b/300','https://picsum.photos/seed/p27c/300']),
+(28, ARRAY['https://picsum.photos/seed/p28a/300','https://picsum.photos/seed/p28b/300','https://picsum.photos/seed/p28c/300']),
+(29, ARRAY['https://picsum.photos/seed/p29a/300','https://picsum.photos/seed/p29b/300','https://picsum.photos/seed/p29c/300']),
+(30, ARRAY['https://picsum.photos/seed/p30a/300','https://picsum.photos/seed/p30b/300','https://picsum.photos/seed/p30c/300']),
+(31, ARRAY['https://picsum.photos/seed/p31a/300','https://picsum.photos/seed/p31b/300','https://picsum.photos/seed/p31c/300']),
+(32, ARRAY['https://picsum.photos/seed/p32a/300','https://picsum.photos/seed/p32b/300','https://picsum.photos/seed/p32c/300']),
+(33, ARRAY['https://picsum.photos/seed/p33a/300','https://picsum.photos/seed/p33b/300','https://picsum.photos/seed/p33c/300']),
+(34, ARRAY['https://picsum.photos/seed/p34a/300','https://picsum.photos/seed/p34b/300','https://picsum.photos/seed/p34c/300']),
+(35, ARRAY['https://picsum.photos/seed/p35a/300','https://picsum.photos/seed/p35b/300','https://picsum.photos/seed/p35c/300']),
+(36, ARRAY['https://picsum.photos/seed/p36a/300','https://picsum.photos/seed/p36b/300','https://picsum.photos/seed/p36c/300']),
+(37, ARRAY['https://picsum.photos/seed/p37a/300','https://picsum.photos/seed/p37b/300','https://picsum.photos/seed/p37c/300']),
+(38, ARRAY['https://picsum.photos/seed/p38a/300','https://picsum.photos/seed/p38b/300','https://picsum.photos/seed/p38c/300']),
+(39, ARRAY['https://picsum.photos/seed/p39a/300','https://picsum.photos/seed/p39b/300','https://picsum.photos/seed/p39c/300']),
+(40, ARRAY['https://picsum.photos/seed/p40a/300','https://picsum.photos/seed/p40b/300','https://picsum.photos/seed/p40c/300']);
+
+-- 23. Insert Active Product Descriptions
+INSERT INTO product_descriptions (product, description, created_at) VALUES
+(21,'Latest Alienware gaming laptop M16 R1', NOW()),
+(22,'Compact and powerful ROG Zephyrus G14', NOW()),
+(23,'Dell XPS 15 9530 with OLED display', NOW()),
+(24,'HP Spectre x360 convertible laptop', NOW()),
+(25,'Lenovo Legion 5 Pro RTX 4070', NOW()),
+(26,'Razer Blade 15 Advanced Model', NOW()),
+(27,'Acer Predator Helios 300 gaming beast', NOW()),
+(28,'Rolex Submariner Date 41mm NEW', NOW()),
+(29,'Omega Speedmaster Professional Moonwatch', NOW()),
+(30,'Tag Heuer Carrera Sport Chronograph', NOW()),
+(31,'Seiko Prospex Diver Automatic', NOW()),
+(32,'Casio G-Shock Mudmaster tactical watch', NOW()),
+(33,'Tissot PRX Powermatic 80 Blue Dial', NOW()),
+(34,'Fossil Gen 6 Touchscreen Smartwatch', NOW()),
+(35,'Funko Pop Marvel rare exclusive', NOW()),
+(36,'Lego Star Wars UCS Millennium Falcon', NOW()),
+(37,'Yu-Gi-Oh Blue Eyes White Dragon 1st Ed', NOW()),
+(38,'Hot Toys Iron Man Mark 85 diecast', NOW()),
+(39,'Vintage Silver Coin from 1900s certified', NOW()),
+(40,'Signed Football Jersey Lionel Messi', NOW());
+
+-- 24. Insert Active Sell Product (Auctions LIVE now)
+-- starting_at < NOW, expired_at > NOW
+INSERT INTO sell_product (product, seller, init_price, step_price, instant_price, starting_at, created_at, expired_at, isExtent)
+VALUES
+(21,1,40000000,500000,NULL, NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day', NOW() + INTERVAL '2 days', false),
+(22,5,30000000,200000,NULL, NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days', NOW() + INTERVAL '1 day', false),
+(23,1,35000000,500000,NULL, NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day', NOW() + INTERVAL '3 days', false),
+(24,5,25000000,300000,NULL, NOW() - INTERVAL '3 days', NOW() - INTERVAL '3 days', NOW() + INTERVAL '12 hours', false),
+(25,1,25000000,200000,NULL, NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day', NOW() + INTERVAL '5 days', false),
+(26,5,50000000,1000000,NULL,NOW() - INTERVAL '6 hours', NOW() - INTERVAL '6 hours', NOW() + INTERVAL '6 days', false),
+(27,1,20000000,200000,NULL, NOW() - INTERVAL '12 hours', NOW() - INTERVAL '12 hours', NOW() + INTERVAL '2 days', false),
+
+(28,5,220000000,5000000,NULL,NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days', NOW() + INTERVAL '5 days', false),
+(29,1,100000000,2000000,NULL,NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day', NOW() + INTERVAL '4 days', false),
+(30,5,60000000,1000000,NULL,NOW() - INTERVAL '4 days', NOW() - INTERVAL '4 days', NOW() + INTERVAL '1 day', false),
+(31,1,8000000,100000,NULL,NOW() - INTERVAL '5 hours', NOW() - INTERVAL '5 hours', NOW() + INTERVAL '3 days', false),
+(32,5,6500000,100000,NULL,NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days', NOW() + INTERVAL '2 days', false),
+(33,1,14000000,200000,NULL,NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day', NOW() + INTERVAL '6 days', false),
+(34,5,4000000,100000,NULL,NOW() - INTERVAL '3 days', NOW() - INTERVAL '3 days', NOW() + INTERVAL '12 hours', false),
+
+(35,1,1000000,50000,NULL,NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days', NOW() + INTERVAL '3 days', false),
+(36,5,15000000,200000,NULL,NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day', NOW() + INTERVAL '4 days', false),
+(37,1,4500000,100000,NULL,NOW() - INTERVAL '4 hours', NOW() - INTERVAL '4 hours', NOW() + INTERVAL '7 days', false),
+(38,5,8500000,150000,NULL,NOW() - INTERVAL '5 days', NOW() - INTERVAL '5 days', NOW() + INTERVAL '3 hours', true),
+(39,1,3000000,100000,NULL,NOW() - INTERVAL '2 days', NOW() - INTERVAL '2 days', NOW() + INTERVAL '3 days', false),
+(40,5,40000000,1000000,80000000,NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day', NOW() + INTERVAL '6 days', false);
+
+-- 25. Insert ACTIVE Bids for new products
+INSERT INTO bids (product, buyer, bid_date, price) VALUES
+-- Product 21 (Init 40M)
+(21, 2, NOW() - INTERVAL '10 hours', 40500000),
+(21, 3, NOW() - INTERVAL '5 hours', 41000000),
+-- Product 22 (Init 30M)
+(22, 2, NOW() - INTERVAL '1 day', 30200000),
+(22, 4, NOW() - INTERVAL '12 hours', 30400000),
+(22, 2, NOW() - INTERVAL '1 hour', 30600000),
+-- Product 28 (Rolex Init 220M)
+(28, 3, NOW() - INTERVAL '1 day', 225000000),
+(28, 4, NOW() - INTERVAL '2 hours', 230000000),
+-- Product 36 (Lego Init 15M)
+(36, 2, NOW() - INTERVAL '5 hours', 15200000),
+(36, 3, NOW() - INTERVAL '1 hour', 15400000),
+-- Product 38 (Iron Man Init 8.5M) -> Ending soon
+(38, 4, NOW() - INTERVAL '4 days', 8650000),
+(38, 2, NOW() - INTERVAL '2 days', 8800000),
+(38, 3, NOW() - INTERVAL '1 hour', 9000000);
+
+-- 26. Insert Active Questions
+INSERT INTO product_questions (questioner, answerer, product, question, answer) VALUES
+(2, 1, 21, 'Is RAM upgradable?', 'Yes, up to 64GB'),
+(3, NULL, 28, 'Box and papers included?', NULL),
+(4, 5, 36, 'Is it sealed?', 'Yes, factory sealed box');
+
+-- 27. Insert Allowed Bidder (For consistency if needed, assuming open to standard bidders)
+INSERT INTO allowed_bidder (product, bidder, allowed_at) VALUES
+(21,2,NOW()), (21,3,NOW()),
+(22,2,NOW()), (22,4,NOW()),
+(28,3,NOW()), (28,4,NOW()),
+(36,2,NOW()), (36,3,NOW()),
+(38,2,NOW()), (38,3,NOW()), (38,4,NOW());
