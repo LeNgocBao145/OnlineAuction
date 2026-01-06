@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { formatCurrency } from "@/utils/numberUtils";
 import { getImageUrl } from "@/utils/productUtils";
 import { getRemainingTime } from "@/utils/timeUtils";
+import { maskName } from "@/utils/maskUtils";
 
 
 export default function MyProducts() {
@@ -164,8 +165,12 @@ export default function MyProducts() {
                                         <p className="text-white/60">Current Price</p>
                                     </div>
                                     <div className="flex flex-col text-right">
-                                        <p className="text-(--primary)">{product.highest_bidder || "N/A"}</p>
-                                        <p className="text-white/60">{product.state === "sold" ? "Winner" : "Highest Bidder"}</p>
+                                        <p className="text-white font-medium truncate max-w-[120px]">
+                                            {product.highest_bidder ? maskName(product.highest_bidder) : "No bids"}
+                                        </p>
+                                        <p className="text-white/40 text-[10px] uppercase tracking-widest font-semibold">
+                                            {product.state === "sold" ? "Winner" : "Highest Bidder"}
+                                        </p>
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center mt-4">
@@ -236,6 +241,6 @@ export default function MyProducts() {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }

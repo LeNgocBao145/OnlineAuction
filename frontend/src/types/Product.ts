@@ -13,6 +13,8 @@ export interface Product {
   instant_price?: number;
   seller_name?: string;
   winner_name?: string | null;
+  highest_bidder?: string;
+  highest_bidder_id?: number | string;
   is_new?: boolean;
   is_ending_soon?: boolean;
   expired_at?: string;

@@ -5,7 +5,8 @@ import useAuthStore from "@/stores/authStore";
 import { formatDate } from "@/utils/dateUtils";
 import { getImageUrl } from "@/utils/productUtils";
 import { formatCurrency } from "@/utils/numberUtils";
-import { FaStar, FaRegStar } from "react-icons/fa";
+import { FaStar, FaRegStar, FaTrophy, FaMedal } from "react-icons/fa";
+import { maskName } from "@/utils/maskUtils";
 
 export default function BidsBody() {
     const navigate = useNavigate();
@@ -95,69 +96,110 @@ export default function BidsBody() {
                 </div>
             </div>
             <ul className="grid grid-cols-1 lg:grid-cols-2 mt-4 gap-4 w-full">
-                {visibleBiddings.length > 0 ? visibleBiddings.map((bid) => (
-                    <li key={bid.id} className="border border-white/10 rounded-lg bg-(--secondary) p-4 cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => navigate(`/product/${bid.id}`)}>
-                        <div className="grid grid-cols-[1fr_2fr] gap-4">
-                            <div className="relative">
-                                <img src={getImageUrl(bid.image)} alt={bid.name} className="rounded-md border border-white/10 aspect-square h-full object-cover" />
-                                {/* Favorite Button */}
-                                <button
-                                    onClick={(e) => handleToggleFavorite(e, bid.id)}
-                                    disabled={loadingFavorite === bid.id}
-                                    className={`absolute top-2 right-2 p-2 rounded-full transition-all z-10 
-                                        ${isFavorited(bid.id)
-                                            ? 'bg-black/60 text-(--primary)'
-                                            : 'bg-black/40 text-white/60 hover:text-white hover:bg-black/60'}
-                                        ${loadingFavorite === bid.id ? 'opacity-50' : ''}`}
-                                    title={isFavorited(bid.id) ? 'Remove from favorites' : 'Add to favorites'}
+                {visibleBiddings.length > 0 ? visibleBiddings.map((bid) => {
+                    // Check if user is highest bidder - compare as numbers, handle null/undefined
+                    const userIdNum = user?.id ? Number(user.id) : null;
+                    const highestBidderIdNum = bid.highest_bidder_id ? Number(bid.highest_bidder_id) : null;
+                    const isHighestBidder = userIdNum !== null && highestBidderIdNum !== null && userIdNum === highestBidderIdNum;
+
+                    const isWinning = bid.state === "bidding" && isHighestBidder;
+                    const hasWon = bid.state === "sold" && isHighestBidder;
+
+                    return (
+                        <li
+                            key={bid.id}
+                            className={`rounded-lg bg-(--secondary) p-4 cursor-pointer hover:scale-[1.02] transition-transform relative
+                            ${hasWon
+                                    ? "border-2 border-(--primary) shadow-[0_0_15px_rgba(255,215,0,0.25)]"
+                                    : isWinning
+                                        ? "border-2 border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.25)]"
+                                        : "border border-white/10"}`}
+                            onClick={() => navigate(`/product/${bid.id}`)}
+                        >
+                            {/* Winning/Won Badge */}
+                            {(isWinning || hasWon) && (
+                                <div className={`absolute -top-2 -right-2 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg z-20 uppercase flex items-center gap-1
+                                ${hasWon
+                                        ? "bg-(--primary) text-black border border-yellow-400"
+                                        : "bg-green-500 text-white border border-green-400 animate-pulse"}`}
                                 >
-                                    {isFavorited(bid.id) ? (
-                                        <FaStar className="w-4 h-4 drop-shadow-[0_0_4px_rgba(255,215,0,0.5)]" />
-                                    ) : (
-                                        <FaRegStar className="w-4 h-4" />
-                                    )}
-                                </button>
-                            </div>
-                            <div className="flex flex-col">
-                                <div>
-                                    <div className="flex justify-between items-center">
-                                        <h2 className="text-white font-bold text-xl">{bid.name.length > 20 ? bid.name.substring(0, 20) + "..." : bid.name}</h2>
-                                    </div>
+                                    {hasWon ? <><FaTrophy className="w-3 h-3" /> Won</> : <><FaMedal className="w-3 h-3" /> Winning</>}
                                 </div>
-                                <div className="flex flex-col mt-4">
-                                    <div className="flex justify-between mb-4">
-                                        <div className="flex flex-col">
-                                            <p className="text-2xl text-(--primary)">{formatCurrency(parseFloat(bid.bid_price)) || "0.00"}</p>
-                                            <p className="text-white/60">Your Bid</p>
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <p className="text-2xl text-white">{bid.bid_date ? formatDate(bid.bid_date) : "N/A"}</p>
-                                            <p className="text-white/60">Date</p>
+                            )}
+                            <div className="grid grid-cols-[1fr_2fr] gap-4">
+                                <div className="relative">
+                                    <img src={getImageUrl(bid.image)} alt={bid.name} className="rounded-md border border-white/10 aspect-square h-full object-cover" />
+                                    {/* Favorite Button */}
+                                    <button
+                                        onClick={(e) => handleToggleFavorite(e, bid.id)}
+                                        disabled={loadingFavorite === bid.id}
+                                        className={`absolute top-2 right-2 p-2 rounded-full transition-all z-10 
+                                        ${isFavorited(bid.id)
+                                                ? 'bg-black/60 text-(--primary)'
+                                                : 'bg-black/40 text-white/60 hover:text-white hover:bg-black/60'}
+                                        ${loadingFavorite === bid.id ? 'opacity-50' : ''}`}
+                                        title={isFavorited(bid.id) ? 'Remove from favorites' : 'Add to favorites'}
+                                    >
+                                        {isFavorited(bid.id) ? (
+                                            <FaStar className="w-4 h-4 drop-shadow-[0_0_4px_rgba(255,215,0,0.5)]" />
+                                        ) : (
+                                            <FaRegStar className="w-4 h-4" />
+                                        )}
+                                    </button>
+                                </div>
+                                <div className="flex flex-col">
+                                    <div>
+                                        <div className="flex justify-between items-center">
+                                            <h2 className="text-white font-bold text-xl">{bid.name.length > 20 ? bid.name.substring(0, 20) + "..." : bid.name}</h2>
                                         </div>
                                     </div>
-                                    <div className="flex flex-col">
-                                        <div className="flex items-center gap-2">
-                                            <span className={`w-3 h-3 rounded-full ${bid.state === "incoming"
-                                                ? "bg-yellow-400"
-                                                : bid.state === "bidding"
-                                                    ? "bg-green-400"
-                                                    : "bg-red-500"
-                                                }`}
-                                            ></span>
-                                            <p className="text-white/60">
-                                                {bid.state === "incoming"
-                                                    ? "Incoming"
+                                    <div className="flex flex-col mt-4">
+                                        <div className="flex justify-between mb-4">
+                                            <div className="flex flex-col">
+                                                <p className="text-2xl text-(--primary)">{formatCurrency(parseFloat(bid.bid_price)) || "0.00"}</p>
+                                                <p className="text-white/60">Your Bid</p>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <p className="text-2xl text-white">{bid.bid_date ? formatDate(bid.bid_date) : "N/A"}</p>
+                                                <p className="text-white/60">Date</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Highest Bidder Info */}
+                                        <div className="mb-4">
+                                            <div className="flex flex-col">
+                                                <p className={`text-xl font-bold truncate ${isHighestBidder ? "text-green-400" : "text-white"}`}>
+                                                    {isHighestBidder ? "You" : (maskName(bid.highest_bidder || "") || "N/A")}
+                                                </p>
+                                                <p className="text-white/40 text-[10px] uppercase tracking-widest font-semibold">
+                                                    {bid.state === "sold" ? "Final Winner" : "Current Highest Bidder"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`w-3 h-3 rounded-full ${bid.state === "incoming"
+                                                    ? "bg-yellow-400"
                                                     : bid.state === "bidding"
-                                                        ? "Bidding"
-                                                        : "Sold"}
-                                            </p>
+                                                        ? "bg-green-400"
+                                                        : "bg-red-500"
+                                                    }`}
+                                                ></span>
+                                                <p className="text-white/60">
+                                                    {bid.state === "incoming"
+                                                        ? "Incoming"
+                                                        : bid.state === "bidding"
+                                                            ? "Bidding"
+                                                            : "Sold"}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </li>
-                )) : <p className="text-white/60">No bids found</p>}
+                        </li>
+                    )
+                }) : <p className="text-white/60">No bids found</p>}
             </ul>
             {filteredBiddings.length > visibleCount && (
                 <button className="bg-(--primary) text-black p-2 rounded-md mt-4 w-3/10 m-auto"
