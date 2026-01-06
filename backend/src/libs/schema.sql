@@ -1056,3 +1056,64 @@ UPDATE users
 SET search_vector = 
     setweight(to_tsvector('simple', unaccent(COALESCE(name, ''))), 'A') ||
     setweight(to_tsvector('simple', unaccent(COALESCE(email, ''))), 'B');
+
+-- Procedure
+CREATE OR REPLACE PROCEDURE sync_auction_states()
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  p RECORD;   -- product + seller
+  w RECORD;   -- winner
+BEGIN
+  -- 1) incoming -> bidding
+  UPDATE products pr
+  SET state = 'bidding'
+  FROM sell_product sp
+  WHERE sp.product = pr.id
+    AND pr.state = 'incoming'
+    AND sp.starting_at <= NOW()
+    AND sp.expired_at  > NOW();
+
+  -- 2) bidding -> sold (+ winner + trade)
+  FOR p IN
+    SELECT pr.id AS product_id, sp.seller AS seller_id
+    FROM products pr
+    JOIN sell_product sp ON sp.product = pr.id
+    WHERE pr.state = 'bidding'
+      AND sp.expired_at <= NOW()
+    FOR UPDATE OF pr SKIP LOCKED
+  LOOP
+    -- Chuyển state trước (idempotent)
+    UPDATE products
+    SET state = 'sold'
+    WHERE id = p.product_id;
+
+    -- Lấy bid cao nhất
+    SELECT b.buyer AS bidder_id, b.price
+    INTO w
+    FROM bids b
+    WHERE b.product = p.product_id
+    ORDER BY b.price DESC, b.bid_date ASC, b.id ASC
+    LIMIT 1;
+
+    -- Không có bid => không tạo winner/transaction (vì NOT NULL)
+    IF w.bidder_id IS NULL THEN
+      CONTINUE;
+    END IF;
+
+    -- Upsert bidder_winner
+    INSERT INTO bidder_winner(product, bidder)
+    VALUES (p.product_id, w.bidder_id)
+    ON CONFLICT (product)
+    DO UPDATE SET bidder = EXCLUDED.bidder;
+
+    -- Upsert trade_verifications (transaction)
+    INSERT INTO trade_verifications(product, bidder, seller)
+    VALUES (p.product_id, w.bidder_id, p.seller_id)
+    ON CONFLICT (product)
+    DO UPDATE SET
+      bidder = EXCLUDED.bidder,
+      seller = EXCLUDED.seller;
+  END LOOP;
+END;
+$$;

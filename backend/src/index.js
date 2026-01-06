@@ -5,6 +5,7 @@ import route from "./routes/index.js";
 import cookieParser from "cookie-parser";
 import { app, server } from "./socket/index.js";
 import path from "path";
+import auctionCron from './jobs/auctionCron.js';
 
 const PORT = process.env.PORT || 5555;
 
@@ -36,6 +37,8 @@ app.use(
   "/assets",
   express.static(path.resolve(process.cwd(), "src", "assets"))
 );
+
+auctionCron();
 
 route(app);
 
