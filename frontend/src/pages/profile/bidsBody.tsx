@@ -62,11 +62,15 @@ export default function BidsBody() {
         );
     }
 
-    const filteredBiddings = statusFilter === 6 ? (biddings || []) : (biddings || []).filter(bid => {
+    const filteredBiddings = statusFilter === 5 ? (biddings || []) : (biddings || []).filter(bid => {
+        const userIdNum = user?.id ? Number(user.id) : null;
+        const highestBidderIdNum = bid.highest_bidder_id ? Number(bid.highest_bidder_id) : null;
+        const isHighestBidder = userIdNum !== null && highestBidderIdNum !== null && userIdNum === highestBidderIdNum;
+
         if (statusFilter === 1) return bid.state === "bidding";
         if (statusFilter === 2) return bid.state === "sold";
-        if (statusFilter === 3) return bid.state === "bidding" && bid.highest_bidder_id !== user?.id.toString(); // Losing - bidding and not highest bidder
-        if (statusFilter === 4) return bid.state === "sold" && bid.highest_bidder_id === user?.id.toString(); // Won - sold and is highest bidder
+        if (statusFilter === 3) return bid.state === "bidding" && !isHighestBidder; // Losing - bidding and not highest bidder
+        if (statusFilter === 4) return bid.state === "sold" && isHighestBidder; // Won - sold and is highest bidder
         return true;
     });
 
