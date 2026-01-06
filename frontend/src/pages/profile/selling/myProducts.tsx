@@ -77,7 +77,7 @@ export default function MyProducts() {
     }
 
     return (
-        <div className="w-8/10 m-auto mt-10 justify-center flex flex-col">
+        <div className="w-95/100 m-auto mt-10 justify-center flex flex-col">
             <h1 className="text-(--primary) text-2xl font-bold">Your Auctions and Products</h1>
             <div className="flex flex-wrap items-center justify-between gap-4 mt-4 p-4 w-full">
                 <div className="flex items-center gap-4">

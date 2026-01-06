@@ -61,7 +61,7 @@ export default function Chatbox(
                             <li className={`flex max-w-full [overflow-wrap:anywhere] whitespace-pre-wrap items-center rounded-lg ${isOwn ? "justify-end self-end text-right" : "justify-start self-start text-left"} ${previousSender !== msg.sender ? "mt-6" : "mt-1"}`}>
                                 {!isOwn && <div className={`flex shrink-0 h-10 w-10 border text-(--third) border-white rounded-full mr-2 bg-gray-600 items-center justify-center ${previousSender !== msg.sender ? "" : "invisible"}`}>{msg.sender_name?.[0]}</div>}
                                 {isOwn && <span className="whitespace-nowrap mr-2 text-white/50 text-sm">{new Date(msg.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>}
-                                <p className={`${isOwn ? "bg-(--primary) text-black px-3 py-2 rounded-lg" : "bg-(--secondary) text-white px-3 py-2 rounded-lg"}`}>{msg.content}</p>
+                                <p className={`${isOwn ? "bg-(--primary) text-black px-3 py-2 rounded-lg " : "bg-(--secondary) text-white px-3 py-2 rounded-lg"}`}>{msg.content}</p>
                                 {!isOwn && <span className="whitespace-nowrap ml-2 text-white/50 text-sm">{new Date(msg.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>}
                                 {isOwn && <div className={`flex shrink-0 h-10 w-10 border border-(--primary) text-(--third) rounded-full ml-2 bg-gray-600 items-center justify-center ${previousSender !== msg.sender ? "" : "invisible"}`}>{user?.name?.[0]}</div>}
                             </li>
@@ -78,11 +78,11 @@ export default function Chatbox(
                     />
                     <button
                         type="submit"
-                        className="bg-(--secondary) h-full w-1/10 text-black font-bold
+                        className="bg-(--secondary) h-full text-black font-bold aspect-square
                                     flex items-center justify-center
-                                    rounded-md border border-(--primary)"
+                                    rounded-md border border-(--primary) relative"
                         >
-                        <PaperAirplaneIcon className="h-6 w-6 rotate-320 text-(--primary)" />
+                        <PaperAirplaneIcon className="absolute top-2.5 left-3 h-6 w-6 rotate-320 text-(--primary)" />
                     </button>
                 </form>
             </div>
