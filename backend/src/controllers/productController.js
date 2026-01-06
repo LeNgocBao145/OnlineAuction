@@ -44,6 +44,7 @@ import {
   sendBidSuccessfullyEmail,
   sendInstantBuyEmail,
   sendSuccessfullyInstantBuyEmail,
+  sendBidderRefusedEmail,
 } from "../utils/emailService.js";
 
 const uploadDir = path.resolve(process.cwd(), "src", "assets", "products");
@@ -1150,6 +1151,20 @@ class ProductController {
       // Refuse the bidder
       const result = await query(refuseBidderQuery, [productId, bidderId]);
       const deleteResult = result.rows[0];
+
+      // Send email notification to the refused bidder
+      const bidderData = bidderCheck.rows[0];
+      const productUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/product/${productId}`;
+      try {
+        await sendBidderRefusedEmail(
+          bidderData.email,
+          productData.product_name,
+          productUrl
+        );
+      } catch (emailError) {
+        console.error("Error sending refused bidder email:", emailError);
+        // Don't fail the request if email fails
+      }
 
       // Check if we need to update the current_price (if the refused bidder had the highest bid)
       const newHighestBid = await query(

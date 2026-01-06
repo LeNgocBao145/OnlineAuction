@@ -6,7 +6,8 @@ import useUserStore from "@/stores/userStore";
 import { formatTimeLeft } from "@/utils/timeUtils";
 import { formatCurrency } from "@/utils/numberUtils";
 import { getImageUrl } from "@/utils/productUtils";
-import { FaStar, FaRegStar } from "react-icons/fa";
+import { FaStar, FaRegStar, FaTrophy, FaMedal } from "react-icons/fa";
+import { maskName } from "@/utils/maskUtils";
 
 export default function SearchBody() {
     const navigate = useNavigate();
@@ -132,16 +133,38 @@ export default function SearchBody() {
                             const isEndingSoon = item.state === "bidding" && secondsLeft > 0 && secondsLeft <= 300;
                             const isNew = secondsSinceCreated >= 0 && secondsSinceCreated <= 300;
 
+                            // Check if user is highest bidder (winning) or has won
+                            const userIdNum = user?.id ? Number(user.id) : null;
+                            const highestBidderIdNum = item.highest_bidder_id ? Number(item.highest_bidder_id) : null;
+                            const isHighestBidder = userIdNum !== null && highestBidderIdNum !== null && userIdNum === highestBidderIdNum;
+                            const isWinning = item.state === "bidding" && isHighestBidder;
+                            const hasWon = item.state === "sold" && isHighestBidder;
+
+                            // Determine border class - priority: Winning/Won > Ending Soon > New > Default
+                            const getBorderClass = () => {
+                                if (hasWon) return "border-(--primary) shadow-[0_0_20px_rgba(255,215,0,0.3)]";
+                                if (isWinning) return "border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.3)]";
+                                if (isEndingSoon) return "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.2)]";
+                                if (isNew) return "border-(--primary) shadow-[0_0_15px_rgba(255,215,0,0.1)]";
+                                return "border-white/5 hover:border-white/20";
+                            };
+
                             return (
                                 <div
                                     key={item.id}
-                                    className={`bg-(--third) rounded-2xl p-6 flex flex-col h-full border-2 transition-all duration-300 relative group cursor-pointer \
-                                        ${isEndingSoon ? "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.2)]" :
-                                            isNew ? "border-(--primary) shadow-[0_0_15px_rgba(255,215,0,0.1)]" :
-                                                "border-white/5 hover:border-white/20"}`}
+                                    className={`bg-(--third) rounded-2xl p-6 flex flex-col h-full border-2 transition-all duration-300 relative group cursor-pointer ${getBorderClass()}`}
                                     onClick={() => navigate(`/product/${item.id}`)}
                                 >
-                                    {isEndingSoon ? (
+                                    {/* Winning/Won Badge - highest priority */}
+                                    {hasWon ? (
+                                        <div className="absolute -top-3 -right-3 bg-(--primary) text-black text-[10px] font-bold px-3 py-1 rounded-full shadow-lg z-20 uppercase flex items-center gap-1.5 border border-yellow-400">
+                                            <FaTrophy className="w-3 h-3" /> Won
+                                        </div>
+                                    ) : isWinning ? (
+                                        <div className="absolute -top-3 -right-3 bg-green-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg z-20 uppercase flex items-center gap-1.5 border border-green-400 animate-pulse">
+                                            <FaMedal className="w-3 h-3" /> Winning
+                                        </div>
+                                    ) : isEndingSoon ? (
                                         <div className="absolute -top-3 -right-3 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg z-20 animate-pulse uppercase flex items-center gap-1.5 border border-red-400">
                                             <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></span>
                                             Ending Soon
@@ -193,6 +216,24 @@ export default function SearchBody() {
                                             <p className="text-xl text-white font-semibold">{item.bid_count || 0}</p>
                                             <p className="text-white/40 text-[10px] uppercase tracking-widest font-semibold">Bids</p>
                                         </div>
+                                    </div>
+
+                                    <div className="mb-4">
+                                        {(item.highest_bidder || item.winner_name) ? (
+                                            <div className="flex flex-col">
+                                                <p className={`text-sm font-medium truncate ${isHighestBidder ? "text-green-400" : "text-white/80"}`}>
+                                                    {isHighestBidder ? "You" : maskName(item.highest_bidder || item.winner_name || "")}
+                                                </p>
+                                                <p className="text-white/40 text-[10px] uppercase tracking-widest font-semibold">
+                                                    {item.state === "sold" ? "Winner" : "Highest Bidder"}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col">
+                                                <p className="text-sm font-medium text-white/40 italic">No bids yet</p>
+                                                <p className="text-white/40 text-[10px] uppercase tracking-widest font-semibold">Highest Bidder</p>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex justify-between mt-auto pt-4 border-t border-white/5">

@@ -1,11 +1,14 @@
 import { useNavigate } from "react-router";
 import useHomeStore from "@/stores/homeStore";
+import useAuthStore from "@/stores/authStore";
 import { formatCurrency } from "@/utils/numberUtils";
 import { getImageUrl } from "@/utils/productUtils";
+import { FaTrophy, FaMedal } from "react-icons/fa";
 
 export default function MostBids() {
     const navigate = useNavigate();
     const { mostBids } = useHomeStore();
+    const { user } = useAuthStore();
 
     return (
         <div className="border border-white/10 rounded-lg w-full bg-(--third) p-4">
@@ -29,16 +32,33 @@ export default function MostBids() {
                     const isEndingSoonClient = item.state === "bidding" && secondsLeft > 0 && secondsLeft <= 300;
                     const isNewClient = secondsSinceCreated >= 0 && secondsSinceCreated <= 300;
 
+                    // Check if user is highest bidder (winning) or has won
+                    const userIdNum = user?.id ? Number(user.id) : null;
+                    const highestBidderIdNum = item.highest_bidder_id ? Number(item.highest_bidder_id) : null;
+                    const isHighestBidder = userIdNum !== null && highestBidderIdNum !== null && userIdNum === highestBidderIdNum;
+                    const isWinning = item.state === "bidding" && isHighestBidder;
+                    const hasWon = item.state === "sold" && isHighestBidder;
+
                     return (
                         <li key={item.id} className={`relative bg-(--secondary) w-full rounded-xl p-3 \
                                              border-2 grid grid-cols-[1fr_2fr] items-center lg:min-h-[220px] \
                                              transform hover:scale-102 transition-all cursor-pointer \
-                                             ${isEndingSoonClient ? "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.25)] bg-red-500/5" :
-                                isNewClient ? "border-(--primary) shadow-[0_0_15px_rgba(255,215,0,0.15)]" :
-                                    "border-white/10 hover:border-white/20"}`}
+                                             ${hasWon ? "border-(--primary) shadow-[0_0_15px_rgba(255,215,0,0.25)] bg-yellow-500/5" :
+                                isWinning ? "border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.25)] bg-green-500/5" :
+                                    isEndingSoonClient ? "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.25)] bg-red-500/5" :
+                                        isNewClient ? "border-(--primary) shadow-[0_0_15px_rgba(255,215,0,0.15)]" :
+                                            "border-white/10 hover:border-white/20"}`}
                             onClick={() => navigate(`/product/${item.id}`)}
                         >
-                            {isEndingSoonClient ? (
+                            {hasWon ? (
+                                <div className="absolute -top-2.5 -left-2.5 bg-(--primary) text-black text-[9px] font-bold px-2 py-0.5 rounded-full shadow-lg z-20 uppercase flex items-center gap-1 border border-yellow-400">
+                                    <FaTrophy size={10} /> Won
+                                </div>
+                            ) : isWinning ? (
+                                <div className="absolute -top-2.5 -left-2.5 bg-green-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-lg z-20 animate-pulse uppercase flex items-center gap-1 border border-green-400">
+                                    <FaMedal size={10} /> Winning
+                                </div>
+                            ) : isEndingSoonClient ? (
                                 <div className="absolute -top-2.5 -left-2.5 bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-lg z-20 animate-pulse uppercase flex items-center gap-1 border border-red-400">
                                     <span className="w-1 h-1 bg-white rounded-full animate-ping"></span>
                                     Urgent

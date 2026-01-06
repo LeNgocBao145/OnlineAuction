@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { FaStar } from "react-icons/fa";
+import { FaStar, FaTrophy, FaMedal } from "react-icons/fa";
 import useUserStore from "@/stores/userStore";
 import useAuthStore from "@/stores/authStore";
 import { getImageUrl } from "@/utils/productUtils";
 import { formatCurrency } from "@/utils/numberUtils";
+import { maskName } from "@/utils/maskUtils";
 
 export default function FavoritesBody() {
     const navigate = useNavigate();
@@ -81,55 +82,95 @@ export default function FavoritesBody() {
                 </div>
             </div>
             <ul className="grid grid-cols-1 lg:grid-cols-2 mt-4 gap-4 w-full">
-                {visibleProducts.length > 0 ? visibleProducts.map((product) => (
-                    <li key={product.id} className="border border-white/10 rounded-lg bg-(--secondary) p-4 cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => navigate(`/product/${product.id}`)}>
-                        <div className="grid grid-cols-[1fr_2fr] gap-4">
-                            <div>
-                                <img src={getImageUrl(product.image) || "/placeholder.jpg"} alt={product.name} className="rounded-md border border-white/10 aspect-square h-full object-cover" />
-                            </div>
-                            <div className="flex flex-col">
-                                <div>
-                                    <div className="flex justify-between items-center">
-                                        <h2 className="text-white font-bold text-xl">{product.name.length > 20 ? product.name.substring(0, 20) + "..." : product.name}</h2>
-                                        <button onClick={(e) => { e.stopPropagation(); handleRemoveFavorite(Number(product.id)); }}>
-                                            <FaStar className="inline w-4 h-4 text-yellow-400 mr-2" />
-                                        </button>
-                                    </div>
+                {visibleProducts.length > 0 ? visibleProducts.map((product) => {
+                    // Winning/Won detection
+                    const userIdNum = user?.id ? Number(user.id) : null;
+                    const highestBidderIdNum = product.highest_bidder_id ? Number(product.highest_bidder_id) : null;
+                    const isHighestBidder = userIdNum !== null && highestBidderIdNum !== null && userIdNum === highestBidderIdNum;
+                    const isWinning = product.state === "bidding" && isHighestBidder;
+                    const hasWon = product.state === "sold" && isHighestBidder;
+
+                    return (
+                        <li key={product.id}
+                            className={`border rounded-lg bg-(--secondary) p-4 cursor-pointer hover:scale-[1.02] transition-all relative
+                                ${hasWon
+                                    ? "border-2 border-(--primary) shadow-[0_0_15px_rgba(255,215,0,0.25)]"
+                                    : isWinning
+                                        ? "border-2 border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.25)]"
+                                        : "border-white/10"}`}
+                            onClick={() => navigate(`/product/${product.id}`)}
+                        >
+                            {(isWinning || hasWon) && (
+                                <div className={`absolute -top-2 -right-2 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg z-20 uppercase flex items-center gap-1
+                                    ${hasWon
+                                        ? "bg-(--primary) text-black border border-yellow-400"
+                                        : "bg-green-500 text-white border border-green-400 animate-pulse"}`}
+                                >
+                                    {hasWon ? <><FaTrophy className="w-3 h-3" /> Won</> : <><FaMedal className="w-3 h-3" /> Winning</>}
                                 </div>
-                                <div className="flex flex-col mt-4">
-                                    <div className="flex justify-between mb-4">
-                                        <div className="flex flex-col">
-                                            <p className="text-2xl text-(--primary)">{formatCurrency(product.current_price)}</p>
-                                            <p className="text-white/60">Current Price</p>
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <p className="text-2xl text-white">{product.bid_count || 0}</p>
-                                            <p className="text-white/60">Bids</p>
+                            )}
+
+                            <div className="grid grid-cols-[1fr_2fr] gap-4">
+                                <div className="relative h-full">
+                                    <img src={getImageUrl(product.image) || "/placeholder.jpg"} alt={product.name} className="rounded-md border border-white/10 aspect-square h-full object-cover" />
+                                </div>
+                                <div className="flex flex-col">
+                                    <div>
+                                        <div className="flex justify-between items-center">
+                                            <h2 className="text-white font-bold text-xl truncate pr-2">{product.name.length > 20 ? product.name.substring(0, 20) + "..." : product.name}</h2>
+                                            <button onClick={(e) => { e.stopPropagation(); handleRemoveFavorite(Number(product.id)); }} className="flex-shrink-0">
+                                                <FaStar className="w-4 h-4 text-yellow-400" />
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="flex flex-col">
-                                        <div className="flex items-center gap-2">
-                                            <span className={`w-3 h-3 rounded-full ${product.state === "incoming"
-                                                ? "bg-yellow-400"
-                                                : product.state === "bidding"
-                                                    ? "bg-green-400"
-                                                    : "bg-red-500"
-                                                }`}
-                                            ></span>
-                                            <p className="text-white/60">
-                                                {product.state === "incoming"
-                                                    ? "Incoming"
+                                    <div className="flex flex-col mt-4">
+                                        <div className="flex justify-between mb-4">
+                                            <div className="flex flex-col">
+                                                <p className="text-2xl text-(--primary)">{formatCurrency(product.current_price)}</p>
+                                                <p className="text-white/60">Current Price</p>
+                                            </div>
+                                            <div className="flex flex-col text-right">
+                                                <p className="text-2xl text-white">{product.bid_count || 0}</p>
+                                                <p className="text-white/60">Bids</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Highest Bidder Info */}
+                                        <div className="mb-4">
+                                            <div className="flex flex-col">
+                                                <p className={`text-sm font-medium truncate ${isHighestBidder ? "text-green-400" : "text-white/80"}`}>
+                                                    {isHighestBidder ? "You" : (maskName(product.highest_bidder || "") || "No bids")}
+                                                </p>
+                                                <p className="text-white/40 text-[10px] uppercase tracking-widest font-semibold">
+                                                    {product.state === "sold" ? "Final Winner" : "Highest Bidder"}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col border-t border-white/5 pt-4">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`w-3 h-3 rounded-full ${product.state === "incoming"
+                                                    ? "bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.5)]"
                                                     : product.state === "bidding"
-                                                        ? "Bidding"
-                                                        : "Sold"}
-                                            </p>
+                                                        ? "bg-green-400"
+                                                        : "bg-red-500"
+                                                    }`}
+                                                ></span>
+                                                <p className="text-white/60 font-bold uppercase text-[10px] tracking-widest">
+                                                    {product.state === "incoming"
+                                                        ? "Incoming"
+                                                        : product.state === "bidding"
+                                                            ? "Bidding"
+                                                            : "Sold"}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </li>
-                )) : <p className="text-white/60">You don't have any favorites.</p>}
+                        </li>
+                    );
+                }) : <p className="text-white/60">You don't have any favorites.</p>}
             </ul>
             {filteredProducts.length > visibleCount && (
                 <button className="bg-(--primary) text-black p-2 rounded-md mt-4 w-3/10 m-auto"

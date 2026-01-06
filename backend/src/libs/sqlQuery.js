@@ -80,7 +80,7 @@ export const getBiddingsByUserId = (sortLogic) => `
         MAX(b.bid_date) AS bid_date,
         MAX(b.price) AS bid_price,
         sp.instant_price,
-        bidder.name AS highest_bidder_name,
+        bidder.name AS highest_bidder,
         bidder.id AS highest_bidder_id,
         sp.created_at,
         sp.starting_at,
@@ -132,6 +132,7 @@ export const getSellingsByUserId = (sortLogic) => `
         ${getProductColumns()},
         sp.instant_price,
         bidder.name AS highest_bidder,
+        bidder.id AS highest_bidder_id,
         sp.created_at,
         sp.starting_at,
         sp.expired_at,
@@ -148,7 +149,7 @@ export const getSellingsByUserId = (sortLogic) => `
             LEFT JOIN categories c ON pc.category = c.id
             LEFT JOIN bids b ON p.id = b.product
             LEFT JOIN LATERAL(
-                SELECT u.name
+                SELECT u.name, u.id
                 FROM bids b2 JOIN users u ON b2.buyer = u.id
                 WHERE b2.product = p.id
                 ORDER BY b2.price DESC
@@ -168,7 +169,7 @@ export const getSellingsByUserId = (sortLogic) => `
     GROUP BY 
         p.id,
         sp.expired_at, sp.starting_at, sp.created_at, sp.instant_price,
-        bidder.name, 
+        bidder.name, bidder.id, 
         query, p.search_vector
 
     ORDER BY ${sortLogic}, rank DESC
@@ -181,6 +182,7 @@ export const getWonsByUserId = (sortLogic) => `
         ${getProductColumns()},
         sp.instant_price,
         bidder.name AS highest_bidder,
+        bidder.id AS highest_bidder_id,
         sp.created_at,
         sp.expired_at,
         sp.starting_at,
@@ -198,7 +200,7 @@ export const getWonsByUserId = (sortLogic) => `
             LEFT JOIN categories c ON pc.category = c.id
             LEFT JOIN bids b ON p.id = b.product
             LEFT JOIN LATERAL(
-                SELECT u.name
+                SELECT u.name, u.id
                 FROM bids b2 JOIN users u ON b2.buyer = u.id
                 WHERE b2.product = p.id
                 ORDER BY b2.price DESC
@@ -218,7 +220,7 @@ export const getWonsByUserId = (sortLogic) => `
     GROUP BY 
         p.id,
         sp.expired_at, sp.starting_at, sp.created_at, sp.instant_price,
-        bidder.name, 
+        bidder.name, bidder.id,
         query, p.search_vector
 
     ORDER BY ${sortLogic}, rank DESC
@@ -353,6 +355,7 @@ export const getFavoritesQuery = (sortLogic) => `
         f.created_at AS favorited_date,
         sp.instant_price,
         bidder.name AS highest_bidder,
+        bidder.id AS highest_bidder_id,
         sp.created_at,
         sp.starting_at,
         sp.expired_at,
@@ -372,7 +375,7 @@ export const getFavoritesQuery = (sortLogic) => `
             LEFT JOIN categories c ON pc.category = c.id
             LEFT JOIN bids b ON p.id = b.product
             LEFT JOIN LATERAL(
-                SELECT u.name
+                SELECT u.name, u.id
                 FROM bids b2 JOIN users u ON b2.buyer = u.id
                 WHERE b2.product = p.id
                 ORDER BY b2.price DESC
@@ -393,7 +396,7 @@ export const getFavoritesQuery = (sortLogic) => `
         p.id,
         f.created_at,
         sp.expired_at, sp.starting_at, sp.created_at, sp.instant_price,
-        bidder.name, 
+        bidder.name, bidder.id,
         query, p.search_vector, is_ending_soon, is_new
 
     ORDER BY ${sortLogic}, rank DESC, is_new DESC
@@ -535,6 +538,7 @@ export const getFilteredProductsQuery = (sortLogic) => `
         sp.instant_price,
         seller.name AS seller_name,
         bidder.name AS highest_bidder,
+        bidder.id AS highest_bidder_id,
         winner.name AS winner_name,
         (SELECT c.name FROM product_categories pc
          JOIN categories c ON pc.category = c.id  
@@ -561,7 +565,7 @@ export const getFilteredProductsQuery = (sortLogic) => `
             LEFT JOIN users winner ON bw.bidder = winner.id
             LEFT JOIN bids b ON p.id = b.product
             LEFT JOIN LATERAL (
-                SELECT u.name
+                SELECT u.name, u.id
                 FROM bids b2 JOIN users u ON b2.buyer = u.id
                 WHERE b2.product = p.id
                 ORDER BY b2.price DESC
@@ -579,7 +583,7 @@ export const getFilteredProductsQuery = (sortLogic) => `
     GROUP BY 
         p.id,
         sp.expired_at, sp.starting_at, sp.created_at, sp.instant_price,
-        seller.name, bidder.name, winner.name
+        seller.name, bidder.name, bidder.id, winner.name
 
     ORDER BY ${sortLogic}, rank DESC, is_new DESC
 
@@ -905,6 +909,7 @@ SELECT
 p.image AS image_url,
     sp.instant_price,
     bidder.name AS highest_bidder,
+    bidder.id AS highest_bidder_id,
         sp.created_at,
         sp.expired_at,
         EXTRACT(EPOCH FROM(sp.expired_at - NOW())) AS time_left,
@@ -920,7 +925,7 @@ FROM
             LEFT JOIN categories c ON pc.category = c.id
             LEFT JOIN bids b ON p.id = b.product
             LEFT JOIN LATERAL(
-    SELECT u.name
+    SELECT u.name, u.id
                 FROM bids b2 JOIN users u ON b2.buyer = u.id
                 WHERE b2.product = p.id
                 ORDER BY b2.price DESC
@@ -929,7 +934,7 @@ FROM
 
     WHERE p.state = 'bidding' AND sp.expired_at > NOW()
 
-    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name, is_new, is_ending_soon
+    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name, bidder.id, is_new, is_ending_soon
 
     ORDER BY sp.expired_at ASC
 
@@ -942,6 +947,7 @@ SELECT
 p.image AS image_url,
     sp.instant_price,
     bidder.name AS highest_bidder,
+    bidder.id AS highest_bidder_id,
         sp.created_at,
         sp.expired_at,
         EXTRACT(EPOCH FROM(sp.expired_at - NOW())) AS time_left,
@@ -957,7 +963,7 @@ FROM
             LEFT JOIN categories c ON pc.category = c.id
             LEFT JOIN bids b ON p.id = b.product
             LEFT JOIN LATERAL(
-    SELECT u.name
+    SELECT u.name, u.id
                 FROM bids b2 JOIN users u ON b2.buyer = u.id
                 WHERE b2.product = p.id
                 ORDER BY b2.price DESC
@@ -966,7 +972,7 @@ FROM
 
     WHERE p.state = 'bidding'
 
-    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name, is_new, is_ending_soon
+    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name, bidder.id, is_new, is_ending_soon
 
     ORDER BY bid_count DESC
 
@@ -979,6 +985,7 @@ SELECT
 p.image AS image_url,
     sp.instant_price,
     bidder.name AS highest_bidder,
+    bidder.id AS highest_bidder_id,
         sp.created_at,
         sp.expired_at,
         EXTRACT(EPOCH FROM(sp.expired_at - NOW())) AS time_left,
@@ -994,7 +1001,7 @@ FROM
             LEFT JOIN categories c ON pc.category = c.id
             LEFT JOIN bids b ON p.id = b.product
             LEFT JOIN LATERAL(
-    SELECT u.name
+    SELECT u.name, u.id
                 FROM bids b2 JOIN users u ON b2.buyer = u.id
                 WHERE b2.product = p.id
                 ORDER BY b2.price DESC
@@ -1003,7 +1010,7 @@ FROM
 
     WHERE p.state = 'bidding'
 
-    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name, is_new, is_ending_soon
+    GROUP BY p.id, sp.expired_at, sp.created_at, sp.instant_price, bidder.name, bidder.id, is_new, is_ending_soon
 
     ORDER BY p.current_price DESC
 
