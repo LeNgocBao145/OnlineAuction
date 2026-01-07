@@ -365,7 +365,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_products_update ON products;
+
 CREATE TRIGGER trg_products_update
 AFTER INSERT OR UPDATE ON products
 FOR EACH ROW EXECUTE FUNCTION fn_trg_products_update();
@@ -385,7 +385,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_description_update ON product_descriptions;
+
 CREATE TRIGGER trg_description_update
 AFTER INSERT OR UPDATE OR DELETE ON product_descriptions
 FOR EACH ROW EXECUTE FUNCTION fn_trg_description_update();
@@ -407,7 +407,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_product_categories_update ON product_categories;
+
 CREATE TRIGGER trg_product_categories_update
 AFTER INSERT OR UPDATE OR DELETE ON product_categories
 FOR EACH ROW EXECUTE FUNCTION fn_trg_product_categories_update();
@@ -445,7 +445,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_categories_name_update ON categories;
+
 CREATE TRIGGER trg_categories_name_update
 AFTER UPDATE ON categories
 FOR EACH ROW EXECUTE FUNCTION fn_trg_categories_name_update();
@@ -505,6 +505,15 @@ BEGIN
     
     RETURN OLD;
 END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION users_tsvector_trigger() RETURNS trigger AS $$
+BEGIN
+  NEW.search_vector :=
+    setweight(to_tsvector('simple', unaccent(coalesce(NEW.name, ''))), 'A') ||
+    setweight(to_tsvector('simple', unaccent(coalesce(NEW.email, ''))), 'B');
+  RETURN NEW;
+END
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_delete_seller_products
@@ -1004,14 +1013,6 @@ CREATE TRIGGER trg_update_rating_on_review_change
 AFTER INSERT OR UPDATE OR DELETE ON reviews
 FOR EACH ROW
 EXECUTE FUNCTION fn_update_user_rating();
-CREATE OR REPLACE FUNCTION users_tsvector_trigger() RETURNS trigger AS $$
-BEGIN
-  NEW.search_vector :=
-    setweight(to_tsvector('simple', unaccent(coalesce(NEW.name, ''))), 'A') ||
-    setweight(to_tsvector('simple', unaccent(coalesce(NEW.email, ''))), 'B');
-  RETURN NEW;
-END
-$$ LANGUAGE plpgsql;
 
 -- 11. Insert Reviews (Chỉ cho các completed transactions: 1,2,6,7,10,11,14,18)
 -- Buyer (User 3) rates Seller (User 1)
