@@ -1261,3 +1261,17 @@ export const checkIsRefused = `
 export const unrefuseBidder = `
     DELETE FROM refuse WHERE product = $1 AND buyer = $2;
 `;
+
+// Get all bidder emails for a product (for notification purposes)
+export const getAllBidderEmailsForProduct = `
+    SELECT DISTINCT u.email, u.name, p.name AS product_name
+    FROM (
+        -- Get bidders from bids table
+        SELECT buyer AS bidder_id FROM bids WHERE product = $1
+        UNION
+        -- Get bidders from auto_bids table
+        SELECT bidder AS bidder_id FROM auto_bids WHERE product = $1
+    ) AS all_bidders
+    JOIN users u ON u.id = all_bidders.bidder_id
+    JOIN products p ON p.id = $1;
+`;

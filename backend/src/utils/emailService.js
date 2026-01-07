@@ -218,6 +218,19 @@ export async function sendBidSuccessfullyEmail(to, productName, newPrice, produc
   await sendEmail(to, subject, html);
 }
 
+// Previous Highest Bidder Email - For the bidder who just lost top 1 position
+export async function sendPreviousHighestBidderEmail(to, productName, newPrice, productUrl) {
+  const subject = `⚠️ You've Been Outbid! - ${productName}`;
+  const html = `
+    <h2>⚠️ You've Been Outbid!</h2>
+    <p>Someone has placed a higher bid on <strong>${productName}</strong>.</p>
+    <p>The new current price is <strong>$${newPrice}</strong>.</p>
+    <p>Don't let this one slip away! Place a new bid now to reclaim your position.</p>
+    <p><a href="${productUrl}">Place New Bid</a></p>
+  `;
+  await sendEmail(to, subject, html);
+}
+
 // Instant Buy Email
 export async function sendInstantBuyEmail(to, productName, buyPrice, productUrl) { // Seller and previous highest bidder
   const subject = `${productName} - Was Bought Instantly`;
@@ -234,6 +247,30 @@ export async function sendSuccessfullyInstantBuyEmail(to, productName, buyPrice,
   const html = `
     <h2>Product Bought Instantly</h2>
     <p><strong>${productName}</strong> was bought instantly for <strong>$${buyPrice}</strong>.</p>
+    <p><a href="${productUrl}">View Product</a></p>
+  `;
+  await sendEmail(to, subject, html);
+}
+
+// Auction Updated Notification (sent to all bidders when seller updates auction)
+export async function sendAuctionUpdatedEmail(to, productName, productUrl) {
+  const subject = `Auction Updated - ${productName}`;
+  const html = `
+    <h2>Auction Updated</h2>
+    <p>The seller has updated the auction for <strong>${productName}</strong>.</p>
+    <p>The auction details may have changed. Please review the updated information.</p>
+    <p><a href="${productUrl}">View Updated Auction</a></p>
+  `;
+  await sendEmail(to, subject, html);
+}
+
+// Description Appended Notification (sent to all bidders when seller adds new description)
+export async function sendDescriptionAppendedEmail(to, productName, productUrl) {
+  const subject = `New Description Added - ${productName}`;
+  const html = `
+    <h2>New Description Added</h2>
+    <p>The seller has added a new description to the auction for <strong>${productName}</strong>.</p>
+    <p>Please review the additional information about the product.</p>
     <p><a href="${productUrl}">View Product</a></p>
   `;
   await sendEmail(to, subject, html);
