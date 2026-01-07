@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 5555;
 // middeware
 // This help express understand json format of request body
 const allowedOrigins = [
-  `https://${process.env.FRONT_HOST}`,
+  `${process.env.FRONT_HOST}`,
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:5175',
