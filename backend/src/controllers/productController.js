@@ -33,7 +33,8 @@ import {
   getProductBidders,
   refuseBidder as refuseBidderQuery,
   unrefuseBidder as unrefuseBidderQuery,
-  getProductImagesById
+  getProductImagesById,
+  getAllBidderEmailsForProduct
 } from "../libs/sqlQuery.js";
 
 import {
@@ -46,6 +47,8 @@ import {
   sendInstantBuyEmail,
   sendSuccessfullyInstantBuyEmail,
   sendBidderRefusedEmail,
+  sendAuctionUpdatedEmail,
+  sendDescriptionAppendedEmail,
 } from "../utils/emailService.js";
 
 const uploadDir = path.resolve(process.cwd(), "src", "assets", "products");
@@ -187,6 +190,19 @@ class ProductController {
       const result = await query(createProductDescription, [productId, des]);
 
       const newProductDescription = result.rows[0];
+
+      // Send email notifications to all bidders
+      const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
+      const biddersResult = await query(getAllBidderEmailsForProduct, [productId]);
+      const bidders = biddersResult.rows;
+
+      if (bidders.length > 0) {
+        const productName = bidders[0].product_name;
+        bidders.forEach(bidder => {
+          sendDescriptionAppendedEmail(bidder.email, productName, productUrl)
+            .catch(err => console.error("Error sending description appended email:", err));
+        });
+      }
 
       return res
         .status(201)
@@ -994,6 +1010,19 @@ class ProductController {
       if (finalImageFilenames.length > 0) {
         const orphans = allOldFiles.filter(oldFile => !finalImageFilenames.includes(oldFile));
         this._deletePhysicalFiles(orphans);
+      }
+
+      // Send email notifications to all bidders about auction update
+      const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
+      const biddersResult = await query(getAllBidderEmailsForProduct, [productId]);
+      const bidders = biddersResult.rows;
+
+      if (bidders.length > 0) {
+        const productName = bidders[0].product_name || name;
+        bidders.forEach(bidder => {
+          sendAuctionUpdatedEmail(bidder.email, productName, productUrl)
+            .catch(err => console.error("Error sending auction updated email:", err));
+        });
       }
 
       return res.status(200).json({ message: "Product updated successfully!" });

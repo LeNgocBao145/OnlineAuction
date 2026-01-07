@@ -238,3 +238,27 @@ export async function sendSuccessfullyInstantBuyEmail(to, productName, buyPrice,
   `;
   await sendEmail(to, subject, html);
 }
+
+// Auction Updated Notification (sent to all bidders when seller updates auction)
+export async function sendAuctionUpdatedEmail(to, productName, productUrl) {
+  const subject = `Auction Updated - ${productName}`;
+  const html = `
+    <h2>Auction Updated</h2>
+    <p>The seller has updated the auction for <strong>${productName}</strong>.</p>
+    <p>The auction details may have changed. Please review the updated information.</p>
+    <p><a href="${productUrl}">View Updated Auction</a></p>
+  `;
+  await sendEmail(to, subject, html);
+}
+
+// Description Appended Notification (sent to all bidders when seller adds new description)
+export async function sendDescriptionAppendedEmail(to, productName, productUrl) {
+  const subject = `New Description Added - ${productName}`;
+  const html = `
+    <h2>New Description Added</h2>
+    <p>The seller has added a new description to the auction for <strong>${productName}</strong>.</p>
+    <p>Please review the additional information about the product.</p>
+    <p><a href="${productUrl}">View Product</a></p>
+  `;
+  await sendEmail(to, subject, html);
+}
