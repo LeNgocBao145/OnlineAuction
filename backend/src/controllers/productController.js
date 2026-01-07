@@ -49,6 +49,7 @@ import {
   sendBidderRefusedEmail,
   sendAuctionUpdatedEmail,
   sendDescriptionAppendedEmail,
+  sendPreviousHighestBidderEmail,
 } from "../utils/emailService.js";
 
 const uploadDir = path.resolve(process.cwd(), "src", "assets", "products");
@@ -192,7 +193,7 @@ class ProductController {
       const newProductDescription = result.rows[0];
 
       // Send email notifications to all bidders
-      const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
+      const productUrl = `http://${process.env.FRONT_HOST}/product/${productId}`;
       const biddersResult = await query(getAllBidderEmailsForProduct, [productId]);
       const bidders = biddersResult.rows;
 
@@ -385,7 +386,7 @@ class ProductController {
 
       // Send email using data from the single query
       const { seller_email, product_name, user_name } = result.rows[0];
-      const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
+      const productUrl = `http://${process.env.FRONT_HOST}/product/${productId}`;
 
       await sendQuestionAskedEmail(seller_email, product_name, user_name, trimmedQuestion, productUrl);
 
@@ -458,7 +459,7 @@ class ProductController {
 
       // Send email using data from the single query
       const { asker_email, product_name } = result.rows[0];
-      const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
+      const productUrl = `http://${process.env.FRONT_HOST}/product/${productId}`;
 
       await sendQuestionAnsweredEmail(asker_email, product_name, trimmedAnswer, productUrl);
 
@@ -511,7 +512,7 @@ class ProductController {
         const to = userData.seller_email;
         const productName = userData.product_name;
         const buyerName = userData.name;
-        const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
+        const productUrl = `http://${process.env.FRONT_HOST}/product/${productId}`;
 
         await sendBidRequestEmail(to, productName, buyerName, productUrl)
           .catch((err) => {
@@ -736,12 +737,12 @@ class ProductController {
     return null;
   }
 
-  _processManualBid = async (res, userId, productId, amount, instP, minNext, data, productUrl, notifyList, userEmail) => {
+  _processManualBid = async (res, userId, productId, amount, instP, minNext, data, productUrl, userEmail) => {
 
     if (instP > 0 && amount >= instP) {
       const result = await query(handleInstantBuyQuery, [userId, productId, amount]);
       if (result.rowCount === 0) return res.status(409).json({ message: "Product was just sold to someone else" });
-      this._notifySuccess(userEmail, data.product_name, amount, productUrl, notifyList, true);
+      this._notifySuccess(userEmail, data.product_name, amount, productUrl, data.seller_email, data.prev_bidder_email, true, productId);
       return res.status(200).json({ message: "Instant buy successful!" });
     }
 
@@ -756,17 +757,17 @@ class ProductController {
       const outbidPrice = Math.min(amount + parseFloat(data.step_price), parseFloat(topAuto.max_price));
       await query(insertBidRecord, [userId, productId, amount]);
       await this._finalizeBid(topAuto.bidder, productId, outbidPrice, parseFloat(topAuto.max_price));
-      this._notifySuccess(userEmail, data.product_name, amount, productUrl, [], false);
-      this._notifySuccess(topAuto.bidder_email, data.product_name, outbidPrice, productUrl, notifyList, false);
+      this._notifySuccess(userEmail, data.product_name, amount, productUrl, null, null, false, null);
+      this._notifySuccess(topAuto.bidder_email, data.product_name, outbidPrice, productUrl, data.seller_email, userEmail, false, productId);
       return res.status(201).json({ message: "Outbid by auto-bidding", currentPrice: outbidPrice, isWinning: false });
     }
 
     await this._finalizeBid(userId, productId, amount, null);
-    this._notifySuccess(userEmail, data.product_name, amount, productUrl, notifyList, false);
+    this._notifySuccess(userEmail, data.product_name, amount, productUrl, data.seller_email, data.prev_bidder_email, false, productId);
     return res.status(201).json({ message: "Bid placed successfully", currentPrice: amount, isWinning: true });
   }
 
-  _processAutoBid = async (res, userId, productId, maxPrice, currP, stepP, minNext, data, productUrl, notifyList, userEmail) => {
+  _processAutoBid = async (res, userId, productId, maxPrice, currP, stepP, minNext, data, productUrl, userEmail) => {
 
     const leader = (await query(getCurrentLeaderBid, [productId])).rows[0];
     const leaderId = leader ? parseInt(leader.bidder_id, 10) : null;
@@ -796,7 +797,7 @@ class ProductController {
       await query(insertBidRecord, [winnerId, productId, finalPrice]);
       await query(updateProductPrice, [finalPrice, productId]);
 
-      this._notifySuccess(winnerId === userId ? userEmail : first.bidder_email, data.product_name, finalPrice, productUrl, notifyList, false);
+      this._notifySuccess(winnerId === userId ? userEmail : first.bidder_email, data.product_name, finalPrice, productUrl, data.seller_email, data.prev_bidder_email, false, productId);
 
       return res.status(winnerId === userId ? 201 : 200).json({
         message: winnerId === userId ? "Auto-bid active. You win!" : "Outbid by higher auto-bid",
@@ -807,7 +808,7 @@ class ProductController {
 
     // single auto-bidder case
     await this._finalizeBid(winnerId, productId, finalPrice, winnerId === userId ? maxPrice : winnerMax);
-    this._notifySuccess(winnerId === userId ? userEmail : first.bidder_email, data.product_name, finalPrice, productUrl, notifyList, false);
+    this._notifySuccess(winnerId === userId ? userEmail : first.bidder_email, data.product_name, finalPrice, productUrl, data.seller_email, data.prev_bidder_email, false, productId);
 
     return res.status(winnerId === userId ? 201 : 200).json({
       message: winnerId === userId ? "Auto-bid active. You win!" : "Outbid by higher auto-bid",
@@ -822,11 +823,37 @@ class ProductController {
     await query(updateProductPrice, [price, productId]);
   }
 
-  _notifySuccess = (winnerEmail, productName, price, url, others, isInstant) => {
+  _notifySuccess = async (winnerEmail, productName, price, url, sellerEmail, prevHighestBidderEmail, isInstant, productId) => {
 
-    const [sendWinner, sendOthers] = isInstant ? [sendSuccessfullyInstantBuyEmail, sendInstantBuyEmail] : [sendBidSuccessfullyEmail, sendPriceUpdateEmail];
+    const [sendWinner, sendSeller] = isInstant ? [sendSuccessfullyInstantBuyEmail, sendInstantBuyEmail] : [sendBidSuccessfullyEmail, sendPriceUpdateEmail];
+
+    // Send success email to winner
     sendWinner(winnerEmail, productName, price, url).catch(e => console.error("Email error:", e));
-    others.forEach(email => sendOthers(email, productName, price, winnerEmail, url).catch(e => console.error("Email error:", e)));
+
+    // Send regular price update email to seller
+    if (sellerEmail) {
+      sendSeller(sellerEmail, productName, price, url).catch(e => console.error("Email error:", e));
+    }
+
+    // Send distinct "You've Been Outbid" email to previous highest bidder
+    if (prevHighestBidderEmail && prevHighestBidderEmail !== winnerEmail) {
+      sendPreviousHighestBidderEmail(prevHighestBidderEmail, productName, price, url).catch(e => console.error("Email error:", e));
+    }
+
+    // Send regular price update email to all other bidders (excluding winner and previous highest bidder)
+    if (productId) {
+      try {
+        const biddersResult = await query(getAllBidderEmailsForProduct, [productId]);
+        const otherBidders = biddersResult.rows.filter(
+          b => b.email !== winnerEmail && b.email !== prevHighestBidderEmail && b.email !== sellerEmail
+        );
+        otherBidders.forEach(bidder => {
+          sendPriceUpdateEmail(bidder.email, productName, price, url).catch(e => console.error("Email error:", e));
+        });
+      } catch (e) {
+        console.error("Error fetching bidders for notification:", e);
+      }
+    }
   }
 
   _getBidCheckQuery = () => {
@@ -872,11 +899,11 @@ class ProductController {
       const minNext = currP + stepP;
       if ((amount || maxPrice) < minNext) return res.status(400).json({ message: `Minimum bid is ${minNext.toFixed(0)}` });
 
-      const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
-      const notifyList = [data.seller_email, data.prev_bidder_email && data.prev_bidder_email !== userEmail && data.prev_bidder_email].filter(Boolean);
+      const productUrl = `http://${process.env.FRONT_HOST}/product/${productId}`;
+      // seller_email and prev_bidder_email are now passed separately to _notifySuccess
 
-      if (amount) return this._processManualBid(res, userId, productId, amount, instP, minNext, data, productUrl, notifyList, userEmail);
-      return this._processAutoBid(res, userId, productId, maxPrice, currP, stepP, minNext, data, productUrl, notifyList, userEmail);
+      if (amount) return this._processManualBid(res, userId, productId, amount, instP, minNext, data, productUrl, userEmail);
+      return this._processAutoBid(res, userId, productId, maxPrice, currP, stepP, minNext, data, productUrl, userEmail);
     } catch (error) {
       console.error("Error placing bid:", error);
       return res.status(500).json({ message: "Internal server error" });
@@ -1013,7 +1040,7 @@ class ProductController {
       }
 
       // Send email notifications to all bidders about auction update
-      const productUrl = `https://${process.env.FRONT_HOST}/products/${productId}`;
+      const productUrl = `http://${process.env.FRONT_HOST}/product/${productId}`;
       const biddersResult = await query(getAllBidderEmailsForProduct, [productId]);
       const bidders = biddersResult.rows;
 
@@ -1184,7 +1211,7 @@ class ProductController {
 
       // Send email notification to the refused bidder
       const bidderData = bidderCheck.rows[0];
-      const productUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/product/${productId}`;
+      const productUrl = `http://${process.env.FRONT_HOST}/products/${productId}`;
       try {
         await sendBidderRefusedEmail(
           bidderData.email,
