@@ -11,27 +11,10 @@ const PORT = process.env.PORT || 5555;
 
 // middeware
 // This help express understand json format of request body
-const allowedOrigins = [
-  `${process.env.FRONT_HOST}`,
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:5176',
-  'http://localhost:5177',
-  'http://localhost:3000',
-];
-
 const corsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-};
+    origin: process.env.FRONTEND_URL,
+    credentials: true
+}
 
 app.use(cors(corsOptions));
 app.use(express.json());
