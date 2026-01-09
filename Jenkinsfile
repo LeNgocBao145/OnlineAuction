@@ -6,7 +6,7 @@ pipeline {
         BACKEND_IMAGE  = "${REGISTRY}/onlineauction-backend"
         FRONTEND_IMAGE = "${REGISTRY}/onlineauction-frontend"
         TAG = "v${BUILD_NUMBER}"
-    }
+    }    
 
     options {
         timestamps()
@@ -19,6 +19,17 @@ pipeline {
         stage('Checkout') {
             steps {
                 git url: 'https://github.com/LeNgocBao145/OnlineAuction.git', branch: 'develop'
+            }
+        }
+
+        stage('SAST - Semgrep') {
+        steps {
+            sh '''
+              docker run --rm \
+                -v "$PWD:/src" \
+                returntocorp/semgrep \
+                semgrep scan --config=auto --severity ERROR
+            '''
             }
         }
 
@@ -86,6 +97,18 @@ pipeline {
                   docker compose pull
                   docker compose up -d
                 '''
+            }
+        }
+
+        stage('DAST - OWASP ZAP') {
+        steps {
+            sh '''
+              docker run --rm \
+                -v $PWD:/zap/wrk \
+                owasp/zap2docker-stable zap-baseline.py \
+                -t $DAST_TARGET \
+                -r zap-report.html || true
+            '''
             }
         }
     }
