@@ -105,7 +105,7 @@ pipeline {
             sh '''
               docker run --rm \
                 -v $PWD:/zap/wrk \
-                owasp/zap2docker-stable zap-baseline.py \
+                zaproxy/zap-stable:latest zap-baseline.py \
                 -t $DAST_TARGET \
                 -r zap-report.html || true
             '''
