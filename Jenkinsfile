@@ -104,6 +104,7 @@ pipeline {
         steps {
             sh '''
               docker run --rm \
+                --user root \
                 -v $PWD:/zap/wrk \
                 zaproxy/zap-stable:latest zap-baseline.py \
                 -t $DAST_TARGET \
